@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>人力数字员工 - 人岗适配咨询</title>
+    <link rel="icon" type="image/png" href="/static/国脉底图.png?v=3">
+    <!-- 引入 Chart.js 用于雷达图 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // 强制刷新缓存
+        if (location.search.indexOf('v=') === -1) {
+            location.href = location.href + (location.search ? '&' : '?') + 'v=' + Date.now();
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-logo {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header-title h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-clear {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .message.assistant .message-avatar {
+            background: #e9ecef;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 16px 20px;
+            border-radius: 16px;
+            line-height: 1.8;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+
+        /* AI回复内容样式优化 */
+        .message.assistant .message-content h3 {
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+
+        .message.assistant .message-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .message.assistant .message-content h4 {
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 16px 0 10px 0;
+            padding-left: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .message.assistant .message-content p {
+            margin: 8px 0;
+        }
+
+        .message.assistant .message-content ul,
+        .message.assistant .message-content ol {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .message.assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .message.assistant .message-content strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .message.assistant .message-content .score {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        .message.assistant .message-content .dimension {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .message.assistant .message-content .sub-item {
+            padding-left: 16px;
+            margin: 6px 0;
+            color: #666;
+        }
+
+        /* 列表样式优化 */
+        .message.assistant .message-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .message.assistant .message-content ul li {
+            margin: 6px 0;
+            line-height: 1.6;
+        }
+
+        .message.assistant .message-content ul ul {
+            margin: 4px 0;
+            padding-left: 16px;
+        }
+
+        .message.assistant .message-content ul ul li {
+            margin: 3px 0;
+            color: #555;
+            font-size: 14px;
+        }
+
+        /* 段落样式 */
+        .message.assistant .message-content p {
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+
+        /* 标题样式增强 */
+        .message.assistant .message-content h1 {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 24px 0 16px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .message.assistant .message-content h2 {
+            color: #5a6fd6;
+            font-size: 17px;
+            font-weight: 600;
+            margin: 20px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .message.assistant .message-time {
+            text-align: left;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .typing-indicator.active {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .welcome-message h2 {
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .welcome-message p {
+            margin-bottom: 8px;
+        }
+
+        .example-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .example-question {
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-question:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        /* 滚动条样式 */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <img src="/static/国脉底图.png" alt="国脉logo">
+                </div>
+                <div class="header-title">
+                    <h1>人力数字员工</h1>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-clear" onclick="clearHistory()">🗑️ 清除历史</button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>欢迎使用人力数字员工</h2>
+                <p>我可以帮您查询员工信息、分析人岗适配情况等</p>
+                <p>以下是一些示例问题：</p>
+                <div class="example-questions">
+                    <span class="example-question" onclick="setInput('石京京是哪个学校的？')">石京京是哪个学校的？</span>
+                    <span class="example-question" onclick="setInput('余祯的绩效怎么样？')">余祯的绩效怎么样？</span>
+                    <span class="example-question" onclick="setInput('周灏是什么岗位？')">周灏是什么岗位？</span>
+                    <span class="example-question" onclick="setInput('分析一下石京京的人岗适配情况')">分析石京京的人岗适配情况</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">🤖</div>
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="请输入您的问题，例如：石京京是哪个学校的？"
+                    rows="1"
+                    oninput="autoResize(this)"
+                    onkeydown="handleKeyDown(event)"
+                ></textarea>
+                <button class="btn-send" id="sendBtn" onclick="sendMessage()">
+                    <span>发送</span>
+                    <span>➤</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // 从localStorage加载历史记录
+        let messageHistory = JSON.parse(localStorage.getItem('hrChatHistory')) || [];
+
+        // 页面加载时显示历史记录
+        window.onload = function() {
+            if (messageHistory.length > 0) {
+                // 清除欢迎消息
+                chatMessages.innerHTML = '';
+                // 显示历史消息
+                messageHistory.forEach(msg => {
+                    appendMessage(msg.role, msg.content, msg.time, false);
+                });
+            }
+        };
+
+        // 自动调整输入框高度
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        // 处理键盘事件
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // 设置输入框内容
+        function setInput(text) {
+            chatInput.value = text;
+            chatInput.focus();
+            autoResize(chatInput);
+        }
+
+        // 添加消息到界面
+        function appendMessage(role, content, time = null, save = true) {
+            // 如果有欢迎消息，先清除
+            if (chatMessages.querySelector('.welcome-message')) {
+                chatMessages.innerHTML = '';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const avatar = role === 'user' ? '👤' : '🤖';
+            const displayTime = time || new Date().toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            // 格式化内容
+            let formattedContent = content;
+            if (role === 'assistant') {
+                formattedContent = formatAssistantMessage(content);
+            } else {
+                formattedContent = escapeHtml(content);
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div>
+                    <div class="message-content">${formattedContent}</div>
+                    <div class="message-time">${displayTime}</div>
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // 保存到历史记录
+            if (save) {
+                messageHistory.push({
+                    role: role,
+                    content: content,
+                    time: displayTime
+                });
+                localStorage.setItem('hrChatHistory', JSON.stringify(messageHistory));
+            }
+        }
+
+        // 智能预处理内容，处理LLM可能返回的紧凑格式
+        function preprocessContent(content) {
+            if (!content) return '';
+
+            let processed = content;
+
+            // 首先，处理标题后面紧跟内容的情况（如 ###标题内容）
+            // 在 ### 前添加换行
+            processed = processed.replace(/([^\n])(###\s)/g, '$1\n$2');
+
+            // 在 ## 前添加换行
+            processed = processed.replace(/([^\n])(##\s)/g, '$1\n$2');
+
+            // 在 # 前添加换行（但排除 ### 和 ##）
+            processed = processed.replace(/([^\n#])(#\s)/g, '$1\n$2');
+
+            // 处理 **文本** 前后的紧凑格式
+            processed = processed.replace(/([^\n])(\*\*[^*]+\*\*)/g, '$1\n$2');
+
+            // 处理 - 列表项：在 - 前添加换行（如果前面不是换行，且不是作为减号使用）
+            // 匹配 "文字- 内容" 或 "文字 - 内容" 的情况
+            processed = processed.replace(/([^\n\-])(\s*-\s+[^\s])/g, function(match, p1, p2) {
+                return p1 + '\n' + p2;
+            });
+
+            // 处理数字列表：在 "数字. " 前添加换行
+            processed = processed.replace(/([^\n])(\d+\.\s)/g, '$1\n$2');
+
+            return processed;
+        }
+
+        // 格式化AI助手的消息
+        function formatAssistantMessage(content) {
+            if (!content) return '';
+
+            console.log('Original content:', content.substring(0, 200) + '...');
+
+            // 预处理内容，处理紧凑格式
+            content = preprocessContent(content);
+
+            console.log('Preprocessed content:', content.substring(0, 200) + '...');
+
+            // 先按行分割处理
+            const lines = content.split('\n');
+            let result = [];
+            let inUl = false;
+            let inOl = false;
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+
+                // 跳过空行
+                if (!line) continue;
+
+                // 处理代码块开始/结束
+                if (line.startsWith('```')) {
+                    result.push(line);
+                    continue;
+                }
+
+                // 处理标题 #### (四级标题)
+                if (line.match(/^####\s/)) {
+                    if (inUl) { result.push('</ul>'); inUl = false; }
+                    if (inOl) { result.push('</ol>'); inOl = false; }
+                    const title = line.replace(/^####\s*/, '');
+                    result.push('<h4>' + escapeHtml(title) + '</h4>');
+                    continue;
+                }
+
+                // 处理标题 ### (三级标题)
+                if (line.match(/^###\s/)) {
+                    if (inUl) { result.push('</ul>'); inUl = false; }
+                    if (inOl) { result.push('</ol>'); inOl = false; }
+                    const title = line.replace(/^###\s*/, '');
+                    result.push('<h3>' + escapeHtml(title) + '</h3>');
+                    continue;
+                }
+
+                // 处理标题 ## (二级标题)
+                if (line.match(/^##\s/)) {
+                    if (inUl) { result.push('</ul>'); inUl = false; }
+                    if (inOl) { result.push('</ol>'); inOl = false; }
+                    const title = line.replace(/^##\s*/, '');
+                    result.push('<h2>' + escapeHtml(title) + '</h2>');
+                    continue;
+                }
+
+                // 处理标题 # (一级标题)
+                if (line.match(/^#\s/)) {
+                    if (inUl) { result.push('</ul>'); inUl = false; }
+                    if (inOl) { result.push('</ol>'); inOl = false; }
+                    const title = line.replace(/^#\s*/, '');
+                    result.push('<h1>' + escapeHtml(title) + '</h1>');
+                    continue;
+                }
+
+                // 处理无序列表项 - 或 * 或 ・
+                if (line.match(/^[・\-\*]\s/)) {
+                    if (!inUl) {
+                        result.push('<ul>');
+                        inUl = true;
+                    }
+                    let itemContent = line.replace(/^[・\-\*]\s*/, '');
+                    itemContent = itemContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    itemContent = itemContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                    result.push('<li>' + itemContent + '</li>');
+                    continue;
+                }
+
+                // 处理有序列表项
+                if (line.match(/^\d+\.\s/)) {
+                    if (!inOl) {
+                        result.push('<ol>');
+                        inOl = true;
+                    }
+                    let itemContent = line.replace(/^\d+\.\s*/, '');
+                    itemContent = itemContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    itemContent = itemContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+                    result.push('<li>' + itemContent + '</li>');
+                    continue;
+                }
+
+                // 普通段落
+                if (inUl) { result.push('</ul>'); inUl = false; }
+                if (inOl) { result.push('</ol>'); inOl = false; }
+
+                // 处理加粗和斜体
+                let paragraph = escapeHtml(line);
+                paragraph = paragraph.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                paragraph = paragraph.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+                result.push('<p>' + paragraph + '</p>');
+            }
+
+            // 关闭未闭合的列表
+            if (inUl) result.push('</ul>');
+            if (inOl) result.push('</ol>');
+
+            let html = result.join('\n');
+
+            // 处理评分格式 [分数]/[总分]
+            html = html.replace(/(\d+\.?\d*)\/\d+/g, '<span class="score">$1分</span>');
+
+            console.log('Final HTML:', html.substring(0, 200) + '...');
+
+            return html;
+        }
+
+        // 插入雷达图
+        function insertRadarChart(contentDiv, radarData) {
+            // 查找"综合评分"标题
+            const headers = contentDiv.querySelectorAll('h2, h3');
+            let targetHeader = null;
+            for (const header of headers) {
+                if (header.textContent.includes('综合评分')) {
+                    targetHeader = header;
+                    break;
+                }
+            }
+            
+            if (!targetHeader) return;
+            
+            // 提取分数
+            const abilityScore = radarData.ability_score || 0;
+            const attendanceScore = radarData.attendance_score || 0;
+            const politicalScore = radarData.political_score || 0;
+            
+            // 计算百分比
+            const abilityPercent = (abilityScore / 70 * 100).toFixed(1);
+            const attendancePercent = (attendanceScore / 20 * 100).toFixed(1);
+            const politicalPercent = (politicalScore / 10 * 100).toFixed(1);
+            
+            // 创建雷达图容器
+            const chartId = 'radarChart_' + Date.now();
+            const radarContainer = document.createElement('div');
+            radarContainer.className = 'radar-chart-container';
+            radarContainer.style.cssText = 'margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;';
+            radarContainer.innerHTML = '<h4 style="margin-bottom: 15px; color: #333;">能力适配雷达图</h4>' +
+                '<div style="max-width: 400px; margin: 0 auto;">' +
+                '<canvas id="' + chartId + '" width="400" height="300"></canvas>' +
+                '</div>';
+            
+            // 插入到标题后面
+            targetHeader.parentNode.insertBefore(radarContainer, targetHeader.nextSibling);
+            
+            // 初始化Chart.js
+            const ctx = document.getElementById(chartId);
+            if (ctx && typeof Chart !== 'undefined') {
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['能力画像', '工时维度', '政治画像'],
+                        datasets: [{
+                            label: '得分情况',
+                            data: [abilityPercent, attendancePercent, politicalPercent],
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                min: 0,
+                                ticks: {
+                                    stepSize: 20
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const labels = [
+                                            '能力画像: ' + abilityScore + '/70',
+                                            '工时维度: ' + attendanceScore + '/20',
+                                            '政治画像: ' + politicalScore + '/10'
+                                        ];
+                                        return labels[context.dataIndex];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 转义HTML特殊字符
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 显示输入指示器
+        function showTypingIndicator() {
+            typingIndicator.classList.add('active');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 隐藏输入指示器
+        function hideTypingIndicator() {
+            typingIndicator.classList.remove('active');
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // 添加用户消息
+            appendMessage('user', message);
+
+            // 清空输入框
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+
+            // 禁用发送按钮
+            sendBtn.disabled = true;
+
+            // 显示输入指示器
+            showTypingIndicator();
+
+            try {
+                // 所有查询都使用chat/stream端点，统一显示查询步骤
+                const employeeName = extractName(message);
+                
+                // 创建消息元素用于流式显示
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                const displayTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const streamingId = 'streaming_' + Date.now();
+                
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">🤖</div>
+                    <div>
+                        <div class="message-content" id="${streamingId}"></div>
+                        <div class="message-time">${displayTime}</div>
+                    </div>
+                `;
+                
+                // 清除欢迎消息并添加消息元素
+                if (chatMessages.querySelector('.welcome-message')) {
+                    chatMessages.innerHTML = '';
+                }
+                chatMessages.appendChild(messageDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                const contentDiv = document.getElementById(streamingId);
+                let fullContent = '';
+                
+                // 统一使用chat/stream端点
+                const endpoint = `${API_BASE}/api/v1/alignment/chat/stream`;
+                
+                const requestBody = JSON.stringify({ message: message });
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: requestBody
+                });
+                
+                hideTypingIndicator();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                // 创建纯文本显示区域，流式输出时不格式化
+                const textNode = document.createTextNode('');
+                contentDiv.appendChild(textNode);
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    
+                    // 处理SSE格式
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || ''; // 保留不完整的行
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.chunk) {
+                                    fullContent += data.chunk;
+                                    // 实时追加文本
+                                    textNode.textContent = fullContent;
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }
+                            } catch (e) {
+                                // 忽略解析错误
+                            }
+                        }
+                    }
+                }
+                
+                // 流式输出完成后，再进行格式化
+                console.log('Full content before formatting:', JSON.stringify(fullContent));
+                
+                // 检查是否包含雷达图数据
+                let radarData = null;
+                const radarMatch = fullContent.match(/<!--RADAR_CHART_DATA:({.*?})-->/);
+                if (radarMatch) {
+                    try {
+                        radarData = JSON.parse(radarMatch[1]);
+                        // 移除标记，不显示在文本中
+                        fullContent = fullContent.replace(/<!--RADAR_CHART_DATA:({.*?})-->\n?/g, '');
+                    } catch (e) {
+                        console.error('解析雷达图数据失败:', e);
+                    }
+                }
+                
+                const formattedHtml = formatAssistantMessage(fullContent);
+                console.log('Formatted HTML:', formattedHtml.substring(0, 500));
+                contentDiv.innerHTML = formattedHtml;
+                
+                // 如果有雷达图数据，在综合评分后插入雷达图
+                if (radarData) {
+                    insertRadarChart(contentDiv, radarData);
+                }
+                
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // 保存到历史记录
+                messageHistory.push({
+                    role: 'assistant',
+                    content: fullContent,
+                    time: displayTime
+                });
+                localStorage.setItem('hrChatHistory', JSON.stringify(messageHistory));
+                
+            } catch (error) {
+                hideTypingIndicator();
+                appendMessage('assistant', `抱歉，请求失败：${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        // 从消息中提取员工姓名（简单实现）
+        function extractName(message) {
+            // 常见的员工姓名
+            const names = ['石京京', '余祯', '周灏', '许博', '毛钰博', '郭旭枫', '宋佳铭', '刘畅', '陈磊'];
+            for (const name of names) {
+                if (message.includes(name)) {
+                    return name;
+                }
+            }
+            return null;
+        }
+
+        // 清除历史记录
+        function clearHistory() {
+            if (confirm('确定要清除所有历史记录吗？')) {
+                messageHistory = [];
+                localStorage.removeItem('hrChatHistory');
+                chatMessages.innerHTML = `
+                    <div class="welcome-message">
+                        <h2>欢迎使用人力数字员工</h2>
+                        <p>我可以帮您查询员工信息、分析人岗适配情况等</p>
+                        <p>以下是一些示例问题：</p>
+                        <div class="example-questions">
+                            <span class="example-question" onclick="setInput('石京京是哪个学校的？')">石京京是哪个学校的？</span>
+                            <span class="example-question" onclick="setInput('余祯的绩效怎么样？')">余祯的绩效怎么样？</span>
+                            <span class="example-question" onclick="setInput('周灏是什么岗位？')">周灏是什么岗位？</span>
+                            <span class="example-question" onclick="setInput('分析一下石京京的人岗适配情况')">分析石京京的人岗适配情况</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
