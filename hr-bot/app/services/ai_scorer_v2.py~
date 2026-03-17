@@ -1,0 +1,334 @@
+"""
+AI评分服务V2 - 分维度调用大模型，避免token限制
+"""
+
+import json
+import logging
+import asyncio
+from typing import Dict, List, Optional
+from datetime import datetime
+
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class AIScorerV2:
+    """AI评分器V2 - 分维度调用大模型"""
+
+    # 各维度独立的评分prompt
+    DIMENSION_PROMPTS = {
+        "professional": """评分维度：专业能力
+
+员工：{employee_name}，{position}，{department}，{education}，职称：{professional_title}
+
+数据：
+{specific_data}
+
+评分规则：
+- 有试用期考核数据：直接使用考核总分（如87分=87分）
+- 无试用期考核数据：薪资波动>30% → 50-65分；薪资稳定 → 85-95分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 87,
+  "reasoning": "试用期考核87分"
+}}""",
+
+        "adaptability": """评分维度：适应能力
+
+员工：{employee_name}
+
+考勤数据：
+{attendance_summary}
+
+评分规则：
+- 无迟到 → 90-100分
+- 迟到1-2次 → 80-90分
+- 迟到3-5次 → 60-75分
+- 迟到>5次或占工作天数>50% → 20-40分
+- 有缺勤 → 30-50分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 95,
+  "reasoning": "无迟到，出勤良好"
+}}""",
+
+        "innovation": """评分维度：创新能力
+
+员工：{employee_name}，职称：{professional_title}
+
+数据：
+{specific_data}
+
+评分规则：
+- 有职称（工程师/高级工程师等）→ 90-100分
+- 有奖项/专利 → 90-100分
+- 无职称/奖项 → 60-75分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 90,
+  "reasoning": "有职称工程师"
+}}""",
+
+        "learning": """评分维度：学习能力
+
+员工：{employee_name}，学历：{education}，职称：{professional_title}
+
+评分规则：
+- 有职称 → 90-100分
+- 博士 → 85-95分
+- 硕士+无职称 → 70-80分
+- 本科+无职称 → 60-75分
+- 专科及以下 → 50-65分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 90,
+  "reasoning": "硕士研究生且有职称"
+}}""",
+
+        "attendance": """评分维度：工时维度
+
+员工：{employee_name}
+
+考勤数据：
+{attendance_summary}
+
+评分规则：
+- 无迟到+出勤率100% → 90-100分
+- 迟到1-2次 → 80-90分
+- 迟到3-5次 → 60-75分
+- 迟到>5次或占工作天数>50% → 20-40分
+- 有缺勤 → 30-50分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 95,
+  "reasoning": "无迟到，工时充足"
+}}""",
+
+        "political": """评分维度：政治画像
+
+员工：{employee_name}
+
+考勤数据：
+{attendance_summary}
+
+评分规则：
+- 无迟到+无违纪 → 90-100分
+- 迟到1-2次 → 80-90分
+- 迟到3-5次 → 60-75分
+- 迟到>5次或占工作天数>50% → 20-40分
+- 有缺勤 → 30-50分
+
+输出JSON（仅包含该维度）：
+{{
+  "score": 95,
+  "reasoning": "无违纪记录"
+}}"""
+    }
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.client = None
+        self._init_client()
+
+    def _init_client(self):
+        """初始化OpenAI客户端"""
+        try:
+            from openai import AsyncOpenAI
+            self.client = AsyncOpenAI(
+                base_url=self.settings.vllm_base_url,
+                api_key=self.settings.vllm_api_key,
+            )
+            logger.info(f"[AIScorerV2] 已连接到VLLM服务: {self.settings.vllm_base_url}")
+        except Exception as e:
+            logger.error(f"[AIScorerV2] 初始化VLLM客户端失败: {e}")
+            self.client = None
+
+    async def calculate_scores(self, employee_data: Dict) -> Dict:
+        """计算所有维度分数 - 并行调用6次大模型"""
+        if not self.client:
+            logger.warning("[AIScorerV2] VLLM客户端未初始化，返回默认分数")
+            return self._get_default_scores()
+
+        try:
+            # 准备各维度需要的数据
+            dimension_data = self._prepare_dimension_data(employee_data)
+            
+            # 并行调用6个维度的评分
+            tasks = []
+            for dimension in ["professional", "adaptability", "innovation", "learning", "attendance", "political"]:
+                task = self._score_dimension(dimension, dimension_data)
+                tasks.append(task)
+            
+            # 等待所有评分完成
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # 整合结果
+            scores = {}
+            reasoning = {}
+            for i, dimension in enumerate(["professional", "adaptability", "innovation", "learning", "attendance", "political"]):
+                result = results[i]
+                if isinstance(result, Exception):
+                    logger.error(f"[AIScorerV2] {dimension}评分失败: {result}")
+                    scores[dimension] = 75
+                    reasoning[dimension] = "评分失败，使用默认值"
+                else:
+                    scores[dimension] = result.get("score", 75)
+                    reasoning[dimension] = result.get("reasoning", "无")
+            
+            return {
+                "scores": scores,
+                "reasoning": reasoning,
+                "overall_assessment": self._generate_overall_assessment(scores),
+                "key_strengths": [],
+                "key_improvements": []
+            }
+
+        except Exception as e:
+            logger.error(f"[AIScorerV2] AI评分失败: {e}")
+            return self._get_default_scores()
+
+    async def _score_dimension(self, dimension: str, data: Dict) -> Dict:
+        """评分单个维度"""
+        prompt_template = self.DIMENSION_PROMPTS[dimension]
+        
+        # 准备该维度的特定数据
+        specific_data = self._get_dimension_specific_data(dimension, data)
+        
+        prompt = prompt_template.format(
+            employee_name=data.get("name", "未知"),
+            position=data.get("position", "未知"),
+            department=data.get("department", "未知"),
+            education=data.get("education", "未知"),
+            professional_title=data.get("professional_title") or "无",
+            attendance_summary=data.get("attendance_summary", "暂无考勤数据"),
+            specific_data=specific_data
+        )
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.settings.vllm_model,
+                messages=[
+                    {"role": "system", "content": "你是HR评分专家，请根据提供的数据给出客观评分。只输出JSON格式。"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,  # 只需要输出一个维度的分数，token数大大减少
+                temperature=0.1,
+            )
+
+            content = response.choices[0].message.content
+            logger.info(f"[AIScorerV2] {dimension}评分完成: {data.get('name')}")
+            
+            # 提取JSON
+            result = self._extract_json(content)
+            return result
+
+        except Exception as e:
+            logger.error(f"[AIScorerV2] {dimension}评分失败: {e}")
+            raise
+
+    def _prepare_dimension_data(self, employee_data: Dict) -> Dict:
+        """准备各维度需要的数据"""
+        data = {
+            "name": employee_data.get("name", "未知"),
+            "position": employee_data.get("position", "未知"),
+            "department": employee_data.get("department", "未知"),
+            "education": employee_data.get("education", "未知"),
+            "professional_title": employee_data.get("professional_title"),
+        }
+
+        # 格式化考勤摘要
+        attendance = employee_data.get("attendance", {})
+        if attendance:
+            work_days = attendance.get('work_days', 0)
+            late_days = attendance.get('late_days', 0)
+            absent_days = attendance.get('absent_days', 0)
+            abnormal_days = attendance.get('abnormal_days', 0)
+            late_ratio = (late_days / work_days * 100) if work_days > 0 else 0
+            
+            data["attendance_summary"] = f"""工作{work_days}天，迟到{late_days}天，异常{abnormal_days}天，缺勤{absent_days}天，迟到占比{late_ratio:.1f}%"""
+        else:
+            data["attendance_summary"] = "暂无考勤数据"
+
+        return data
+
+    def _get_dimension_specific_data(self, dimension: str, data: Dict) -> str:
+        """获取维度特定的数据"""
+        if dimension == "professional":
+            # 专业维度需要试用期考核和薪资数据
+            probation = data.get("probation", {})
+            salary = data.get("salary_summary", "")
+            if probation:
+                return f"试用期考核总分: {probation.get('total_score', 'N/A')}\n{salary}"
+            else:
+                return f"无试用期考核数据\n{salary}"
+        
+        elif dimension == "innovation":
+            # 创新维度需要职称和绩效数据
+            title = data.get("professional_title") or "无"
+            return f"职称: {title}"
+        
+        elif dimension == "learning":
+            # 学习维度需要学历和职称
+            edu = data.get("education", "未知")
+            title = data.get("professional_title") or "无"
+            return f"学历: {edu}，职称: {title}"
+        
+        else:
+            return ""
+
+    def _extract_json(self, content: str) -> Dict:
+        """从LLM输出中提取JSON"""
+        import re
+        
+        # 清理内容
+        cleaned_content = content.replace("<|im_end|>", "").replace("<|im_start|>", "").strip()
+        
+        # 尝试提取JSON
+        json_match = re.search(r'\{[\s\S]*\}', cleaned_content)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+        
+        # 默认返回
+        return {"score": 75, "reasoning": "解析失败"}
+
+    def _generate_overall_assessment(self, scores: Dict) -> str:
+        """生成总体评价"""
+        avg_score = sum(scores.values()) / len(scores)
+        if avg_score >= 90:
+            return "优秀"
+        elif avg_score >= 80:
+            return "良好"
+        elif avg_score >= 60:
+            return "合格"
+        else:
+            return "需改进"
+
+    def _get_default_scores(self) -> Dict:
+        """获取默认分数"""
+        return {
+            "scores": {
+                "professional": 75,
+                "adaptability": 75,
+                "innovation": 75,
+                "learning": 75,
+                "attendance": 75,
+                "political": 75
+            },
+            "reasoning": {k: "默认分数" for k in ["professional", "adaptability", "innovation", "learning", "attendance", "political"]},
+            "overall_assessment": "默认评价",
+            "key_strengths": [],
+            "key_improvements": []
+        }
+
+
+# 全局AI评分器实例
+ai_scorer_v2 = AIScorerV2()
