@@ -1,0 +1,16 @@
+# Python项目示例
+__pycache__/
+venv/
+*.log
+hr_bot/data
+.env
+
+# Node.js项目示例
+node_modules/
+dist/
+npm-debug.log
+
+# 通用
+.DS_Store
+.idea/  # Trae/PyCharm的配置文件
+.vscode/
