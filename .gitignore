@@ -3,6 +3,7 @@ __pycache__/
 venv/
 *.log
 hr_bot/data
+data/
 .env
 
 # Node.js项目示例
