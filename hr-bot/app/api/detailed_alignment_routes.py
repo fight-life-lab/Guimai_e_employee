@@ -223,7 +223,7 @@ class DetailedAlignmentAnalyzer:
             "innovation": "创新能力",
             "learning": "学习能力",
             "attendance": "工时维度",
-            "political": "政治画像"
+            "political": "品质态度"
         }
         
         ai_scoring_reasons = []
@@ -803,7 +803,7 @@ class DetailedAlignmentAnalyzer:
 5. **工时维度**（attendance）：
    - 所有岗位：70-85分（基础要求，不应过高）
 
-6. **政治画像**（political）：
+6. **品质态度**（political）：
    - 管理岗位：85-95分
    - 普通岗位：75-85分（基础要求）
 
@@ -815,7 +815,7 @@ class DetailedAlignmentAnalyzer:
 3. 创新能力（innovation）：岗位对创新思维、新技术应用的要求
 4. 学习能力（learning）：岗位对持续学习、知识更新的要求
 5. 工时维度（attendance）：岗位对工作时长、出勤稳定性的要求
-6. 政治画像（political）：岗位对纪律性、团队协作的要求
+6. 品质态度（political）：岗位对纪律性、团队协作的要求
 
 输出JSON格式：
 {{
@@ -889,7 +889,7 @@ class DetailedAlignmentAnalyzer:
                     "innovation": "创新能力",
                     "learning": "学习能力",
                     "attendance": "工时维度",
-                    "political": "政治画像"
+                    "political": "品质态度"
                 }
                 
                 ai_reasoning_lines = []
@@ -1274,7 +1274,7 @@ class DetailedAlignmentAnalyzer:
 - 创新能力匹配度: {match_scores.get('innovation_match', 0)}%
 - 学习能力匹配度: {match_scores.get('learning_match', 0)}%
 - 工时维度匹配度: {match_scores.get('attendance_match', 0)}%
-- 政治画像匹配度: {match_scores.get('political_match', 0)}%
+- 品质态度匹配度: {match_scores.get('political_match', 0)}%
 """
         
         prompt = f"""请根据以下员工数据，生成一段专业、客观的人岗适配分析结论（100-150字）：
@@ -1345,7 +1345,7 @@ class DetailedAlignmentAnalyzer:
         if match_scores.get("attendance_match", 100) < 80:
             low_dimensions.append(f"工时维度({match_scores.get('attendance_match', 0)}%)")
         if match_scores.get("political_match", 100) < 80:
-            low_dimensions.append(f"政治画像({match_scores.get('political_match', 0)}%)")
+            low_dimensions.append(f"品质态度({match_scores.get('political_match', 0)}%)")
         
         violations_text = "\n".join([
             f"- {v['policy_name']}" 
@@ -1646,7 +1646,7 @@ async def get_position_requirements_api(
             "innovation": "创新能力",
             "learning": "学习能力",
             "attendance": "工时维度",
-            "political": "政治画像"
+            "political": "品质态度"
         }
         
         # 构建结构化的AI评分理由（与员工表现格式一致，方便前端统一渲染）

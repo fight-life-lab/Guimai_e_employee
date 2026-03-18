@@ -649,7 +649,7 @@
                     <div class="quadrant-chart" id="quadrantChart">
                         <div class="quadrant-axis-x"></div>
                         <div class="quadrant-axis-y"></div>
-                        <div class="quadrant-label-x">政治画像 →</div>
+                        <div class="quadrant-label-x">品质态度 →</div>
                         <div class="quadrant-label-y">能力画像 ↑</div>
 
                         <!-- 四个象限 -->
@@ -955,7 +955,7 @@
             document.getElementById('attendancePolicyInfo').innerHTML = policyInfoHtml;
             
             // 雷达图
-            const dimensions = ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '政治画像'];
+            const dimensions = ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '品质态度'];
             const positionData = result.position_model.radar_data;
             const employeeData = result.employee_performance.radar_data;
 
@@ -989,7 +989,7 @@
                     'innovation': '创新能力',
                     'learning': '学习能力',
                     'attendance': '工时维度',
-                    'political': '政治画像'
+                    'political': '品质态度'
                 };
 
                 let hasAnalysis = false;
@@ -1081,7 +1081,7 @@
                             ${aiReasoning.innovation ? `<div style="margin: 8px 0;"><strong style="color: #7b1fa2;">创新能力:</strong> ${aiReasoning.innovation}</div>` : ''}
                             ${aiReasoning.learning ? `<div style="margin: 8px 0;"><strong style="color: #7b1fa2;">学习能力:</strong> ${aiReasoning.learning}</div>` : ''}
                             ${aiReasoning.attendance ? `<div style="margin: 8px 0;"><strong style="color: #7b1fa2;">工时维度:</strong> ${aiReasoning.attendance}</div>` : ''}
-                            ${aiReasoning.political ? `<div style="margin: 8px 0;"><strong style="color: #7b1fa2;">政治画像:</strong> ${aiReasoning.political}</div>` : ''}
+                            ${aiReasoning.political ? `<div style="margin: 8px 0;"><strong style="color: #7b1fa2;">品质态度:</strong> ${aiReasoning.political}</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -1094,13 +1094,13 @@
                 <strong>创新能力(${scores.innovation_score}分)：</strong>AI基于工作业绩波动、创新尝试、新技术接受度评估<br>
                 <strong>学习能力(${scores.learning_score}分)：</strong>AI基于试用期学习能力考核、学历、成长速度评估<br>
                 <strong>工时维度(${scores.attendance_score}分)：</strong>AI基于出勤率、迟到早退、工作时长评估<br>
-                <strong>政治画像(${scores.political_score}分)：</strong>AI基于工作态度、团队协作、企业文化认同度评估<br>
+                <strong>品质态度(${scores.political_score}分)：</strong>AI基于工作态度、团队协作、企业文化认同度评估<br>
                 <small style="color: #999;">* 评分方式：AI大模型基于原始数据综合分析</small>
                 ${aiReasoningHtml}
             `;
 
             // 四象限决策矩阵 - 计算员工位置
-            // X轴：政治画像（0-100分）
+            // X轴：品质态度（0-100分）
             // Y轴：能力画像（专业能力+适应能力+创新能力+学习能力+工时维度的平均分）
             const politicalScore = result.employee_performance.scores.political_score;
             const abilityScores = result.employee_performance.scores;
@@ -1109,7 +1109,7 @@
                                abilityScores.attendance_score) / 5;
 
             // 计算位置（0-100%映射到坐标）
-            const xPos = politicalScore; // X轴：政治画像
+            const xPos = politicalScore; // X轴：品质态度
             const yPos = abilityAvg;     // Y轴：能力画像平均值
 
             // 更新员工点位置
@@ -1178,7 +1178,7 @@
                     </div>
                 </div>
                 <div class="match-item">
-                    <div class="match-dimension">政治画像</div>
+                    <div class="match-dimension">品质态度</div>
                     <div class="match-score">${matchScores.political_match}%</div>
                     <div class="match-bar">
                         <div class="match-bar-fill" style="width: ${matchScores.political_match}%; background: ${getMatchColor(matchScores.political_match)}"></div>

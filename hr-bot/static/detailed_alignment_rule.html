@@ -649,7 +649,7 @@
                     <div class="quadrant-chart" id="quadrantChart">
                         <div class="quadrant-axis-x"></div>
                         <div class="quadrant-axis-y"></div>
-                        <div class="quadrant-label-x">政治画像 →</div>
+                        <div class="quadrant-label-x">品质态度 →</div>
                         <div class="quadrant-label-y">能力画像 ↑</div>
 
                         <!-- 四个象限 -->
@@ -955,7 +955,7 @@
             document.getElementById('attendancePolicyInfo').innerHTML = policyInfoHtml;
             
             // 雷达图
-            const dimensions = ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '政治画像'];
+            const dimensions = ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '品质态度'];
             const positionData = result.position_model.radar_data;
             const employeeData = result.employee_performance.radar_data;
 
@@ -989,7 +989,7 @@
                     'innovation': '创新能力',
                     'learning': '学习能力',
                     'attendance': '工时维度',
-                    'political': '政治画像'
+                    'political': '品质态度'
                 };
 
                 let hasAnalysis = false;
@@ -1074,12 +1074,12 @@
                 <strong>创新能力(${scores.innovation_score}分)：</strong>基于绩效薪资波动，适度波动(10%-30%)得高分<br>
                 <strong>学习能力(${scores.learning_score}分)：</strong>基于学历(${info.education || '未指定'})和薪资增长趋势<br>
                 <strong>工时维度(${scores.attendance_score}分)：</strong>基于近3个月工时数据，缺勤/迟到会扣分<br>
-                <strong>政治画像(${scores.political_score}分)：</strong>基于员工政治面貌（默认80分）<br>
+                <strong>品质态度(${scores.political_score}分)：</strong>基于员工政治面貌（默认80分）<br>
                 <small style="color: #999;">* 数据来源于 employees、salary_records、attendance_records 表</small>
             `;
 
             // 四象限决策矩阵 - 计算员工位置
-            // X轴：政治画像（0-100分）
+            // X轴：品质态度（0-100分）
             // Y轴：能力画像（专业能力+适应能力+创新能力+学习能力+工时维度的平均分）
             const politicalScore = result.employee_performance.scores.political_score;
             const abilityScores = result.employee_performance.scores;
@@ -1088,7 +1088,7 @@
                                abilityScores.attendance_score) / 5;
 
             // 计算位置（0-100%映射到坐标）
-            const xPos = politicalScore; // X轴：政治画像
+            const xPos = politicalScore; // X轴：品质态度
             const yPos = abilityAvg;     // Y轴：能力画像平均值
 
             // 更新员工点位置
@@ -1157,7 +1157,7 @@
                     </div>
                 </div>
                 <div class="match-item">
-                    <div class="match-dimension">政治画像</div>
+                    <div class="match-dimension">品质态度</div>
                     <div class="match-score">${matchScores.political_match}%</div>
                     <div class="match-bar">
                         <div class="match-bar-fill" style="width: ${matchScores.political_match}%; background: ${getMatchColor(matchScores.political_match)}"></div>

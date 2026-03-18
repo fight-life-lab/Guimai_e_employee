@@ -826,7 +826,7 @@
                 '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">创新能力: ' + innovationScore + '</span>' +
                 '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">学习能力: ' + learningScore + '</span>' +
                 '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">工时维度: ' + attendanceScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">政治画像: ' + politicalScore + '</span>' +
+                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">品质态度: ' + politicalScore + '</span>' +
                 '</div>';
             
             // 插入到标题后面
@@ -847,7 +847,7 @@
                 new Chart(ctx, {
                     type: 'radar',
                     data: {
-                        labels: ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '政治画像'],
+                        labels: ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '品质态度'],
                         datasets: [{
                             label: '得分',
                             data: [professionalScore, adaptabilityScore, innovationScore, learningScore, attendanceScore, politicalScore],

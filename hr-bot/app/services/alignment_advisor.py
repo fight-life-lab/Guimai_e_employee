@@ -54,7 +54,7 @@ class AlignmentAdvisor:
             "learning": 0.10,
             "attendance": 0.10,
             "political": 0.30,
-            "focus": ["政治画像", "创新能力", "团队管理"],
+            "focus": ["品质态度", "创新能力", "团队管理"],
             "description": "重点关注政治素质和领导能力，评估是否具备管理潜质"
         }
     }
@@ -254,7 +254,7 @@ class AlignmentAdvisor:
             ("innovation", "创新能力"),
             ("learning", "学习能力"),
             ("attendance", "工时维度"),
-            ("political", "政治画像")
+            ("political", "品质态度")
         ]:
             actual = scores.get(key, 0)
             standard = standards.get(key, 80)
@@ -313,7 +313,7 @@ class AlignmentAdvisor:
                 ("innovation", "创新能力"),
                 ("learning", "学习能力"),
                 ("attendance", "工时维度"),
-                ("political", "政治画像")
+                ("political", "品质态度")
             ]
         ])
 

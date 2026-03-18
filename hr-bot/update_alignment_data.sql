@@ -39,7 +39,7 @@ SET
     innovation_standard = 90,        -- 创新能力：需要探索LLM等前沿技术
     learning_standard = 90,          -- 学习能力：需要跟进前沿技术
     attendance_standard = 80,        -- 工时维度：标准
-    political_standard = 80,         -- 政治画像：标准
+    political_standard = 80,         -- 品质态度：标准
     professional_weight = 1.2,       -- 专业能力权重更高
     innovation_weight = 1.1,         -- 创新能力权重较高
     learning_weight = 1.1,           -- 学习能力权重较高

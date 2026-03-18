@@ -32,7 +32,7 @@ ALIGNMENT_DIMENSIONS = {
             {"name": "适应能力", "weight": 0.10, "source": "工作变动、跨部门协作"},
         ]
     },
-    "政治画像": {
+    "品质态度": {
         "description": "政治素质和廉洁自律评估",
         "weight": 0.25,
         "indicators": [
@@ -484,7 +484,7 @@ class AlignmentAgent:
 ## 评估维度与权重（满分100分）
 1. 能力画像(70分): 专业能力50分、适应能力20分
 2. 工时维度(20分): 考勤表现、工作时长、加班情况
-3. 政治画像(10分): 工作态度、规章制度遵守
+3. 品质态度(10分): 工作态度、规章制度遵守
 
 ## 评分标准（重要）
 - 工时维度(20分): 根据考勤数据评分
@@ -497,7 +497,7 @@ class AlignmentAgent:
 - 适应能力(20分): 包含抗压能力、沟通能力
   * 频繁迟到缺勤反映适应能力差，应扣减5-10分
 
-- 政治画像(10分): 反映工作态度和纪律性
+- 品质态度(10分): 反映工作态度和纪律性
   * 迟到缺勤多应扣减3-5分
 
 ## 员工数据
@@ -515,7 +515,7 @@ class AlignmentAgent:
 
 **工时维度 (20%)**: [分数]/20 - [根据考勤数据说明评分理由]
 
-**政治画像 (10%)**: [分数]/10 - [根据考勤纪律说明评分理由]
+**品质态度 (10%)**: [分数]/10 - [根据考勤纪律说明评分理由]
 
 ### 3. 优势分析
 - [优势1]
@@ -566,7 +566,7 @@ class AlignmentAgent:
             parsed["alignment_level"] = level_match.group(1)
 
         # 提取各维度评分
-        dimension_pattern = r'[-\*]\s*(能力画像|政治画像|时间维度|绩效表现)[:：]\s*(\d+)'
+        dimension_pattern = r'[-\*]\s*(能力画像|品质态度|时间维度|绩效表现)[:：]\s*(\d+)'
         for match in re.finditer(dimension_pattern, result):
             dimension = match.group(1)
             score = int(match.group(2))

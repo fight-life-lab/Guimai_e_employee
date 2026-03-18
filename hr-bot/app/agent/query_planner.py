@@ -730,7 +730,7 @@ class ResultSynthesizer:
         3. 创新能力: 基于绩效波动（创新通常伴随波动）
         4. 学习能力: 基于学历和薪资增长
         5. 工时维度: 基于考勤数据
-        6. 政治画像: 基于员工身份
+        6. 品质态度: 基于员工身份
         """
         scores = {
             "professional_score": 0,  # 专业能力
@@ -738,7 +738,7 @@ class ResultSynthesizer:
             "innovation_score": 0,    # 创新能力
             "learning_score": 0,      # 学习能力
             "attendance_score": 0,    # 工时维度
-            "political_score": 0,     # 政治画像
+            "political_score": 0,     # 品质态度
             "total_score": 0,
             "details": {}
         }
@@ -886,7 +886,7 @@ class ResultSynthesizer:
             scores["attendance_score"] = 40
             scores["details"]["attendance"] = "缺少考勤数据"
         
-        # 6. 政治画像评分 (100分)
+        # 6. 品质态度评分 (100分)
         if employee_data:
             # 群众80分，党员95分
             scores["political_score"] = 80
@@ -965,7 +965,7 @@ class ResultSynthesizer:
 - 创新能力: {scores['innovation_score']}/100分 - {scores['details'].get('innovation', '')}
 - 学习能力: {scores['learning_score']}/100分 - {scores['details'].get('learning', '')}
 - 工时维度: {scores['attendance_score']}/100分 - {scores['details'].get('attendance', '')}
-- 政治画像: {scores['political_score']}/100分 - {scores['details'].get('political', '')}
+- 品质态度: {scores['political_score']}/100分 - {scores['details'].get('political', '')}
 - 总分: {scores['total_score']}/100分
 - 适配等级: {scores['level']}
 

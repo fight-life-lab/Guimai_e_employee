@@ -245,7 +245,7 @@ class AIScorerV2:
         return score, reason
     
     def _calculate_political_score(self, data: Dict) -> tuple:
-        """计算政治画像分数"""
+        """计算品质态度分数"""
         base_score = 50
         
         attendance = data.get("attendance", {})
