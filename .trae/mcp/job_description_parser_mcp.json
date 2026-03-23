@@ -1,0 +1,82 @@
+{
+  "name": "job-description-parser-mcp",
+  "version": "1.0.0",
+  "description": "岗位说明书解析MCP工具 - 解析Excel格式的岗位说明书并入库",
+  "tools": [
+    {
+      "name": "parse_job_description_excel",
+      "description": "解析岗位说明书Excel文件，提取岗位信息",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Excel文件的完整路径"
+          },
+          "emp_id": {
+            "type": "string",
+            "description": "员工编号"
+          },
+          "emp_name": {
+            "type": "string",
+            "description": "员工姓名（可选，如不提供则从文件名提取）"
+          }
+        },
+        "required": ["file_path", "emp_id"]
+      }
+    },
+    {
+      "name": "save_job_description_to_db",
+      "description": "将解析后的岗位说明书数据保存到数据库",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "description": "解析后的岗位说明书数据对象"
+          }
+        },
+        "required": ["data"]
+      }
+    },
+    {
+      "name": "upload_and_parse_job_description",
+      "description": "上传Excel文件并解析入库（一站式操作）",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_content": {
+            "type": "string",
+            "description": "Base64编码的Excel文件内容"
+          },
+          "file_name": {
+            "type": "string",
+            "description": "原始文件名"
+          },
+          "emp_id": {
+            "type": "string",
+            "description": "员工编号"
+          },
+          "emp_name": {
+            "type": "string",
+            "description": "员工姓名"
+          }
+        },
+        "required": ["file_content", "file_name", "emp_id", "emp_name"]
+      }
+    }
+  ],
+  "config": {
+    "database": {
+      "type": "mysql",
+      "host": "localhost",
+      "port": 3306,
+      "database": "hr_employee_db",
+      "user": "hr_user",
+      "password": "hr_password"
+    },
+    "table_name": "ods_emp_job_description",
+    "supported_formats": [".xlsx", ".xls"],
+    "max_file_size": 10485760
+  }
+}

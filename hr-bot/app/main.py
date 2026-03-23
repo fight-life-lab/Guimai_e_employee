@@ -12,6 +12,12 @@ from app.api import feishu_router
 from app.api.alignment_routes import router as alignment_router
 from app.api.detailed_alignment_routes import router as detailed_alignment_router
 from app.api.jd_match_routes import router as jd_match_router
+from app.api.job_description_routes import router as job_description_router
+from app.api.emp_roster_routes import router as emp_roster_router
+from app.api.attendance_routes import router as attendance_router
+from app.api.attendance_summary_routes import router as attendance_summary_router
+from app.api.professional_ability_routes import router as professional_ability_router
+from app.api.work_experience_routes import router as work_experience_router
 from app.config import get_settings
 from app.database.models import init_database
 
@@ -71,6 +77,12 @@ app.include_router(feishu_router)
 app.include_router(alignment_router)
 app.include_router(detailed_alignment_router)
 app.include_router(jd_match_router)
+app.include_router(job_description_router)
+app.include_router(emp_roster_router)
+app.include_router(attendance_router)
+app.include_router(attendance_summary_router)
+app.include_router(professional_ability_router)
+app.include_router(work_experience_router)
 
 # Mount static files (for web UI)
 if os.path.exists("./static"):
@@ -99,6 +111,12 @@ async def root():
                 "analyze_text": "/api/v1/jd-match/analyze-text",
                 "batch_analyze": "/api/v1/jd-match/batch-analyze",
                 "employees": "/api/v1/jd-match/employees",
+            },
+            "job_description": {
+                "upload": "/api/v1/job-description/upload",
+                "parse": "/api/v1/job-description/parse",
+                "list": "/api/v1/job-description/list",
+                "detail": "/api/v1/job-description/detail/{emp_id}",
             }
         }
     }

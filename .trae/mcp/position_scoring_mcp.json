@@ -1,0 +1,127 @@
+{
+  "name": "hr-position-scoring-mcp",
+  "version": "1.0.0",
+  "description": "HR岗位能力多维度评分MCP工具 - 调用远程LLM对岗位进行5维度能力打分",
+  "tools": [
+    {
+      "name": "score_position_capabilities",
+      "description": "对指定岗位进行5维度能力评分（专业能力、经验、创新能力、学习能力、工作态度）",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "position_name": {
+            "type": "string",
+            "description": "岗位名称"
+          },
+          "department": {
+            "type": "string",
+            "description": "所属部门"
+          },
+          "description": {
+            "type": "string",
+            "description": "岗位描述"
+          },
+          "responsibilities": {
+            "type": "string",
+            "description": "岗位职责"
+          },
+          "job_level": {
+            "type": "string",
+            "description": "岗位级别（可选）",
+            "default": ""
+          }
+        },
+        "required": ["position_name", "department", "description", "responsibilities"]
+      }
+    },
+    {
+      "name": "batch_score_positions",
+      "description": "批量对多个岗位进行能力评分",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "positions": {
+            "type": "array",
+            "description": "岗位列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "position_name": { "type": "string" },
+                "department": { "type": "string" },
+                "description": { "type": "string" },
+                "responsibilities": { "type": "string" },
+                "job_level": { "type": "string" }
+              },
+              "required": ["position_name", "department", "description", "responsibilities"]
+            }
+          }
+        },
+        "required": ["positions"]
+      }
+    },
+    {
+      "name": "save_to_mysql",
+      "description": "将评分结果保存到MySQL数据库",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "description": "评分结果列表",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": ["results"]
+      }
+    }
+  ],
+  "config": {
+    "llm": {
+      "url": "http://180.97.200.118:30071/v1/chat/completions",
+      "api_key": "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk",
+      "model": "Qwen/Qwen3-235B-A22B-Instruct-2507"
+    },
+    "database": {
+      "type": "mysql",
+      "host": "121.229.172.161",
+      "port": 3306,
+      "database": "hr_employee_db",
+      "user": "hr_user",
+      "password": "hr_password"
+    },
+    "scoring_dimensions": [
+      {
+        "key": "professional",
+        "name": "专业能力",
+        "description": "岗位对专业技能的要求程度",
+        "weight": 1.0
+      },
+      {
+        "key": "experience",
+        "name": "经验",
+        "description": "岗位对工作年限、履历、职称证书的要求",
+        "weight": 1.0
+      },
+      {
+        "key": "innovation",
+        "name": "创新能力",
+        "description": "岗位对创新思维、新技术应用的要求",
+        "weight": 1.0
+      },
+      {
+        "key": "learning",
+        "name": "学习能力",
+        "description": "岗位对持续学习、知识更新的要求（知识+潜力）",
+        "weight": 1.0
+      },
+      {
+        "key": "attitude",
+        "name": "工作态度",
+        "description": "岗位对出勤、加班、党工团参与、团队协作的要求",
+        "weight": 1.0
+      }
+    ]
+  }
+}

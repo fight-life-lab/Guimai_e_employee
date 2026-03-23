@@ -622,20 +622,20 @@
 
                         <!-- 四个象限 -->
                         <div class="quadrant q1">
-                            <div class="quadrant-title">德才兼备</div>
-                            <div class="quadrant-desc">高能力 + 高政治</div>
+                            <div class="quadrant-title">品才兼备</div>
+                            <div class="quadrant-desc">高能力 + 高品质态度</div>
                         </div>
                         <div class="quadrant q2">
-                            <div class="quadrant-title">德优才弱</div>
-                            <div class="quadrant-desc">低能力 + 高政治</div>
+                            <div class="quadrant-title">品优才弱</div>
+                            <div class="quadrant-desc">低能力 + 高品质态度</div>
                         </div>
                         <div class="quadrant q3">
-                            <div class="quadrant-title">德才皆弱</div>
-                            <div class="quadrant-desc">低能力 + 低政治</div>
+                            <div class="quadrant-title">品才皆弱</div>
+                            <div class="quadrant-desc">低能力 + 低品质态度</div>
                         </div>
                         <div class="quadrant q4">
-                            <div class="quadrant-title">才高德弱</div>
-                            <div class="quadrant-desc">高能力 + 低政治</div>
+                            <div class="quadrant-title">才高品弱</div>
+                            <div class="quadrant-desc">高能力 + 低品质态度</div>
                         </div>
                         
                         <!-- 员工位置点 -->
@@ -644,19 +644,19 @@
                     <div class="quadrant-legend">
                         <div class="legend-item">
                             <div class="legend-color" style="background: #4caf50;"></div>
-                            <span><strong>德才兼备</strong>：重点培养，给予晋升机会</span>
+                            <span><strong>品才兼备</strong>：重点培养，给予晋升机会</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #ff9800;"></div>
-                            <span><strong>德优才弱</strong>：加强培训，提升专业能力</span>
+                            <span><strong>品优才弱</strong>：加强培训，提升专业能力</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #f44336;"></div>
-                            <span><strong>德才皆弱</strong>：限期改进，否则淘汰</span>
+                            <span><strong>品才皆弱</strong>：限期改进，否则淘汰</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #2196f3;"></div>
-                            <span><strong>才高德弱</strong>：加强政治教育，关注思想动态</span>
+                            <span><strong>才高品弱</strong>：加强政治教育，关注思想动态</span>
                         </div>
                     </div>
                 </div>
@@ -1066,23 +1066,23 @@
             dot.setAttribute('data-label', info.name + '\n政治:' + politicalScore + ' 能力:' + Math.round(abilityAvg));
 
             // 根据象限设置点的颜色和名称
-            // 右上(德才兼备): 高能力(>=60) + 高政治(>=60)
-            // 左上(德优才弱): 低能力(<60) + 高政治(>=60)
-            // 左下(德才皆弱): 低能力(<60) + 低政治(<60)
-            // 右下(才高德弱): 高能力(>=60) + 低政治(<60)
+            // 右上(品才兼备): 高能力(>=60) + 高品质态度(>=60)
+            // 左上(品优才弱): 低能力(<60) + 高品质态度(>=60)
+            // 左下(品才皆弱): 低能力(<60) + 低品质态度(<60)
+            // 右下(才高品弱): 高能力(>=60) + 低品质态度(<60)
             let quadrantName = '';
             if (abilityAvg >= 60 && politicalScore >= 60) {
-                dot.style.background = '#4caf50'; // 绿色 - 德才兼备
-                quadrantName = '德才兼备';
+                dot.style.background = '#4caf50'; // 绿色 - 品才兼备
+                quadrantName = '品才兼备';
             } else if (abilityAvg < 60 && politicalScore >= 60) {
-                dot.style.background = '#ff9800'; // 橙色 - 德优才弱
-                quadrantName = '德优才弱';
+                dot.style.background = '#ff9800'; // 橙色 - 品优才弱
+                quadrantName = '品优才弱';
             } else if (abilityAvg < 60 && politicalScore < 60) {
-                dot.style.background = '#f44336'; // 红色 - 德才皆弱
-                quadrantName = '德才皆弱';
+                dot.style.background = '#f44336'; // 红色 - 品才皆弱
+                quadrantName = '品才皆弱';
             } else {
-                dot.style.background = '#2196f3'; // 蓝色 - 才高德弱
-                quadrantName = '才高德弱';
+                dot.style.background = '#2196f3'; // 蓝色 - 才高品弱
+                quadrantName = '才高品弱';
             }
             
             // 匹配度网格

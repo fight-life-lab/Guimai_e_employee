@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>人力数字员工 - 人岗适配咨询</title>
+    <title>人力数字员工 - 人岗适配咨询 V2</title>
     <link rel="icon" type="image/png" href="/static/国脉底图.png?v=3">
     <!-- 引入 Chart.js 用于雷达图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -35,7 +35,7 @@
 
         .chat-container {
             width: 100%;
-            max-width: 800px;
+            max-width: 1400px;
             height: 90vh;
             background: white;
             border-radius: 16px;
@@ -153,7 +153,7 @@
         }
 
         .message-content {
-            max-width: 80%;
+            max-width: 95%;
             padding: 16px 20px;
             border-radius: 16px;
             line-height: 1.8;
@@ -346,7 +346,7 @@
         }
 
         .chat-input-container {
-            padding: 20px;
+            padding: 15px 20px;
             background: white;
             border-top: 1px solid #e0e0e0;
         }
@@ -355,42 +355,42 @@
             display: flex;
             gap: 12px;
             align-items: flex-end;
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 8px 12px;
         }
 
         .chat-input {
             flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 10px 12px;
+            border: none;
+            background: transparent;
+            font-size: 15px;
             resize: none;
-            min-height: 44px;
+            min-height: 40px;
             max-height: 120px;
             font-family: inherit;
-            transition: border-color 0.3s;
-        }
-
-        .chat-input:focus {
             outline: none;
-            border-color: #667eea;
         }
 
         .btn-send {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
             transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         .btn-send:hover {
-            transform: translateY(-2px);
+            transform: scale(1.05);
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
 
@@ -465,6 +465,762 @@
         .chat-messages::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+
+        /* ==================== 千问式附件上传样式 ==================== */
+        
+        /* 输入框下方工具栏 */
+        .input-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+            padding: 0 4px;
+        }
+
+        /* 上传文档按钮 */
+        .btn-attachment {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-attachment:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn-attachment svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 仅图标按钮 */
+        .btn-icon-only {
+            padding: 6px;
+            border-radius: 50%;
+        }
+
+        .btn-icon-only svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* 上传面板 - 展开/收起 */
+        .upload-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-top: 10px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease;
+        }
+
+        .upload-panel.open {
+            max-height: 600px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .upload-panel-content {
+            padding: 16px;
+        }
+
+        /* 员工信息输入 */
+        .emp-info-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .emp-input-group {
+            flex: 1;
+        }
+
+        .emp-input-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .emp-input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .emp-input-group input:focus {
+            border-color: #667eea;
+        }
+
+        /* 文件上传区域 */
+        .file-upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-upload-area.dragover {
+            border-color: #667eea;
+            background: #e8eeff;
+        }
+
+        .file-upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .file-upload-text {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .file-upload-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        /* 已选文件 */
+        .selected-file-info {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #e8eeff;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .selected-file-info.show {
+            display: flex;
+        }
+
+        .file-icon {
+            font-size: 20px;
+        }
+
+        .file-details {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .file-remove {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .file-remove:hover {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        /* 上传按钮 */
+        .upload-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .btn-upload-submit {
+            flex: 1;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-upload-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-upload-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-cancel {
+            padding: 10px 20px;
+            background: white;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-cancel:hover {
+            background: #f5f5f5;
+        }
+
+        /* 上传状态 */
+        .upload-status-msg {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .upload-status-msg.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .upload-status-msg.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .upload-status-msg.loading {
+            display: block;
+            background: #e8eeff;
+            color: #667eea;
+        }
+
+        /* 隐藏的文件输入 */
+        .hidden-file-input {
+            display: none;
+        }
+        
+        /* 人岗适配分析面板样式 - 平铺展开 */
+        .alignment-inline-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-top: 10px;
+            border: 1px solid #e0e0e0;
+            display: none;
+        }
+        
+        .alignment-inline-panel.open {
+            display: block;
+        }
+        
+        .alignment-inline-content {
+            padding: 15px 20px;
+        }
+        
+        .alignment-inline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .btn-close-inline {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .btn-close-inline:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .alignment-inline-desc {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .alignment-inline-input {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .alignment-inline-input input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .alignment-inline-input input:focus {
+            border-color: #667eea;
+        }
+        
+        .btn-analyze-inline {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .btn-analyze-inline:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .btn-close:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .alignment-trigger-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 40px;
+            text-align: center;
+        }
+        
+        .trigger-intro {
+            margin-bottom: 30px;
+        }
+        
+        .trigger-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .trigger-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .trigger-desc {
+            font-size: 14px;
+            color: #666;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+        
+        .btn-trigger-analyze {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-trigger-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-trigger-analyze svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .alignment-input-section {
+            margin-bottom: 20px;
+            padding: 40px;
+        }
+        
+        .alignment-input-group {
+            display: flex;
+            gap: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .btn-back {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            color: #666;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #e0e0e0;
+        }
+        
+        .result-actions {
+            margin-bottom: 20px;
+        }
+        
+        .btn-back-to-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #f0f4ff;
+            color: #667eea;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-back-to-input:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-back-to-input svg {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .alignment-input-group input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .alignment-input-group input:focus {
+            border-color: #667eea;
+        }
+        
+        .btn-analyze {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-analyze:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .alignment-loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .alignment-loading .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alignment-result {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .alignment-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .emp-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .attendance-status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        
+        .status-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .status-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .radar-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .radar-chart-wrapper {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+        }
+        
+        .match-details {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .score-display {
+            padding: 20px;
+        }
+        
+        .overall-score {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .score-label {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .conclusion-card {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .conclusion-card .card-title {
+            border-left-color: #4caf50;
+            color: #2e7d32;
+        }
+        
+        .conclusion-content {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .recommendations-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .recommendation-item {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .recommendation-item::before {
+            content: "💡";
+            font-size: 18px;
+        }
+        
+        .alignment-error {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            padding: 15px;
+            color: #721c24;
+            text-align: center;
+        }
+        
+        .match-detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .match-detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .match-dimension {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .match-score-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            margin-left: 15px;
+        }
+        
+        .match-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .match-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .match-score-value {
+            font-weight: 600;
+            color: #667eea;
+            min-width: 40px;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -517,9 +1273,301 @@
                     onkeydown="handleKeyDown(event)"
                 ></textarea>
                 <button class="btn-send" id="sendBtn" onclick="sendMessage()">
-                    <span>发送</span>
-                    <span>➤</span>
+                    ➤
                 </button>
+            </div>
+            
+            <!-- 输入框下方工具栏 -->
+            <div class="input-toolbar">
+                <button class="btn-attachment" onclick="toggleUnifiedUploadPanel()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    <span>数据导入</span>
+                </button>
+                <button class="btn-attachment" onclick="queryAllEmployees()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <span>查看所有员工</span>
+                </button>
+                <button class="btn-attachment" onclick="toggleAlignmentPanel()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <line x1="12" y1="2" x2="12" y2="4"/>
+                        <line x1="12" y1="20" x2="12" y2="22"/>
+                        <line x1="2" y1="12" x2="4" y2="12"/>
+                        <line x1="20" y1="12" x2="22" y2="12"/>
+                    </svg>
+                    <span>人岗适配</span>
+                </button>
+            </div>
+            
+            <!-- 岗位说明书上传面板 -->
+            <div class="upload-panel" id="uploadPanel">
+                <div class="upload-panel-content">
+                    <!-- 员工信息 -->
+                    <div class="emp-info-row">
+                        <div class="emp-input-group">
+                            <label>员工编号 *</label>
+                            <input type="text" id="empId" placeholder="如：67311096">
+                        </div>
+                        <div class="emp-input-group">
+                            <label>员工姓名 *</label>
+                            <input type="text" id="empName" placeholder="如：钱晓莹">
+                        </div>
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
+                        <div class="file-upload-icon">📄</div>
+                        <div class="file-upload-text">点击或拖拽Excel文件到此处</div>
+                        <div class="file-upload-hint">支持 .xlsx, .xls 格式</div>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden-file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+                    
+                    <!-- 已选文件信息 -->
+                    <div class="selected-file-info" id="selectedFileInfo">
+                        <span class="file-icon">📊</span>
+                        <div class="file-details">
+                            <div class="file-name" id="fileName"></div>
+                            <div class="file-meta" id="fileMeta"></div>
+                        </div>
+                        <button class="file-remove" onclick="removeSelectedFile()">×</button>
+                    </div>
+                    
+                    <!-- 上传按钮 -->
+                    <div class="upload-actions">
+                        <button class="btn-upload-submit" id="uploadSubmitBtn" onclick="uploadJobDescription()">
+                            上传并解析
+                        </button>
+                        <button class="btn-cancel" onclick="toggleUploadPanel()">取消</button>
+                    </div>
+                    
+                    <!-- 状态消息 -->
+                    <div class="upload-status-msg" id="uploadStatusMsg"></div>
+                </div>
+            </div>
+            
+            <!-- 员工花名册批量导入面板 -->
+            <div class="upload-panel" id="rosterUploadPanel">
+                <div class="upload-panel-content">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #333;">
+                        📋 批量导入员工花名册
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                        请上传包含员工信息的Excel文件，系统会自动批量导入
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="rosterFileUploadArea" onclick="document.getElementById('rosterFileInput').click()">
+                        <div class="file-upload-icon">📊</div>
+                        <div class="file-upload-text">点击或拖拽员工花名册Excel文件到此处</div>
+                        <div class="file-upload-hint">支持 .xlsx, .xls 格式，包含多行员工数据</div>
+                    </div>
+                    <input type="file" id="rosterFileInput" class="hidden-file-input" accept=".xlsx,.xls" onchange="handleRosterFileSelect(event)">
+                    
+                    <!-- 已选文件信息 -->
+                    <div class="selected-file-info" id="rosterSelectedFileInfo">
+                        <span class="file-icon">📋</span>
+                        <div class="file-details">
+                            <div class="file-name" id="rosterFileName"></div>
+                            <div class="file-meta" id="rosterFileMeta"></div>
+                        </div>
+                        <button class="file-remove" onclick="removeRosterSelectedFile()">×</button>
+                    </div>
+                    
+                    <!-- 上传按钮 -->
+                    <div class="upload-actions">
+                        <button class="btn-upload-submit" id="rosterUploadSubmitBtn" onclick="uploadEmpRoster()">
+                            批量导入
+                        </button>
+                        <button class="btn-cancel" onclick="toggleRosterUploadPanel()">取消</button>
+                    </div>
+                    
+                    <!-- 状态消息 -->
+                    <div class="upload-status-msg" id="rosterUploadStatusMsg"></div>
+                </div>
+            </div>
+            
+            <!-- 考勤数据批量导入面板 -->
+            <div class="upload-panel" id="attendanceUploadPanel">
+                <div class="upload-panel-content">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #333;">
+                        📅 批量导入考勤明细数据
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                        请上传包含考勤明细的Excel文件，支持以下字段：考勤日期、员工ID、员工姓名、部门/事业部、正常出勤天、理应出勤天、迟到次数、早退次数、请假次数、外出次数、加班次数及20:30以后、原始签到时间、原始签退时间
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="attendanceFileUploadArea" onclick="document.getElementById('attendanceFileInput').click()">
+                        <div class="file-upload-icon">📅</div>
+                        <div class="file-upload-text">点击或拖拽考勤明细Excel文件到此处</div>
+                        <div class="file-upload-hint">支持 .xlsx, .xls 格式，包含多行考勤数据</div>
+                    </div>
+                    <input type="file" id="attendanceFileInput" class="hidden-file-input" accept=".xlsx,.xls" onchange="handleAttendanceFileSelect(event)">
+                    
+                    <!-- 已选文件信息 -->
+                    <div class="selected-file-info" id="attendanceSelectedFileInfo">
+                        <span class="file-icon">📅</span>
+                        <div class="file-details">
+                            <div class="file-name" id="attendanceFileName"></div>
+                            <div class="file-meta" id="attendanceFileMeta"></div>
+                        </div>
+                        <button class="file-remove" onclick="removeAttendanceSelectedFile()">×</button>
+                    </div>
+                    
+                    <!-- 上传按钮 -->
+                    <div class="upload-actions">
+                        <button class="btn-upload-submit" id="attendanceUploadSubmitBtn" onclick="uploadAttendance()">
+                            批量导入考勤
+                        </button>
+                        <button class="btn-cancel" onclick="toggleAttendanceUploadPanel()">取消</button>
+                    </div>
+                    
+                    <!-- 状态消息 -->
+                    <div class="upload-status-msg" id="attendanceUploadStatusMsg"></div>
+                </div>
+            </div>
+            
+            <!-- 考勤汇总数据批量导入面板 -->
+            <div class="upload-panel" id="attendanceSummaryUploadPanel">
+                <div class="upload-panel-content">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #333;">
+                        📊 批量导入考勤汇总数据
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                        请上传包含考勤汇总的Excel文件，支持以下字段：考勤月份、员工ID、员工姓名、部门/事业部、正常出勤天、理应出勤天、迟到次数、早退次数、请假次数、外出次数、加班次数、加班时长（小时）
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="attendanceSummaryFileUploadArea" onclick="document.getElementById('attendanceSummaryFileInput').click()">
+                        <div class="file-upload-icon">📊</div>
+                        <div class="file-upload-text">点击或拖拽考勤汇总Excel文件到此处</div>
+                        <div class="file-upload-hint">支持 .xlsx, .xls 格式，包含月度考勤汇总数据</div>
+                    </div>
+                    <input type="file" id="attendanceSummaryFileInput" class="hidden-file-input" accept=".xlsx,.xls" onchange="handleAttendanceSummaryFileSelect(event)">
+                    
+                    <!-- 已选文件信息 -->
+                    <div class="selected-file-info" id="attendanceSummarySelectedFileInfo">
+                        <span class="file-icon">📊</span>
+                        <div class="file-details">
+                            <div class="file-name" id="attendanceSummaryFileName"></div>
+                            <div class="file-meta" id="attendanceSummaryFileMeta"></div>
+                        </div>
+                        <button class="file-remove" onclick="removeAttendanceSummarySelectedFile()">×</button>
+                    </div>
+                    
+                    <!-- 上传按钮 -->
+                    <div class="upload-actions">
+                        <button class="btn-upload-submit" id="attendanceSummaryUploadSubmitBtn" onclick="uploadAttendanceSummary()">
+                            批量导入汇总
+                        </button>
+                        <button class="btn-cancel" onclick="toggleAttendanceSummaryUploadPanel()">取消</button>
+                    </div>
+                    
+                    <!-- 状态消息 -->
+                    <div class="upload-status-msg" id="attendanceSummaryUploadStatusMsg"></div>
+                </div>
+            </div>
+            
+            <!-- 统一数据导入面板 -->
+            <div class="upload-panel" id="unifiedUploadPanel">
+                <div class="upload-panel-content">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #333;">
+                        📤 数据导入中心
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 12px;">
+                        请选择要导入的数据类型，然后上传Excel文件
+                    </div>
+                    
+                    <!-- 数据类型选择 -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-size: 13px; color: #333; margin-bottom: 6px; font-weight: 500;">数据类型 *</label>
+                        <select id="uploadDataType" style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white;" onchange="onDataTypeChange()">
+                            <option value="">请选择要导入的数据类型</option>
+                            <option value="job_description">📄 岗位说明书</option>
+                            <option value="roster">👥 员工花名册</option>
+                            <option value="attendance_detail">📅 考勤明细数据</option>
+                            <option value="attendance_summary">📊 考勤汇总数据</option>
+                            <option value="professional_ability">💼 员工专业能力</option>
+                            <option value="work_experience_pdf">📋 PDF履历-工作经历</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 数据类型说明 -->
+                    <div id="dataTypeDescription" style="font-size: 12px; color: #666; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; line-height: 1.5;">
+                        请选择上方数据类型查看详细说明
+                    </div>
+                    
+                    <!-- 岗位说明书/PDF履历专用：员工信息输入 -->
+                    <div id="jobDescriptionEmpInfo" style="display: none; margin-bottom: 15px;">
+                        <div style="font-size: 13px; color: #333; margin-bottom: 8px; font-weight: 500;">员工信息 *</div>
+                        <div class="emp-info-row">
+                            <div class="emp-input-group">
+                                <label>员工编号</label>
+                                <input type="text" id="unifiedEmpId" placeholder="如：67311096">
+                            </div>
+                            <div class="emp-input-group">
+                                <label>员工姓名</label>
+                                <input type="text" id="unifiedEmpName" placeholder="如：钱晓莹">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="file-upload-area" id="unifiedFileUploadArea" onclick="document.getElementById('unifiedFileInput').click()">
+                        <div class="file-upload-icon" id="fileUploadIcon">📁</div>
+                        <div class="file-upload-text" id="fileUploadText">点击或拖拽Excel文件到此处</div>
+                        <div class="file-upload-hint" id="fileUploadHint">支持 .xlsx, .xls 格式</div>
+                    </div>
+                    <input type="file" id="unifiedFileInput" class="hidden-file-input" accept=".xlsx,.xls" onchange="handleUnifiedFileSelect(event)">
+                    
+                    <!-- 已选文件信息 -->
+                    <div class="selected-file-info" id="unifiedSelectedFileInfo">
+                        <span class="file-icon">📊</span>
+                        <div class="file-details">
+                            <div class="file-name" id="unifiedFileName"></div>
+                            <div class="file-meta" id="unifiedFileMeta"></div>
+                        </div>
+                        <button class="file-remove" onclick="removeUnifiedSelectedFile()">×</button>
+                    </div>
+                    
+                    <!-- 上传按钮 -->
+                    <div class="upload-actions">
+                        <button class="btn-upload-submit" id="unifiedUploadSubmitBtn" onclick="uploadUnifiedData()">
+                            上传并导入
+                        </button>
+                        <button class="btn-cancel" onclick="toggleUnifiedUploadPanel()">取消</button>
+                    </div>
+                    
+                    <!-- 状态消息 -->
+                    <div class="upload-status-msg" id="unifiedUploadStatusMsg"></div>
+                </div>
+            </div>
+            
+            <!-- 人岗适配分析面板 - 平铺展开样式 -->
+            <div class="alignment-inline-panel" id="alignmentPanel">
+                <div class="alignment-inline-content">
+                    <div class="alignment-inline-header">
+                        <span>🎯 人岗适配分析</span>
+                        <button class="btn-close-inline" onclick="toggleAlignmentPanel()">×</button>
+                    </div>
+                    <div class="alignment-inline-desc">
+                        基于5维度模型进行员工与岗位的匹配度分析
+                    </div>
+                    <div class="alignment-inline-input">
+                        <input type="text" id="alignmentEmpName" placeholder="请输入员工姓名">
+                        <button class="btn-analyze-inline" onclick="analyzeEmployeeAlignment()">开始分析</button>
+                    </div>
+                    <div class="upload-status-msg" id="alignmentStatusMsg"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -537,9 +1585,7 @@
         // 页面加载时显示历史记录
         window.onload = function() {
             if (messageHistory.length > 0) {
-                // 清除欢迎消息
                 chatMessages.innerHTML = '';
-                // 显示历史消息
                 messageHistory.forEach(msg => {
                     appendMessage(msg.role, msg.content, msg.time, false);
                 });
@@ -569,7 +1615,6 @@
 
         // 添加消息到界面
         function appendMessage(role, content, time = null, save = true) {
-            // 如果有欢迎消息，先清除
             if (chatMessages.querySelector('.welcome-message')) {
                 chatMessages.innerHTML = '';
             }
@@ -583,7 +1628,6 @@
                 minute: '2-digit' 
             });
 
-            // 格式化内容
             let formattedContent = content;
             if (role === 'assistant') {
                 formattedContent = formatAssistantMessage(content);
@@ -602,7 +1646,6 @@
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // 保存到历史记录
             if (save) {
                 messageHistory.push({
                     role: role,
@@ -613,103 +1656,58 @@
             }
         }
 
-        // 智能预处理内容，处理LLM可能返回的紧凑格式
-        function preprocessContent(content) {
-            if (!content) return '';
-
-            let processed = content;
-
-            // 首先，处理标题后面紧跟内容的情况（如 ###标题内容）
-            // 在 ### 前添加换行
-            processed = processed.replace(/([^\n])(###\s)/g, '$1\n$2');
-
-            // 在 ## 前添加换行
-            processed = processed.replace(/([^\n])(##\s)/g, '$1\n$2');
-
-            // 在 # 前添加换行（但排除 ### 和 ##）
-            processed = processed.replace(/([^\n#])(#\s)/g, '$1\n$2');
-
-            // 处理 **文本** 前后的紧凑格式
-            processed = processed.replace(/([^\n])(\*\*[^*]+\*\*)/g, '$1\n$2');
-
-            // 处理 - 列表项：在 - 前添加换行（如果前面不是换行，且不是作为减号使用）
-            // 匹配 "文字- 内容" 或 "文字 - 内容" 的情况
-            processed = processed.replace(/([^\n\-])(\s*-\s+[^\s])/g, function(match, p1, p2) {
-                return p1 + '\n' + p2;
-            });
-
-            // 处理数字列表：在 "数字. " 前添加换行
-            processed = processed.replace(/([^\n])(\d+\.\s)/g, '$1\n$2');
-
-            return processed;
-        }
-
         // 格式化AI助手的消息
         function formatAssistantMessage(content) {
             if (!content) return '';
-
-            console.log('Original content:', content.substring(0, 200) + '...');
-
-            // 预处理内容，处理紧凑格式
-            content = preprocessContent(content);
-
-            console.log('Preprocessed content:', content.substring(0, 200) + '...');
-
-            // 先按行分割处理
-            const lines = content.split('\n');
+            
+            // 预处理
+            let processed = content;
+            processed = processed.replace(/([^\n])(###\s)/g, '$1\n$2');
+            processed = processed.replace(/([^\n])(##\s)/g, '$1\n$2');
+            processed = processed.replace(/([^\n#])(#\s)/g, '$1\n$2');
+            
+            const lines = processed.split('\n');
             let result = [];
             let inUl = false;
             let inOl = false;
 
             for (let i = 0; i < lines.length; i++) {
                 let line = lines[i].trim();
-
-                // 跳过空行
                 if (!line) continue;
 
-                // 处理代码块开始/结束
                 if (line.startsWith('```')) {
                     result.push(line);
                     continue;
                 }
 
-                // 处理标题 #### (四级标题)
                 if (line.match(/^####\s/)) {
                     if (inUl) { result.push('</ul>'); inUl = false; }
                     if (inOl) { result.push('</ol>'); inOl = false; }
-                    const title = line.replace(/^####\s*/, '');
-                    result.push('<h4>' + escapeHtml(title) + '</h4>');
+                    result.push('<h4>' + escapeHtml(line.replace(/^####\s*/, '')) + '</h4>');
                     continue;
                 }
 
-                // 处理标题 ### (三级标题)
                 if (line.match(/^###\s/)) {
                     if (inUl) { result.push('</ul>'); inUl = false; }
                     if (inOl) { result.push('</ol>'); inOl = false; }
-                    const title = line.replace(/^###\s*/, '');
-                    result.push('<h3>' + escapeHtml(title) + '</h3>');
+                    result.push('<h3>' + escapeHtml(line.replace(/^###\s*/, '')) + '</h3>');
                     continue;
                 }
 
-                // 处理标题 ## (二级标题)
                 if (line.match(/^##\s/)) {
                     if (inUl) { result.push('</ul>'); inUl = false; }
                     if (inOl) { result.push('</ol>'); inOl = false; }
-                    const title = line.replace(/^##\s*/, '');
-                    result.push('<h2>' + escapeHtml(title) + '</h2>');
+                    result.push('<h2>' + escapeHtml(line.replace(/^##\s*/, '')) + '</h2>');
                     continue;
                 }
 
-                // 处理标题 # (一级标题)
                 if (line.match(/^#\s/)) {
                     if (inUl) { result.push('</ul>'); inUl = false; }
                     if (inOl) { result.push('</ol>'); inOl = false; }
-                    const title = line.replace(/^#\s*/, '');
-                    result.push('<h1>' + escapeHtml(title) + '</h1>');
+                    result.push('<h1>' + escapeHtml(line.replace(/^#\s*/, '')) + '</h1>');
                     continue;
                 }
 
-                // 处理无序列表项 - 或 * 或 ・
                 if (line.match(/^[・\-\*]\s/)) {
                     if (!inUl) {
                         result.push('<ul>');
@@ -717,12 +1715,10 @@
                     }
                     let itemContent = line.replace(/^[・\-\*]\s*/, '');
                     itemContent = itemContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    itemContent = itemContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
                     result.push('<li>' + itemContent + '</li>');
                     continue;
                 }
 
-                // 处理有序列表项
                 if (line.match(/^\d+\.\s/)) {
                     if (!inOl) {
                         result.push('<ol>');
@@ -730,189 +1726,25 @@
                     }
                     let itemContent = line.replace(/^\d+\.\s*/, '');
                     itemContent = itemContent.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    itemContent = itemContent.replace(/\*([^*]+)\*/g, '<em>$1</em>');
                     result.push('<li>' + itemContent + '</li>');
                     continue;
                 }
 
-                // 普通段落
                 if (inUl) { result.push('</ul>'); inUl = false; }
                 if (inOl) { result.push('</ol>'); inOl = false; }
 
-                // 处理加粗和斜体
                 let paragraph = escapeHtml(line);
                 paragraph = paragraph.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                paragraph = paragraph.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-
                 result.push('<p>' + paragraph + '</p>');
             }
 
-            // 关闭未闭合的列表
             if (inUl) result.push('</ul>');
             if (inOl) result.push('</ol>');
 
-            let html = result.join('\n');
-
-            // 处理评分格式 [分数]/[总分]
-            html = html.replace(/(\d+\.?\d*)\/\d+/g, '<span class="score">$1分</span>');
-
-            console.log('Final HTML:', html.substring(0, 200) + '...');
-
-            return html;
+            return result.join('\n');
         }
 
-        // 插入雷达图 - 6维度
-        function insertRadarChart(contentDiv, radarData) {
-            console.log('insertRadarChart called with data:', radarData);
-            
-            // 查找"综合评分"标题 - 支持多种格式
-            let targetHeader = null;
-            
-            // 首先尝试查找 h2, h3 标签
-            const headers = contentDiv.querySelectorAll('h2, h3, h4, strong, p');
-            for (const header of headers) {
-                const text = header.textContent.trim();
-                if (text.includes('综合评分') || text === '一、综合评分') {
-                    targetHeader = header;
-                    console.log('Found target header:', text, header.tagName);
-                    break;
-                }
-            }
-            
-            // 如果没找到，尝试查找包含"综合评分"的任何元素
-            if (!targetHeader) {
-                const allElements = contentDiv.querySelectorAll('*');
-                for (const el of allElements) {
-                    if (el.children.length === 0 && el.textContent.includes('综合评分')) {
-                        targetHeader = el;
-                        console.log('Found target in text node:', el.textContent);
-                        break;
-                    }
-                }
-            }
-            
-            if (!targetHeader) {
-                console.log('Target header not found, inserting at beginning of contentDiv');
-                // 如果找不到标题，直接在内容开始处插入
-                targetHeader = contentDiv.firstChild;
-            }
-            
-            // 提取6维度分数（都是100分制）
-            const professionalScore = radarData.professional_score || 0;
-            const adaptabilityScore = radarData.adaptability_score || 0;
-            const innovationScore = radarData.innovation_score || 0;
-            const learningScore = radarData.learning_score || 0;
-            const attendanceScore = radarData.attendance_score || 0;
-            const politicalScore = radarData.political_score || 0;
-            
-            // 创建雷达图容器 - 更大更突出
-            const chartId = 'radarChart_' + Date.now();
-            const radarContainer = document.createElement('div');
-            radarContainer.className = 'radar-chart-container';
-            radarContainer.style.cssText = 'margin: 25px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);';
-            
-            // 添加标题和分数摘要
-            const avgScore = Math.round((professionalScore + adaptabilityScore + innovationScore + learningScore + attendanceScore + politicalScore) / 6);
-            radarContainer.innerHTML = '<h4 style="margin-bottom: 15px; color: #fff; text-align: center; font-size: 18px;">🎯 六维能力雷达图</h4>' +
-                '<div style="text-align: center; margin-bottom: 15px;">' +
-                '<span style="display: inline-block; background: rgba(255,255,255,0.2); color: #fff; padding: 5px 15px; border-radius: 20px; font-size: 14px;">综合得分: ' + avgScore + '分</span>' +
-                '</div>' +
-                '<div style="max-width: 500px; margin: 0 auto; background: rgba(255,255,255,0.95); border-radius: 8px; padding: 15px;">' +
-                '<canvas id="' + chartId + '" width="500" height="400"></canvas>' +
-                '</div>' +
-                '<div style="margin-top: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">专业能力: ' + professionalScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">适应能力: ' + adaptabilityScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">创新能力: ' + innovationScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">学习能力: ' + learningScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">工时维度: ' + attendanceScore + '</span>' +
-                '<span style="background: rgba(255,255,255,0.2); color: #fff; padding: 4px 10px; border-radius: 12px; font-size: 12px;">品质态度: ' + politicalScore + '</span>' +
-                '</div>';
-            
-            // 插入到标题后面
-            if (targetHeader && targetHeader.parentNode) {
-                if (targetHeader.nextSibling) {
-                    targetHeader.parentNode.insertBefore(radarContainer, targetHeader.nextSibling);
-                } else {
-                    targetHeader.parentNode.appendChild(radarContainer);
-                }
-            } else {
-                // 如果找不到合适的位置，直接插入到 contentDiv 的开始
-                contentDiv.insertBefore(radarContainer, contentDiv.firstChild);
-            }
-            
-            // 初始化Chart.js - 6维度雷达图
-            const ctx = document.getElementById(chartId);
-            if (ctx && typeof Chart !== 'undefined') {
-                new Chart(ctx, {
-                    type: 'radar',
-                    data: {
-                        labels: ['专业能力', '适应能力', '创新能力', '学习能力', '工时维度', '品质态度'],
-                        datasets: [{
-                            label: '得分',
-                            data: [professionalScore, adaptabilityScore, innovationScore, learningScore, attendanceScore, politicalScore],
-                            backgroundColor: 'rgba(102, 126, 234, 0.25)',
-                            borderColor: 'rgba(102, 126, 234, 1)',
-                            borderWidth: 3,
-                            pointBackgroundColor: 'rgba(118, 75, 162, 1)',
-                            pointBorderColor: '#fff',
-                            pointBorderWidth: 2,
-                            pointRadius: 6,
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(118, 75, 162, 1)',
-                            pointHoverRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                max: 100,
-                                min: 0,
-                                ticks: {
-                                    stepSize: 20,
-                                    font: {
-                                        size: 11
-                                    }
-                                },
-                                pointLabels: {
-                                    font: {
-                                        size: 13,
-                                        weight: 'bold'
-                                    },
-                                    color: '#333'
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(102, 126, 234, 0.9)',
-                                titleFont: {
-                                    size: 14
-                                },
-                                bodyFont: {
-                                    size: 13
-                                },
-                                padding: 12,
-                                cornerRadius: 8,
-                                callbacks: {
-                                    label: function(context) {
-                                        return context.label + ': ' + context.raw + '分';
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        // 转义HTML特殊字符
+        // 转义HTML
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -930,29 +1762,263 @@
             typingIndicator.classList.remove('active');
         }
 
+        // 检查是否是岗位信息查询
+        function isJobDescriptionQuery(message) {
+            const patterns = [
+                /(.+?)的(?:岗位信息|岗位说明书|岗位描述|岗位)/,
+                /查询(.+?)的/,
+                /(.+?)是做什么的/,
+                /(.+?)(?:岗位|职位).*?(?:描述|说明|信息)/
+            ];
+            return patterns.some(pattern => pattern.test(message));
+        }
+
+        // 解析考勤查询意图
+        function parseAttendanceQuery(message) {
+            // 考勤查询模式
+            const patterns = [
+                // 查询某人的考勤
+                { pattern: /(.+?)的(?:考勤|打卡|出勤)/, type: 'emp_name' },
+                { pattern: /查询(.+?)的(?:考勤|打卡|出勤)/, type: 'emp_name' },
+                { pattern: /(.+?)(?:考勤|打卡|出勤)情况/, type: 'emp_name' },
+                // 查询某月考勤
+                { pattern: /(\d{4}[年-]?\d{1,2}[月]?)(?:的)?(?:考勤|打卡)/, type: 'month' },
+                // 查询某人某月考勤
+                { pattern: /(.+?)(\d{4}[年-]?\d{1,2}[月]?)(?:的)?(?:考勤|打卡)/, type: 'emp_and_month' }
+            ];
+
+            for (const { pattern, type } of patterns) {
+                const match = message.match(pattern);
+                if (match) {
+                    if (type === 'emp_name') {
+                        return { emp_name: match[1].trim() };
+                    } else if (type === 'month') {
+                        // 标准化月份格式
+                        let month = match[1].replace(/[年月]/g, '-').replace(/-$/, '');
+                        if (!month.includes('-')) {
+                            month = month.slice(0, 4) + '-' + month.slice(4);
+                        }
+                        return { attendance_month: month };
+                    } else if (type === 'emp_and_month') {
+                        let month = match[2].replace(/[年月]/g, '-').replace(/-$/, '');
+                        if (!month.includes('-')) {
+                            month = month.slice(0, 4) + '-' + month.slice(4);
+                        }
+                        return { emp_name: match[1].trim(), attendance_month: month };
+                    }
+                }
+            }
+            return null;
+        }
+
+        // 查询考勤数据
+        async function queryAttendanceData(query) {
+            showTypingIndicator();
+
+            try {
+                // 先查询员工信息获取emp_code
+                let empCode = null;
+                if (query.emp_name) {
+                    const empResponse = await fetch(`${API_BASE}/api/v1/emp-roster/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ emp_name: query.emp_name })
+                    });
+                    const empResult = await empResponse.json();
+                    if (empResult.success && empResult.data && empResult.data.length > 0) {
+                        empCode = empResult.data[0].emp_code;
+                    }
+                }
+
+                // 查询考勤明细
+                let detailData = [];
+                try {
+                    const detailParams = new URLSearchParams();
+                    if (empCode) detailParams.append('emp_code', empCode);
+                    const detailResponse = await fetch(`${API_BASE}/api/v1/attendance/list?${detailParams}`);
+                    const detailResult = await detailResponse.json();
+                    if (detailResult.success) {
+                        detailData = detailResult.data || [];
+                    }
+                } catch (e) {
+                    console.log('考勤明细查询失败:', e);
+                }
+
+                // 查询考勤汇总
+                let summaryData = [];
+                try {
+                    const summaryBody = {};
+                    if (empCode) summaryBody.emp_code = empCode;
+                    if (query.attendance_month) summaryBody.attendance_month = query.attendance_month;
+
+                    const summaryResponse = await fetch(`${API_BASE}/api/v1/attendance-summary/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(summaryBody)
+                    });
+                    const summaryResult = await summaryResponse.json();
+                    if (summaryResult.success) {
+                        summaryData = summaryResult.data || [];
+                    }
+                } catch (e) {
+                    console.log('考勤汇总查询失败:', e);
+                }
+
+                hideTypingIndicator();
+
+                // 构建显示内容
+                let resultHtml = '';
+
+                // 显示查询条件
+                resultHtml += `<div style="margin-bottom: 16px; padding: 12px; background: #f0f4ff; border-radius: 8px;">`;
+                resultHtml += `<div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">📊 考勤查询结果</div>`;
+                if (query.emp_name) {
+                    resultHtml += `<div style="font-size: 13px; color: #666;">员工：${query.emp_name}${empCode ? ` (${empCode})` : ''}</div>`;
+                }
+                if (query.attendance_month) {
+                    resultHtml += `<div style="font-size: 13px; color: #666;">月份：${query.attendance_month}</div>`;
+                }
+                resultHtml += `</div>`;
+
+                // 显示考勤汇总
+                if (summaryData.length > 0) {
+                    resultHtml += `<div style="margin-bottom: 20px;">`;
+                    resultHtml += `<div style="font-weight: 600; color: #333; margin-bottom: 12px; font-size: 15px;">📋 考勤汇总</div>`;
+                    resultHtml += `<div style="overflow-x: auto;">`;
+                    resultHtml += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">`;
+                    resultHtml += `<thead><tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">月份</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">正常出勤</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">理应出勤</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">迟到</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">早退</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">请假</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">加班次数</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">加班时长</th>`;
+                    resultHtml += `</tr></thead><tbody>`;
+
+                    summaryData.forEach((item, index) => {
+                        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                        resultHtml += `<tr style="background: ${bgColor};">`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.attendance_month || '-'}</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.normal_attendance_days || 0}天</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.expected_attendance_days || 0}天</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.late_count || 0}次</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.early_leave_count || 0}次</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.leave_count || 0}次</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.overtime_count || 0}次</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.overtime_hours || 0}小时</td>`;
+                        resultHtml += `</tr>`;
+                    });
+
+                    resultHtml += `</tbody></table></div></div>`;
+                }
+
+                // 显示考勤明细（最近10条）
+                if (detailData.length > 0) {
+                    const recentDetails = detailData.slice(0, 10);
+                    resultHtml += `<div style="margin-bottom: 20px;">`;
+                    resultHtml += `<div style="font-weight: 600; color: #333; margin-bottom: 12px; font-size: 15px;">📅 考勤明细（最近${recentDetails.length}条）</div>`;
+                    resultHtml += `<div style="overflow-x: auto; max-height: 300px; overflow-y: auto;">`;
+                    resultHtml += `<table style="width: 100%; border-collapse: collapse; font-size: 12px;">`;
+                    resultHtml += `<thead><tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">日期</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">姓名</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">部门</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">出勤</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">签到</th>`;
+                    resultHtml += `<th style="padding: 8px; border: 1px solid #667eea; text-align: left;">签退</th>`;
+                    resultHtml += `</tr></thead><tbody>`;
+
+                    recentDetails.forEach((item, index) => {
+                        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                        resultHtml += `<tr style="background: ${bgColor};">`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.attendance_date || '-'}</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.emp_name || '-'}</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.department || '-'}</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd;">${item.normal_attendance_days || 0}天</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${item.original_checkin_time || '-'}</td>`;
+                        resultHtml += `<td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${item.original_checkout_time || '-'}</td>`;
+                        resultHtml += `</tr>`;
+                    });
+
+                    resultHtml += `</tbody></table></div>`;
+                    if (detailData.length > 10) {
+                        resultHtml += `<div style="margin-top: 8px; font-size: 12px; color: #999; text-align: center;">... 还有 ${detailData.length - 10} 条记录 ...</div>`;
+                    }
+                    resultHtml += `</div>`;
+                }
+
+                if (summaryData.length === 0 && detailData.length === 0) {
+                    resultHtml += `<div style="padding: 20px; text-align: center; color: #999;">未找到考勤数据</div>`;
+                }
+
+                appendMessage('assistant', resultHtml);
+
+            } catch (error) {
+                hideTypingIndicator();
+                throw error;
+            }
+        }
+
         // 发送消息
         async function sendMessage() {
             const message = chatInput.value.trim();
             if (!message) return;
 
-            // 添加用户消息
             appendMessage('user', message);
-
-            // 清空输入框
             chatInput.value = '';
             chatInput.style.height = 'auto';
-
-            // 禁用发送按钮
             sendBtn.disabled = true;
-
-            // 显示输入指示器
             showTypingIndicator();
 
+            // 检查是否是考勤数据查询（优先于岗位查询）
+            console.log('[Debug] 检查考勤查询, message:', message);
+            const attendanceQuery = parseAttendanceQuery(message);
+            console.log('[Debug] parseAttendanceQuery 结果:', attendanceQuery);
+            if (attendanceQuery) {
+                console.log('[Debug] 进入考勤查询逻辑');
+                try {
+                    await queryAttendanceData(attendanceQuery);
+                } catch (error) {
+                    hideTypingIndicator();
+                    appendMessage('assistant', `查询失败：${error.message}`);
+                } finally {
+                    sendBtn.disabled = false;
+                    chatInput.focus();
+                }
+                return;
+            }
+
+            // 检查是否是岗位信息查询
+            if (isJobDescriptionQuery(message)) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/v1/job-description/query`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: message })
+                    });
+                    
+                    hideTypingIndicator();
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        appendMessage('assistant', result.reply);
+                    } else {
+                        appendMessage('assistant', result.message);
+                    }
+                } catch (error) {
+                    hideTypingIndicator();
+                    appendMessage('assistant', `查询失败：${error.message}`);
+                } finally {
+                    sendBtn.disabled = false;
+                    chatInput.focus();
+                }
+                return;
+            }
+
             try {
-                // 所有查询都使用chat/stream端点，统一显示查询步骤
-                const employeeName = extractName(message);
-                
-                // 创建消息元素用于流式显示
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message assistant';
                 const displayTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -966,7 +2032,6 @@
                     </div>
                 `;
                 
-                // 清除欢迎消息并添加消息元素
                 if (chatMessages.querySelector('.welcome-message')) {
                     chatMessages.innerHTML = '';
                 }
@@ -976,9 +2041,7 @@
                 const contentDiv = document.getElementById(streamingId);
                 let fullContent = '';
                 
-                // 统一使用chat/stream端点
                 const endpoint = `${API_BASE}/api/v1/alignment/chat/stream`;
-                
                 const requestBody = JSON.stringify({ message: message });
                 
                 const response = await fetch(endpoint, {
@@ -997,7 +2060,6 @@
                 const decoder = new TextDecoder();
                 let buffer = '';
                 
-                // 创建纯文本显示区域，流式输出时不格式化
                 const textNode = document.createTextNode('');
                 contentDiv.appendChild(textNode);
                 
@@ -1008,9 +2070,8 @@
                     const chunk = decoder.decode(value, { stream: true });
                     buffer += chunk;
                     
-                    // 处理SSE格式
                     const lines = buffer.split('\n');
-                    buffer = lines.pop() || ''; // 保留不完整的行
+                    buffer = lines.pop() || '';
                     
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
@@ -1018,46 +2079,18 @@
                                 const data = JSON.parse(line.slice(6));
                                 if (data.chunk) {
                                     fullContent += data.chunk;
-                                    // 实时追加文本
                                     textNode.textContent = fullContent;
                                     chatMessages.scrollTop = chatMessages.scrollHeight;
                                 }
-                            } catch (e) {
-                                // 忽略解析错误
-                            }
+                            } catch (e) {}
                         }
                     }
                 }
                 
-                // 流式输出完成后，再进行格式化
-                console.log('Full content before formatting:', JSON.stringify(fullContent));
-                
-                // 检查是否包含雷达图数据
-                let radarData = null;
-                const radarMatch = fullContent.match(/<!--RADAR_CHART_DATA:([\s\S]*?)-->/);
-                if (radarMatch) {
-                    try {
-                        radarData = JSON.parse(radarMatch[1]);
-                        console.log('雷达图数据:', radarData);
-                        // 移除标记，不显示在文本中
-                        fullContent = fullContent.replace(/<!--RADAR_CHART_DATA:[\s\S]*?-->\n?/g, '');
-                    } catch (e) {
-                        console.error('解析雷达图数据失败:', e, radarMatch[1]);
-                    }
-                }
-                
                 const formattedHtml = formatAssistantMessage(fullContent);
-                console.log('Formatted HTML:', formattedHtml.substring(0, 500));
                 contentDiv.innerHTML = formattedHtml;
-                
-                // 如果有雷达图数据，在综合评分后插入雷达图
-                if (radarData) {
-                    insertRadarChart(contentDiv, radarData);
-                }
-                
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 
-                // 保存到历史记录
                 messageHistory.push({
                     role: 'assistant',
                     content: fullContent,
@@ -1072,18 +2105,6 @@
                 sendBtn.disabled = false;
                 chatInput.focus();
             }
-        }
-
-        // 从消息中提取员工姓名（简单实现）
-        function extractName(message) {
-            // 常见的员工姓名
-            const names = ['石京京', '余祯', '周灏', '许博', '毛钰博', '郭旭枫', '宋佳铭', '刘畅', '陈磊'];
-            for (const name of names) {
-                if (message.includes(name)) {
-                    return name;
-                }
-            }
-            return null;
         }
 
         // 清除历史记录
@@ -1105,6 +2126,1228 @@
                     </div>
                 `;
             }
+        }
+
+        // ==================== 千问式附件上传功能 ====================
+        let selectedFile = null;
+
+        // 切换上传面板
+        function toggleUploadPanel() {
+            const panel = document.getElementById('uploadPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                // 关闭时重置
+                resetUploadForm();
+            }
+        }
+
+        // 重置上传表单
+        function resetUploadForm() {
+            document.getElementById('empId').value = '';
+            document.getElementById('empName').value = '';
+            removeSelectedFile();
+            hideUploadStatus();
+        }
+
+        // 处理文件选择
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                showSelectedFile(file);
+            }
+        }
+
+        // 显示已选文件
+        function showSelectedFile(file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileMeta').textContent = formatFileSize(file.size);
+            document.getElementById('selectedFileInfo').classList.add('show');
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 移除已选文件
+        function removeSelectedFile() {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('selectedFileInfo').classList.remove('show');
+        }
+
+        // 拖拽上传
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        if (fileUploadArea) {
+            fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+
+            fileUploadArea.addEventListener('dragleave', () => {
+                fileUploadArea.classList.remove('dragover');
+            });
+
+            fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        selectedFile = file;
+                        showSelectedFile(file);
+                    } else {
+                        showUploadStatus('请选择Excel文件(.xlsx或.xls)', 'error');
+                    }
+                }
+            });
+        }
+
+        // 显示上传状态
+        function showUploadStatus(message, type) {
+            const statusDiv = document.getElementById('uploadStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 隐藏上传状态
+        function hideUploadStatus() {
+            const statusDiv = document.getElementById('uploadStatusMsg');
+            statusDiv.className = 'upload-status-msg';
+        }
+
+        // 上传岗位说明书
+        async function uploadJobDescription() {
+            const empId = document.getElementById('empId').value.trim();
+            const empName = document.getElementById('empName').value.trim();
+
+            if (!empId) {
+                showUploadStatus('请输入员工编号', 'error');
+                return;
+            }
+            if (!empName) {
+                showUploadStatus('请输入员工姓名', 'error');
+                return;
+            }
+            if (!selectedFile) {
+                showUploadStatus('请选择Excel文件', 'error');
+                return;
+            }
+
+            showUploadStatus('正在上传并解析...', 'loading');
+            document.getElementById('uploadSubmitBtn').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('emp_id', empId);
+                formData.append('emp_name', empName);
+
+                const response = await fetch(`${API_BASE}/api/v1/job-description/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showUploadStatus('✓ 上传成功', 'success');
+                    setTimeout(() => {
+                        toggleUploadPanel();
+                    }, 1000);
+                } else {
+                    showUploadStatus('上传失败：' + result.message, 'error');
+                }
+            } catch (error) {
+                showUploadStatus('上传失败：' + error.message, 'error');
+            } finally {
+                document.getElementById('uploadSubmitBtn').disabled = false;
+            }
+        }
+
+        // ==================== 员工花名册批量导入功能 ====================
+        let rosterSelectedFile = null;
+
+        // 切换花名册上传面板
+        function toggleRosterUploadPanel() {
+            const panel = document.getElementById('rosterUploadPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                resetRosterUploadForm();
+            }
+        }
+
+        // 重置花名册上传表单
+        function resetRosterUploadForm() {
+            rosterSelectedFile = null;
+            document.getElementById('rosterFileInput').value = '';
+            document.getElementById('rosterSelectedFileInfo').classList.remove('show');
+            hideRosterUploadStatus();
+        }
+
+        // 处理花名册文件选择
+        function handleRosterFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                rosterSelectedFile = file;
+                showRosterSelectedFile(file);
+            }
+        }
+
+        // 显示已选花名册文件
+        function showRosterSelectedFile(file) {
+            document.getElementById('rosterFileName').textContent = file.name;
+            document.getElementById('rosterFileMeta').textContent = formatFileSize(file.size);
+            document.getElementById('rosterSelectedFileInfo').classList.add('show');
+        }
+
+        // 移除已选花名册文件
+        function removeRosterSelectedFile() {
+            rosterSelectedFile = null;
+            document.getElementById('rosterFileInput').value = '';
+            document.getElementById('rosterSelectedFileInfo').classList.remove('show');
+        }
+
+        // 显示花名册上传状态
+        function showRosterUploadStatus(message, type) {
+            const statusDiv = document.getElementById('rosterUploadStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 隐藏花名册上传状态
+        function hideRosterUploadStatus() {
+            const statusDiv = document.getElementById('rosterUploadStatusMsg');
+            statusDiv.className = 'upload-status-msg';
+        }
+
+        // 拖拽上传花名册
+        const rosterFileUploadArea = document.getElementById('rosterFileUploadArea');
+        if (rosterFileUploadArea) {
+            rosterFileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                rosterFileUploadArea.classList.add('dragover');
+            });
+
+            rosterFileUploadArea.addEventListener('dragleave', () => {
+                rosterFileUploadArea.classList.remove('dragover');
+            });
+
+            rosterFileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                rosterFileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        rosterSelectedFile = file;
+                        showRosterSelectedFile(file);
+                    } else {
+                        showRosterUploadStatus('请选择Excel文件(.xlsx或.xls)', 'error');
+                    }
+                }
+            });
+        }
+
+        // 批量上传员工花名册
+        async function uploadEmpRoster() {
+            if (!rosterSelectedFile) {
+                showRosterUploadStatus('请选择Excel文件', 'error');
+                return;
+            }
+
+            showRosterUploadStatus('正在批量导入...', 'loading');
+            document.getElementById('rosterUploadSubmitBtn').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', rosterSelectedFile);
+
+                const response = await fetch(`${API_BASE}/api/v1/emp-roster/batch-upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const msg = `✓ 导入完成\n成功：${result.data.success} 条\n失败：${result.data.fail} 条\n总计：${result.data.total} 条`;
+                    showRosterUploadStatus(msg, 'success');
+                    setTimeout(() => {
+                        toggleRosterUploadPanel();
+                    }, 2000);
+                } else {
+                    showRosterUploadStatus('导入失败：' + result.message, 'error');
+                }
+            } catch (error) {
+                showRosterUploadStatus('导入失败：' + error.message, 'error');
+            } finally {
+                document.getElementById('rosterUploadSubmitBtn').disabled = false;
+            }
+        }
+
+        // ==================== 查询所有员工功能 ====================
+        async function queryAllEmployees() {
+            // 清除欢迎消息
+            if (chatMessages.querySelector('.welcome-message')) {
+                chatMessages.innerHTML = '';
+            }
+            
+            // 显示加载指示器
+            showTypingIndicator();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/emp-roster/list`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                hideTypingIndicator();
+
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    // 构建员工列表表格
+                    const displayTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    let tableHtml = `
+                        <div style="margin-bottom: 16px;">
+                            <h3 style="color: #667eea; margin-bottom: 8px;">📋 员工花名册</h3>
+                            <p style="color: #666; font-size: 14px;">共查询到 ${result.count} 名员工</p>
+                        </div>
+                        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px;">
+                            <table id="empRosterTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">员工编号</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">姓名</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">一级部门</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">二级部门</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">岗位名称</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">职级</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">性别</th>
+                                        <th style="padding: 10px 8px; text-align: left; border: 1px solid #667eea;">入职日期</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+
+                    result.data.forEach((emp, index) => {
+                        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                        tableHtml += `
+                            <tr style="background: ${bgColor}; cursor: pointer;" 
+                                onmouseover="this.style.background='#e8eeff'" 
+                                onmouseout="this.style.background='${bgColor}'"
+                                onclick="queryEmployeeDetail('${emp.emp_name}', '${emp.emp_code}')">
+                                <td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${emp.emp_code || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-weight: 600; color: #667eea;">${emp.emp_name || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.dept_level1 || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.dept_level2 || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.position_name || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.job_level || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.gender || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${emp.entry_date || '-'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="margin-top: 12px; padding: 10px; background: #f0f4ff; border-radius: 8px; font-size: 12px; color: #666;">
+                            💡 提示：点击表格中的任意行可以查询该员工的详细信息
+                        </div>
+                    `;
+
+                    // 直接创建消息元素，不经过appendMessage的格式化
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message assistant';
+                    messageDiv.innerHTML = `
+                        <div class="message-avatar">🤖</div>
+                        <div>
+                            <div class="message-content">${tableHtml}</div>
+                            <div class="message-time">${displayTime}</div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(messageDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                } else {
+                    appendMessage('assistant', '暂无员工数据，请先导入员工花名册。');
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                appendMessage('assistant', `查询失败：${error.message}`);
+            }
+        }
+
+        // 查询员工详细信息
+        function queryEmployeeDetail(empName, empCode) {
+            if (empName && empName !== '-') {
+                setInput(`${empName}的详细信息`);
+                sendMessage();
+            }
+        }
+
+        // ==================== 考勤数据批量导入功能 ====================
+        let attendanceSelectedFile = null;
+
+        // 切换考勤上传面板
+        function toggleAttendanceUploadPanel() {
+            const panel = document.getElementById('attendanceUploadPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                resetAttendanceUploadForm();
+            }
+        }
+
+        // 重置考勤上传表单
+        function resetAttendanceUploadForm() {
+            attendanceSelectedFile = null;
+            document.getElementById('attendanceFileInput').value = '';
+            document.getElementById('attendanceSelectedFileInfo').classList.remove('show');
+            hideAttendanceUploadStatus();
+        }
+
+        // 处理考勤文件选择
+        function handleAttendanceFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                attendanceSelectedFile = file;
+                showAttendanceSelectedFile(file);
+            }
+        }
+
+        // 显示已选考勤文件
+        function showAttendanceSelectedFile(file) {
+            document.getElementById('attendanceFileName').textContent = file.name;
+            document.getElementById('attendanceFileMeta').textContent = formatFileSize(file.size);
+            document.getElementById('attendanceSelectedFileInfo').classList.add('show');
+        }
+
+        // 移除已选考勤文件
+        function removeAttendanceSelectedFile() {
+            attendanceSelectedFile = null;
+            document.getElementById('attendanceFileInput').value = '';
+            document.getElementById('attendanceSelectedFileInfo').classList.remove('show');
+        }
+
+        // 显示考勤上传状态
+        function showAttendanceUploadStatus(message, type) {
+            const statusDiv = document.getElementById('attendanceUploadStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 隐藏考勤上传状态
+        function hideAttendanceUploadStatus() {
+            const statusDiv = document.getElementById('attendanceUploadStatusMsg');
+            statusDiv.className = 'upload-status-msg';
+        }
+
+        // 拖拽上传考勤文件
+        const attendanceFileUploadArea = document.getElementById('attendanceFileUploadArea');
+        if (attendanceFileUploadArea) {
+            attendanceFileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                attendanceFileUploadArea.classList.add('dragover');
+            });
+
+            attendanceFileUploadArea.addEventListener('dragleave', () => {
+                attendanceFileUploadArea.classList.remove('dragover');
+            });
+
+            attendanceFileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                attendanceFileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        attendanceSelectedFile = file;
+                        showAttendanceSelectedFile(file);
+                    } else {
+                        showAttendanceUploadStatus('请选择Excel文件(.xlsx或.xls)', 'error');
+                    }
+                }
+            });
+        }
+
+        // 批量上传考勤数据
+        async function uploadAttendance() {
+            if (!attendanceSelectedFile) {
+                showAttendanceUploadStatus('请选择Excel文件', 'error');
+                return;
+            }
+
+            showAttendanceUploadStatus('正在批量导入考勤数据...', 'loading');
+            document.getElementById('attendanceUploadSubmitBtn').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', attendanceSelectedFile);
+
+                const response = await fetch(`${API_BASE}/api/v1/attendance/batch-upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const msg = `✓ 导入完成\n成功：${result.data.success} 条\n失败：${result.data.fail} 条\n总计：${result.data.total} 条`;
+                    showAttendanceUploadStatus(msg, 'success');
+                    setTimeout(() => {
+                        toggleAttendanceUploadPanel();
+                    }, 2000);
+                } else {
+                    showAttendanceUploadStatus('导入失败：' + result.message, 'error');
+                }
+            } catch (error) {
+                showAttendanceUploadStatus('导入失败：' + error.message, 'error');
+            } finally {
+                document.getElementById('attendanceUploadSubmitBtn').disabled = false;
+            }
+        }
+
+        // ==================== 考勤汇总数据批量导入功能 ====================
+        let attendanceSummarySelectedFile = null;
+
+        // 切换考勤汇总上传面板
+        function toggleAttendanceSummaryUploadPanel() {
+            const panel = document.getElementById('attendanceSummaryUploadPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                resetAttendanceSummaryUploadForm();
+            }
+        }
+
+        // 重置考勤汇总上传表单
+        function resetAttendanceSummaryUploadForm() {
+            attendanceSummarySelectedFile = null;
+            document.getElementById('attendanceSummaryFileInput').value = '';
+            document.getElementById('attendanceSummarySelectedFileInfo').classList.remove('show');
+            hideAttendanceSummaryUploadStatus();
+        }
+
+        // 处理考勤汇总文件选择
+        function handleAttendanceSummaryFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                attendanceSummarySelectedFile = file;
+                showAttendanceSummarySelectedFile(file);
+            }
+        }
+
+        // 显示已选考勤汇总文件
+        function showAttendanceSummarySelectedFile(file) {
+            document.getElementById('attendanceSummaryFileName').textContent = file.name;
+            document.getElementById('attendanceSummaryFileMeta').textContent = formatFileSize(file.size);
+            document.getElementById('attendanceSummarySelectedFileInfo').classList.add('show');
+        }
+
+        // 移除已选考勤汇总文件
+        function removeAttendanceSummarySelectedFile() {
+            attendanceSummarySelectedFile = null;
+            document.getElementById('attendanceSummaryFileInput').value = '';
+            document.getElementById('attendanceSummarySelectedFileInfo').classList.remove('show');
+        }
+
+        // 显示考勤汇总上传状态
+        function showAttendanceSummaryUploadStatus(message, type) {
+            const statusDiv = document.getElementById('attendanceSummaryUploadStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 隐藏考勤汇总上传状态
+        function hideAttendanceSummaryUploadStatus() {
+            const statusDiv = document.getElementById('attendanceSummaryUploadStatusMsg');
+            statusDiv.className = 'upload-status-msg';
+        }
+
+        // 拖拽上传考勤汇总文件
+        const attendanceSummaryFileUploadArea = document.getElementById('attendanceSummaryFileUploadArea');
+        if (attendanceSummaryFileUploadArea) {
+            attendanceSummaryFileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                attendanceSummaryFileUploadArea.classList.add('dragover');
+            });
+
+            attendanceSummaryFileUploadArea.addEventListener('dragleave', () => {
+                attendanceSummaryFileUploadArea.classList.remove('dragover');
+            });
+
+            attendanceSummaryFileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                attendanceSummaryFileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                        attendanceSummarySelectedFile = file;
+                        showAttendanceSummarySelectedFile(file);
+                    } else {
+                        showAttendanceSummaryUploadStatus('请选择Excel文件(.xlsx或.xls)', 'error');
+                    }
+                }
+            });
+        }
+
+        // 批量上传考勤汇总数据
+        async function uploadAttendanceSummary() {
+            if (!attendanceSummarySelectedFile) {
+                showAttendanceSummaryUploadStatus('请选择Excel文件', 'error');
+                return;
+            }
+
+            showAttendanceSummaryUploadStatus('正在批量导入考勤汇总数据...', 'loading');
+            document.getElementById('attendanceSummaryUploadSubmitBtn').disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('file', attendanceSummarySelectedFile);
+
+                const response = await fetch(`${API_BASE}/api/v1/attendance-summary/batch-upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const msg = `✓ 导入完成\n成功：${result.data.success} 条\n失败：${result.data.fail} 条\n总计：${result.data.total} 条`;
+                    showAttendanceSummaryUploadStatus(msg, 'success');
+                    setTimeout(() => {
+                        toggleAttendanceSummaryUploadPanel();
+                    }, 2000);
+                } else {
+                    showAttendanceSummaryUploadStatus('导入失败：' + result.message, 'error');
+                }
+            } catch (error) {
+                showAttendanceSummaryUploadStatus('导入失败：' + error.message, 'error');
+            } finally {
+                document.getElementById('attendanceSummaryUploadSubmitBtn').disabled = false;
+            }
+        }
+
+        // ==================== 人岗适配分析功能 ====================
+        let alignmentRadarChart = null;
+
+        // 切换人岗适配分析面板
+        function toggleAlignmentPanel() {
+            const panel = document.getElementById('alignmentPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                resetAlignmentForm();
+            }
+        }
+
+        // 重置人岗适配分析表单
+        function resetAlignmentForm() {
+            document.getElementById('alignmentEmpName').value = '';
+            document.getElementById('alignmentStatusMsg').className = 'upload-status-msg';
+        }
+
+        // 显示状态消息
+        function showAlignmentStatus(message, type) {
+            const statusDiv = document.getElementById('alignmentStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 分析员工人岗适配
+        async function analyzeEmployeeAlignment() {
+            const empName = document.getElementById('alignmentEmpName').value.trim();
+            if (!empName) {
+                showAlignmentStatus('请输入员工姓名', 'error');
+                return;
+            }
+
+            showAlignmentStatus('正在分析中...', 'loading');
+
+            try {
+                // 调用人岗适配分析API
+                const response = await fetch(`${API_BASE}/api/v1/alignment/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employee_name: empName })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 关闭面板
+                    toggleAlignmentPanel();
+                    // 在聊天框中显示结果
+                    displayAlignmentResultInChat(result.data);
+                } else {
+                    showAlignmentStatus(result.message || '分析失败', 'error');
+                }
+            } catch (error) {
+                console.error('人岗适配分析失败:', error);
+                showAlignmentStatus('分析失败：' + error.message, 'error');
+            }
+        }
+
+        // ==================== 统一数据导入功能 ====================
+        let unifiedSelectedFile = null;
+        let unifiedSelectedDataType = '';
+
+        // 数据类型说明
+        const dataTypeDescriptions = {
+            'job_description': '📄 岗位说明书：导入员工的岗位说明书，包含岗位职责、任职要求、KPI等信息。需要填写员工编号和姓名。',
+            'roster': '👥 员工花名册：批量导入员工基本信息，包括姓名、部门、岗位、入职日期等。',
+            'attendance_detail': '📅 考勤明细数据：导入员工每日考勤记录，包括出勤、迟到、早退、加班等。',
+            'attendance_summary': '📊 考勤汇总数据：导入员工月度考勤统计数据。',
+            'professional_ability': '💼 员工专业能力：导入员工试用期分数、绩效、专家等级、职称、职业技能等信息。',
+            'work_experience_pdf': '📋 PDF履历-工作经历：上传员工PDF履历文件，自动提取工作经历信息（开始日期、结束日期、工作单位、部门、职务）。需要填写员工编号和姓名。'
+        };
+
+        // 切换统一上传面板
+        function toggleUnifiedUploadPanel() {
+            const panel = document.getElementById('unifiedUploadPanel');
+            panel.classList.toggle('open');
+            if (!panel.classList.contains('open')) {
+                resetUnifiedUploadForm();
+            }
+        }
+
+        // 重置统一上传表单
+        function resetUnifiedUploadForm() {
+            unifiedSelectedFile = null;
+            unifiedSelectedDataType = '';
+            document.getElementById('uploadDataType').value = '';
+            document.getElementById('unifiedFileInput').value = '';
+            document.getElementById('unifiedSelectedFileInfo').classList.remove('show');
+            document.getElementById('jobDescriptionEmpInfo').style.display = 'none';
+            document.getElementById('unifiedEmpId').value = '';
+            document.getElementById('unifiedEmpName').value = '';
+            document.getElementById('dataTypeDescription').textContent = '请选择上方数据类型查看详细说明';
+            hideUnifiedUploadStatus();
+        }
+
+        // 数据类型改变时
+        function onDataTypeChange() {
+            const dataType = document.getElementById('uploadDataType').value;
+            unifiedSelectedDataType = dataType;
+            
+            // 更新说明
+            const description = dataTypeDescriptions[dataType] || '请选择上方数据类型查看详细说明';
+            document.getElementById('dataTypeDescription').textContent = description;
+            
+            // 显示/隐藏员工信息输入（岗位说明书和PDF履历需要）
+            const empInfoDiv = document.getElementById('jobDescriptionEmpInfo');
+            if (dataType === 'job_description' || dataType === 'work_experience_pdf') {
+                empInfoDiv.style.display = 'block';
+            } else {
+                empInfoDiv.style.display = 'none';
+            }
+            
+            // 更新文件上传区域的提示文本
+            const fileUploadIcon = document.getElementById('fileUploadIcon');
+            const fileUploadText = document.getElementById('fileUploadText');
+            const fileUploadHint = document.getElementById('fileUploadHint');
+            const fileInput = document.getElementById('unifiedFileInput');
+            
+            if (dataType === 'work_experience_pdf') {
+                fileUploadIcon.textContent = '📄';
+                fileUploadText.textContent = '点击或拖拽PDF履历文件到此处';
+                fileUploadHint.textContent = '支持 .pdf 格式，将自动提取工作经历';
+                fileInput.accept = '.pdf';
+            } else {
+                fileUploadIcon.textContent = '📁';
+                fileUploadText.textContent = '点击或拖拽Excel文件到此处';
+                fileUploadHint.textContent = '支持 .xlsx, .xls 格式';
+                fileInput.accept = '.xlsx,.xls';
+            }
+        }
+
+        // 处理统一文件选择
+        function handleUnifiedFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                unifiedSelectedFile = file;
+                showUnifiedSelectedFile(file);
+            }
+        }
+
+        // 显示已选文件
+        function showUnifiedSelectedFile(file) {
+            document.getElementById('unifiedFileName').textContent = file.name;
+            document.getElementById('unifiedFileMeta').textContent = formatFileSize(file.size);
+            document.getElementById('unifiedSelectedFileInfo').classList.add('show');
+        }
+
+        // 移除已选文件
+        function removeUnifiedSelectedFile() {
+            unifiedSelectedFile = null;
+            document.getElementById('unifiedFileInput').value = '';
+            document.getElementById('unifiedSelectedFileInfo').classList.remove('show');
+        }
+
+        // 显示上传状态
+        function showUnifiedUploadStatus(message, type) {
+            const statusDiv = document.getElementById('unifiedUploadStatusMsg');
+            statusDiv.textContent = message;
+            statusDiv.className = 'upload-status-msg ' + type;
+        }
+
+        // 隐藏上传状态
+        function hideUnifiedUploadStatus() {
+            const statusDiv = document.getElementById('unifiedUploadStatusMsg');
+            statusDiv.className = 'upload-status-msg';
+        }
+
+        // 统一数据上传
+        async function uploadUnifiedData() {
+            const dataType = document.getElementById('uploadDataType').value;
+            
+            if (!dataType) {
+                showUnifiedUploadStatus('请选择数据类型', 'error');
+                return;
+            }
+            
+            if (!unifiedSelectedFile) {
+                showUnifiedUploadStatus('请选择Excel文件', 'error');
+                return;
+            }
+            
+            // 岗位说明书和PDF履历需要员工信息
+            let empId = '';
+            let empName = '';
+            if (dataType === 'job_description' || dataType === 'work_experience_pdf') {
+                empId = document.getElementById('unifiedEmpId').value.trim();
+                empName = document.getElementById('unifiedEmpName').value.trim();
+                if (!empId || !empName) {
+                    showUnifiedUploadStatus('请输入员工编号和姓名', 'error');
+                    return;
+                }
+            }
+            
+            showUnifiedUploadStatus('正在上传...', 'loading');
+            document.getElementById('unifiedUploadSubmitBtn').disabled = true;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', unifiedSelectedFile);
+                
+                let apiUrl = '';
+                switch (dataType) {
+                    case 'job_description':
+                        apiUrl = `${API_BASE}/api/v1/job-description/upload`;
+                        formData.append('emp_id', empId);
+                        formData.append('emp_name', empName);
+                        break;
+                    case 'roster':
+                        apiUrl = `${API_BASE}/api/v1/emp-roster/batch-import`;
+                        break;
+                    case 'attendance_detail':
+                        apiUrl = `${API_BASE}/api/v1/attendance/batch-import`;
+                        break;
+                    case 'attendance_summary':
+                        apiUrl = `${API_BASE}/api/v1/attendance-summary/batch-upload`;
+                        break;
+                    case 'professional_ability':
+                        apiUrl = `${API_BASE}/api/v1/professional-ability/batch-import`;
+                        break;
+                    case 'work_experience_pdf':
+                        apiUrl = `${API_BASE}/api/v1/work-experience/extract-from-pdf`;
+                        formData.append('emp_code', empId);
+                        formData.append('emp_name', empName);
+                        break;
+                    default:
+                        throw new Error('未知的数据类型');
+                }
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    let msg = '✓ 上传成功';
+                    let chatMsg = '数据导入成功！';
+                    if (result.success_count !== undefined) {
+                        msg = `✓ 导入完成：新增${result.success_count}条，更新${result.update_count}条，失败${result.error_count || 0}条`;
+                        chatMsg = `📊 数据导入完成！\n✓ 新增：${result.success_count} 条\n🔄 更新：${result.update_count} 条\n❌ 失败：${result.error_count || 0} 条\n📋 总计：${result.total || 0} 条`;
+                    }
+                    showUnifiedUploadStatus(msg, 'success');
+                    
+                    // 同时在聊天框显示成功消息
+                    appendMessage('assistant', chatMsg);
+                    
+                    setTimeout(() => {
+                        toggleUnifiedUploadPanel();
+                    }, 2000);
+                } else {
+                    showUnifiedUploadStatus('上传失败：' + result.message, 'error');
+                    appendMessage('assistant', '❌ 数据导入失败：' + result.message);
+                }
+            } catch (error) {
+                showUnifiedUploadStatus('上传失败：' + error.message, 'error');
+            } finally {
+                document.getElementById('unifiedUploadSubmitBtn').disabled = false;
+            }
+        }
+
+        // 在聊天框中显示分析结果
+        function displayAlignmentResultInChat(data) {
+            const displayTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const uniqueId = Date.now();
+            
+            // 1. 标题：员工姓名-岗位名称 人岗适配分析报告
+            const empName = data.employee_name || '未知';
+            const position = data.position || '未知岗位';
+            const titleHtml = `
+                <div style="text-align: center; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                    <div style="font-size: 20px; font-weight: bold;">${empName}-${position} 人岗适配分析报告</div>
+                </div>
+            `;
+            
+            // 2. 双雷达图 + AI评分理由（左右布局，强制不换行）
+            let radarAndReasonsHtml = '';
+            if (data.dimensions && data.dimensions.length > 0) {
+                const dimensions = data.dimensions;
+                radarAndReasonsHtml = `
+                    <div style="margin-bottom: 20px; background: #f8f9fa; padding: 20px; border-radius: 12px; min-width: 900px;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 15px; text-align: center; font-size: 16px;">📊 能力雷达对比图与AI评分理由</div>
+                        <div style="display: flex; gap: 30px; justify-content: center;">
+                            <!-- 左侧：岗位雷达图 + 评分理由 -->
+                            <div style="width: 420px; flex-shrink: 0;">
+                                <div style="text-align: center; font-size: 15px; color: #764ba2; font-weight: 600; margin-bottom: 10px;">📋 岗位标准 (${data.job_requirement_score?.toFixed(1) || '75.0'}分)</div>
+                                <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+                                    <canvas id="jobRadar_${uniqueId}" width="360" height="360"></canvas>
+                                </div>
+                                <div style="background: white; border-radius: 12px; padding: 15px;">
+                                    <div style="font-size: 14px; color: #764ba2; font-weight: 600; margin-bottom: 10px; border-bottom: 2px solid #764ba2; padding-bottom: 8px;">AI评分理由</div>
+                                    ${dimensions.map(dim => `
+                                        <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #764ba2;">
+                                            <div style="font-weight: 600; color: #333; font-size: 12px; margin-bottom: 2px;">${dim.name}: ${dim.job_requirement}分</div>
+                                            <div style="font-size: 11px; color: #666; line-height: 1.4;">${dim.job_reason || '暂无说明'}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <!-- 右侧：员工雷达图 + 评分理由 -->
+                            <div style="width: 420px; flex-shrink: 0;">
+                                <div style="text-align: center; font-size: 15px; color: #667eea; font-weight: 600; margin-bottom: 10px;">👤 员工实际 (${data.overall_score?.toFixed(1) || '70.0'}分)</div>
+                                <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+                                    <canvas id="employeeRadar_${uniqueId}" width="360" height="360"></canvas>
+                                </div>
+                                <div style="background: white; border-radius: 12px; padding: 15px;">
+                                    <div style="font-size: 14px; color: #667eea; font-weight: 600; margin-bottom: 10px; border-bottom: 2px solid #667eea; padding-bottom: 8px;">AI评分理由</div>
+                                    ${dimensions.map(dim => `
+                                        <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #667eea;">
+                                            <div style="font-weight: 600; color: #333; font-size: 12px; margin-bottom: 2px;">${dim.name}: ${dim.score.toFixed(1)}分</div>
+                                            <div style="font-size: 11px; color: #666; line-height: 1.4;">${dim.employee_reason || '暂无说明'}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 3. 各维度汇总表格
+            let summaryHtml = '';
+            if (data.gap_analysis && data.gap_analysis.length > 0) {
+                summaryHtml = `
+                    <div style="margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #667eea;">📈 各维度汇总对比</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: left;">维度</th>
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: center;">权重</th>
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: center;">岗位标准</th>
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: center;">员工实际</th>
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: center;">差距</th>
+                                    <th style="padding: 12px; border: 1px solid #667eea; text-align: center;">匹配状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.gap_analysis.map((item, index) => `
+                                    <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+                                        <td style="padding: 12px; border: 1px solid #ddd; font-weight: 600;">${item.dimension}</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${item.weight}%</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #764ba2; font-weight: 600;">${item.job_requirement}分</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #667eea; font-weight: 600;">${item.employee_score}分</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: ${item.gap > 0 ? '#f44336' : '#4caf50'}; font-weight: 600;">${item.gap > 0 ? '+' : ''}${item.gap}分</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
+                                            <span style="background: ${item.color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">${item.level}</span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            // 4. 人岗适配四象限图
+            const quadrant = data.quadrant || {};
+            const quadrantHtml = `
+                <div style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 12px;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 15px; text-align: center;">🎯 人岗适配四象限图</div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; justify-content: center;">
+                        <div style="position: relative; width: 320px; height: 320px; background: white; border-radius: 12px; padding: 20px;">
+                            <!-- 象限背景 -->
+                            <div style="position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px;">
+                                <!-- 网格线 -->
+                                <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #e0e0e0;"></div>
+                                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e0e0e0;"></div>
+                                <!-- 四个象限 -->
+                                <div style="position: absolute; top: 0; left: 50%; right: 0; bottom: 50%; background: rgba(82, 196, 26, 0.1); border-radius: 0 8px 0 0;">
+                                    <div style="position: absolute; top: 5px; right: 5px; font-size: 11px; color: #52c41a; font-weight: 600;">核心人才</div>
+                                </div>
+                                <div style="position: absolute; top: 0; left: 0; right: 50%; bottom: 50%; background: rgba(24, 144, 255, 0.1); border-radius: 8px 0 0 0;">
+                                    <div style="position: absolute; top: 5px; left: 5px; font-size: 11px; color: #1890ff; font-weight: 600;">潜力人才</div>
+                                </div>
+                                <div style="position: absolute; top: 50%; left: 0; right: 50%; bottom: 0; background: rgba(250, 173, 20, 0.1); border-radius: 0 0 0 8px;">
+                                    <div style="position: absolute; bottom: 5px; left: 5px; font-size: 11px; color: #faad14; font-weight: 600;">待发展</div>
+                                </div>
+                                <div style="position: absolute; top: 50%; left: 50%; right: 0; bottom: 0; background: rgba(114, 46, 209, 0.1); border-radius: 0 0 8px 0;">
+                                    <div style="position: absolute; bottom: 5px; right: 5px; font-size: 11px; color: #722ed1; font-weight: 600;">稳定贡献</div>
+                                </div>
+                                <!-- 中心点 -->
+                                <div style="position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; background: #999; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+                                <!-- 员工点 -->
+                                <div style="position: absolute; left: ${Math.min(Math.max(quadrant.x || 50, 5), 95)}%; top: ${Math.min(Math.max(100 - (quadrant.y || 50), 5), 95)}%; width: 16px; height: 16px; background: ${quadrant.color || '#667eea'}; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); z-index: 10;"></div>
+                            </div>
+                            <!-- 坐标轴标签 -->
+                            <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 12px; color: #666;">匹配度 →</div>
+                            <div style="position: absolute; left: 0; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 12px; color: #666;">能力指数 →</div>
+                        </div>
+                        <div style="flex: 1; min-width: 200px; max-width: 300px;">
+                            <div style="background: ${quadrant.color || '#667eea'}; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px;">
+                                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">${quadrant.quadrant_name || '未知区域'}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">${quadrant.quadrant || ''}</div>
+                            </div>
+                            <div style="background: white; padding: 15px; border-radius: 12px; font-size: 13px; color: #666; line-height: 1.6;">
+                                ${quadrant.quadrant_desc || ''}
+                            </div>
+                            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                                <div style="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${quadrant.ability_index || 0}%</div>
+                                    <div style="font-size: 12px; color: #999;">能力指数</div>
+                                </div>
+                                <div style="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 20px; font-weight: bold; color: #764ba2;">${quadrant.match_index || 0}%</div>
+                                    <div style="font-size: 12px; color: #999;">匹配指数</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 5. 综合评价和发展建议
+            const conclusionHtml = `
+                <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-weight: 600; color: #2e7d32; margin-bottom: 10px;">📝 综合评价</div>
+                    <div style="line-height: 1.6; margin-bottom: 15px; background: white; padding: 12px; border-radius: 8px;">${data.conclusion}</div>
+                    <div style="font-weight: 600; color: #333; margin-bottom: 10px;">💡 发展建议</div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${data.recommendations.map(rec => `<div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #667eea;">${rec}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // 完整HTML - 按照手绘图顺序：标题 -> 雷达图+评分理由 -> 维度汇总 -> 四象限 -> 综合评价
+            const fullHtml = titleHtml + radarAndReasonsHtml + summaryHtml + quadrantHtml + conclusionHtml;
+            
+            // 创建消息元素
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div>
+                    <div class="message-content">${fullHtml}</div>
+                    <div class="message-time">${displayTime}</div>
+                </div>
+            `;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // 绘制雷达图
+            setTimeout(() => {
+                drawDualRadarCharts(uniqueId, data.radar_data);
+            }, 100);
+        }
+        
+        // 绘制双雷达图
+        function drawDualRadarCharts(uniqueId, radarData) {
+            if (!radarData) return;
+            
+            const categories = radarData.categories || [];
+            const employeeScores = radarData.employee_scores || [];
+            const jobRequirements = radarData.job_requirements || [];
+            
+            // 员工雷达图
+            const empCtx = document.getElementById(`employeeRadar_${uniqueId}`);
+            if (empCtx) {
+                new Chart(empCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            label: '员工实际能力',
+                            data: employeeScores,
+                            backgroundColor: 'rgba(102, 126, 234, 0.3)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                            pointBorderColor: '#fff',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                min: 0,
+                                ticks: { stepSize: 20, font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+            
+            // 岗位雷达图
+            const jobCtx = document.getElementById(`jobRadar_${uniqueId}`);
+            if (jobCtx) {
+                new Chart(jobCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: categories,
+                        datasets: [{
+                            label: '岗位要求标准',
+                            data: jobRequirements,
+                            backgroundColor: 'rgba(118, 75, 162, 0.3)',
+                            borderColor: 'rgba(118, 75, 162, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(118, 75, 162, 1)',
+                            pointBorderColor: '#fff',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 100,
+                                min: 0,
+                                ticks: { stepSize: 20, font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 绘制雷达图
+        function drawAlignmentRadarChart(dimensions) {
+            const ctx = document.getElementById('alignmentRadarChart').getContext('2d');
+            
+            if (alignmentRadarChart) {
+                alignmentRadarChart.destroy();
+            }
+
+            const labels = dimensions.map(d => d.name);
+            const scores = dimensions.map(d => d.score);
+            const jobRequirements = dimensions.map(d => d.job_requirement);
+
+            alignmentRadarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '员工能力',
+                        data: scores,
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(102, 126, 234, 1)'
+                    }, {
+                        label: '岗位要求',
+                        data: jobRequirements,
+                        backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                        borderColor: 'rgba(118, 75, 162, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(118, 75, 162, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(118, 75, 162, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            min: 0,
+                            ticks: {
+                                stepSize: 20
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 显示匹配详情
+        function displayMatchDetails(dimensions) {
+            const html = dimensions.map(dim => `
+                <div class="match-detail-item">
+                    <div class="match-dimension">${dim.name}</div>
+                    <div class="match-score-bar">
+                        <div class="match-bar">
+                            <div class="match-bar-fill" style="width: ${dim.score}%"></div>
+                        </div>
+                        <div class="match-score-value">${dim.score}分</div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('alignmentMatchDetails').innerHTML = html;
+        }
+
+        // 显示错误信息
+        function showAlignmentError(message) {
+            const errorDiv = document.getElementById('alignmentError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
         }
     </script>
 </body>
