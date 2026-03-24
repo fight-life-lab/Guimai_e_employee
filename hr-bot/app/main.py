@@ -18,6 +18,8 @@ from app.api.attendance_routes import router as attendance_router
 from app.api.attendance_summary_routes import router as attendance_summary_router
 from app.api.professional_ability_routes import router as professional_ability_router
 from app.api.work_experience_routes import router as work_experience_router
+from app.api.interview_evaluation_routes import router as interview_evaluation_router
+from app.api.interview_evaluation_routes_v2 import router as interview_evaluation_v2_router
 from app.config import get_settings
 from app.database.models import init_database
 
@@ -83,6 +85,8 @@ app.include_router(attendance_router)
 app.include_router(attendance_summary_router)
 app.include_router(professional_ability_router)
 app.include_router(work_experience_router)
+app.include_router(interview_evaluation_router)
+app.include_router(interview_evaluation_v2_router)
 
 # Mount static files (for web UI)
 if os.path.exists("./static"):

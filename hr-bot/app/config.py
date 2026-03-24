@@ -1,5 +1,6 @@
 """Application configuration."""
 
+import os
 from functools import lru_cache
 from typing import Optional
 
@@ -14,6 +15,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+    
+    # Base directory
+    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     # Application
     app_name: str = "hr-bot"

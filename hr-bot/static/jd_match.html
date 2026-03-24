@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JD简历匹配分析系统</title>
+    <title>JD简历匹配与AI面试评价系统</title>
     <!-- 强制刷新缓存 -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -516,20 +516,26 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">
             <div class="spinner"></div>
-            <p>正在分析匹配度，请稍候...</p>
+            <p id="loadingText">正在分析匹配度，请稍候...</p>
+            <!-- 进度条 -->
+            <div id="loadingProgressContainer" style="width: 300px; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 20px; overflow: hidden; display: none;">
+                <div id="loadingProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s ease;"></div>
+            </div>
+            <p id="loadingProgressText" style="font-size: 12px; color: #666; margin-top: 10px; display: none;"></p>
         </div>
     </div>
 
     <div class="container">
         <div class="header">
-            <h1>JD简历匹配分析系统</h1>
-            <p>基于大模型的智能岗位匹配评估</p>
+            <h1>JD简历匹配与AI面试评价系统</h1>
+            <p>基于大模型的智能岗位匹配评估与面试分析</p>
         </div>
 
         <div class="card">
             <div class="tabs">
                 <div class="tab active" onclick="switchTab('single')">单人匹配</div>
                 <div class="tab" onclick="switchTab('text')">文本匹配</div>
+                <div class="tab" onclick="switchTab('interview')">AI面试评价</div>
             </div>
 
             <!-- 单人匹配 -->
@@ -744,6 +750,171 @@
                     </div>
                 </div>
             </div>
+
+            <!-- AI面试评价 -->
+            <div id="interview" class="tab-content">
+                <h2><span class="icon">🎙️</span>AI面试评价分析</h2>
+                <p style="color: #666; margin-bottom: 20px;">上传面试录音，AI将自动转录并基于JD、简历和结构化面试问题进行综合评价</p>
+
+                <!-- JD输入 -->
+                <div class="form-group">
+                    <label>岗位JD</label>
+                    <div class="input-tabs">
+                        <div class="input-tab active" onclick="switchInterviewInputTab('jd', 'text')">文本输入</div>
+                        <div class="input-tab" onclick="switchInterviewInputTab('jd', 'file')">文件上传</div>
+                    </div>
+
+                    <div id="interview-jd-text-input" class="input-content active">
+                        <textarea id="interviewJdContent" placeholder="请粘贴岗位JD内容..."></textarea>
+                    </div>
+
+                    <div id="interview-jd-file-input" class="input-content">
+                        <div class="file-upload-area" id="interviewJdUpload" onclick="document.getElementById('interviewJdFile').click()">
+                            <div class="upload-icon">📄</div>
+                            <div class="upload-text">点击或拖拽上传JD文件</div>
+                            <div class="upload-hint">支持 PDF, DOC, DOCX, XLS, XLSX 格式</div>
+                        </div>
+                        <input type="file" id="interviewJdFile" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx" onchange="handleInterviewFileSelect(this, 'interviewJd')">
+                        <div class="file-list" id="interviewJdFileList"></div>
+                    </div>
+                </div>
+
+                <!-- 简历输入 -->
+                <div class="form-group">
+                    <label>候选人简历</label>
+                    <div class="input-tabs">
+                        <div class="input-tab active" onclick="switchInterviewInputTab('resume', 'text')">文本输入</div>
+                        <div class="input-tab" onclick="switchInterviewInputTab('resume', 'file')">文件上传</div>
+                    </div>
+
+                    <div id="interview-resume-text-input" class="input-content active">
+                        <textarea id="interviewResumeContent" placeholder="请粘贴简历内容..."></textarea>
+                    </div>
+
+                    <div id="interview-resume-file-input" class="input-content">
+                        <div class="file-upload-area" id="interviewResumeUpload" onclick="document.getElementById('interviewResumeFile').click()">
+                            <div class="upload-icon">📄</div>
+                            <div class="upload-text">点击或拖拽上传简历文件</div>
+                            <div class="upload-hint">支持 PDF, DOC, DOCX, XLS, XLSX 格式</div>
+                        </div>
+                        <input type="file" id="interviewResumeFile" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx" onchange="handleInterviewFileSelect(this, 'interviewResume')">
+                        <div class="file-list" id="interviewResumeFileList"></div>
+                    </div>
+                </div>
+
+                <!-- 面试录音上传 -->
+                <div class="form-group">
+                    <label>面试录音文件 <span style="color: #dc3545;">*</span></label>
+                    <div class="file-upload-area" id="interviewAudioUpload" onclick="document.getElementById('interviewAudioFile').click()">
+                        <div class="upload-icon">🎙️</div>
+                        <div class="upload-text">点击或拖拽上传面试录音</div>
+                        <div class="upload-hint">支持 AAC, MP3, WAV, M4A 格式</div>
+                    </div>
+                    <input type="file" id="interviewAudioFile" class="hidden" accept=".aac,.mp3,.wav,.m4a" onchange="handleInterviewFileSelect(this, 'interviewAudio')">
+                    <div class="file-list" id="interviewAudioFileList"></div>
+                </div>
+
+                <!-- 面试问题文件（可选） -->
+                <div class="form-group">
+                    <label>结构化面试问题文件（可选）</label>
+                    <div class="file-upload-area" id="interviewQuestionsUpload" onclick="document.getElementById('interviewQuestionsFile').click()">
+                        <div class="upload-icon">📋</div>
+                        <div class="upload-text">点击或拖拽上传面试问题Excel文件</div>
+                        <div class="upload-hint">支持 XLS, XLSX 格式，不上传则使用默认问题</div>
+                    </div>
+                    <input type="file" id="interviewQuestionsFile" class="hidden" accept=".xls,.xlsx" onchange="handleInterviewFileSelect(this, 'interviewQuestions')">
+                    <div class="file-list" id="interviewQuestionsFileList"></div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="analyzeInterview()">
+                        <span>🎙️</span> 开始AI面试评价
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearInterview()">
+                        <span>🔄</span> 清空
+                    </button>
+                </div>
+
+                <!-- 面试评价结果 -->
+                <div id="interviewResult" class="hidden">
+                    
+                    <!-- 第一部分：面试录音提取 - 问题提取 -->
+                    <div class="analysis-section" style="margin-top: 30px;">
+                        <h3>🎙️ 面试录音提取 - 问题提取</h3>
+                        <div id="interviewQuestions" style="margin-top: 15px;">
+                            <!-- 动态加载问题列表 -->
+                        </div>
+                    </div>
+
+                    <!-- 第二部分：双雷达图对比 -->
+                    <div style="background: #f8f9ff; border-radius: 12px; padding: 20px; margin: 30px 0;">
+                        <h3 style="text-align: center; margin-bottom: 15px; color: #667eea; font-size: 18px;">📊 岗位要求 vs 员工面试雷达图对比</h3>
+                        <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                            <!-- 岗位要求雷达图 -->
+                            <div style="flex: 1; min-width: 400px;">
+                                <h4 style="text-align: center; color: #333; margin-bottom: 10px;">岗位要求</h4>
+                                <div class="chart-container" id="jdRadarChart" style="height: 350px;"></div>
+                            </div>
+                            <!-- 员工面试雷达图 -->
+                            <div style="flex: 1; min-width: 400px;">
+                                <h4 style="text-align: center; color: #333; margin-bottom: 10px;">员工面试表现</h4>
+                                <div class="chart-container" id="interviewRadarChart" style="height: 350px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 第三部分：JD维度评分 + 理由（左侧详情） -->
+                    <div class="analysis-section">
+                        <h3>📋 岗位要求 - AI评分与理由</h3>
+                        <div id="jdDimensionDetails" style="margin-top: 15px;">
+                            <!-- 动态加载JD维度评分和理由 -->
+                        </div>
+                    </div>
+
+                    <!-- 第四部分：候选人维度评分 + 理由（右侧详情） -->
+                    <div class="analysis-section">
+                        <h3>🎯 候选人表现 - AI评分与理由</h3>
+                        <div id="candidateDimensionDetails" style="margin-top: 15px;">
+                            <!-- 动态加载候选人维度评分和理由 -->
+                        </div>
+                    </div>
+
+                    <!-- 第五部分：真伪验证 -->
+                    <div class="analysis-section">
+                        <h3>🔍 真伪验证</h3>
+                        <div id="authenticityCheck" style="margin-top: 15px;">
+                            <!-- 动态加载真伪验证结果 -->
+                        </div>
+                    </div>
+
+                    <!-- 第六部分：综合评分 -->
+                    <div style="display: flex; justify-content: center; margin: 30px 0;">
+                        <div class="score-display" style="min-width: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="score-value" id="interviewScore">0</div>
+                            <div class="score-label">综合面试评分</div>
+                            <div class="match-level" id="interviewLevel">-</div>
+                        </div>
+                    </div>
+
+                    <!-- 第七部分：面试总结 -->
+                    <div class="analysis-section">
+                        <h3>📝 面试总结</h3>
+                        <div class="summary-box" id="interviewSummary" style="background: #f8f9ff; border-left: 4px solid #667eea;">-</div>
+                    </div>
+
+                    <!-- 第八部分：候选人优势 -->
+                    <div class="analysis-section">
+                        <h3>✅ 候选人优势</h3>
+                        <div class="tag-list" id="interviewStrengths"></div>
+                    </div>
+
+                    <!-- 第九部分：建议 -->
+                    <div class="analysis-section">
+                        <h3>💡 建议</h3>
+                        <div class="tag-list" id="interviewRecommendations"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -759,7 +930,11 @@
             singleJd: null,
             singleResume: null,
             textJd: null,
-            textResume: null
+            textResume: null,
+            interviewJd: null,
+            interviewResume: null,
+            interviewAudio: null,
+            interviewQuestions: null
         };
 
         // 初始化
@@ -1498,8 +1673,28 @@
         }
 
         // 显示/隐藏加载
-        function showLoading(show) {
+        function showLoading(show, text = '正在分析匹配度，请稍候...') {
+            document.getElementById('loadingText').textContent = text;
             document.getElementById('loadingOverlay').classList.toggle('active', show);
+            
+            // 重置进度条
+            if (!show) {
+                document.getElementById('loadingProgressContainer').style.display = 'none';
+                document.getElementById('loadingProgressText').style.display = 'none';
+                updateLoadingProgress(0, '');
+            }
+        }
+
+        // 更新加载进度
+        function updateLoadingProgress(percent, stepText) {
+            const progressContainer = document.getElementById('loadingProgressContainer');
+            const progressBar = document.getElementById('loadingProgressBar');
+            const progressText = document.getElementById('loadingProgressText');
+            
+            progressContainer.style.display = 'block';
+            progressText.style.display = 'block';
+            progressBar.style.width = percent + '%';
+            progressText.textContent = stepText;
         }
 
         // 清空单人
@@ -1523,10 +1718,524 @@
             document.getElementById('textResult').classList.add('hidden');
         }
 
+        // ============ AI面试评价功能 ============
+
+        // 切换面试评价输入标签
+        function switchInterviewInputTab(type, tabId) {
+            const container = type === 'jd' ?
+                document.querySelector('#interview .form-group:nth-of-type(1)') :
+                document.querySelector('#interview .form-group:nth-of-type(2)');
+
+            container.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.input-content').forEach(t => t.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`interview-${type}-${tabId}-input`).classList.add('active');
+        }
+
+        // 处理面试评价文件选择
+        function handleInterviewFileSelect(input, type) {
+            const file = input.files[0];
+            if (!file) return;
+
+            files[type] = file;
+
+            const fileListId = type + 'FileList';
+            const fileList = document.getElementById(fileListId);
+
+            const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${fileSize}</span>
+                    <span class="file-remove" onclick="removeInterviewFile('${type}')">✕</span>
+                </div>
+            `;
+        }
+
+        // 移除面试评价文件
+        function removeInterviewFile(type) {
+            files[type] = null;
+            document.getElementById(type + 'FileList').innerHTML = '';
+            document.getElementById(type + 'File').value = '';
+        }
+
+        // AI面试评价分析
+        async function analyzeInterview() {
+            const jdText = document.getElementById('interviewJdContent').value.trim();
+            const jdFile = files.interviewJd;
+            const resumeText = document.getElementById('interviewResumeContent').value.trim();
+            const resumeFile = files.interviewResume;
+            const audioFile = files.interviewAudio;
+            const questionsFile = files.interviewQuestions;
+
+            // 验证必填项
+            if (!jdText && !jdFile) {
+                alert('请输入JD内容或上传JD文件');
+                return;
+            }
+
+            if (!resumeText && !resumeFile) {
+                alert('请输入简历内容或上传简历文件');
+                return;
+            }
+
+            if (!audioFile) {
+                alert('请上传面试录音文件');
+                return;
+            }
+
+            showLoading(true, '正在进行AI面试评价分析...');
+            updateLoadingProgress(5, '准备数据...');
+
+            try {
+                const formData = new FormData();
+
+                // JD内容
+                if (jdFile) {
+                    formData.append('jd_file', jdFile);
+                } else {
+                    formData.append('jd_content', jdText);
+                }
+
+                // 简历内容
+                if (resumeFile) {
+                    formData.append('resume_file', resumeFile);
+                } else {
+                    formData.append('resume_content', resumeText);
+                }
+
+                // 录音文件（可选，如有预存ASR可不传）
+                if (audioFile) {
+                    formData.append('audio_file', audioFile);
+                }
+
+                // 面试问题文件（可选）
+                if (questionsFile) {
+                    formData.append('questions_file', questionsFile);
+                }
+
+                // 添加候选人姓名和岗位名称用于缓存
+                const candidateName = resumeText.match(/姓名[：:]\s*(\S+)/)?.[1] || '';
+                const jdTitle = jdText.match(/(\S+)(岗位|职位)/)?.[1] || '';
+                if (candidateName) formData.append('candidate_name', candidateName);
+                if (jdTitle) formData.append('jd_title', jdTitle);
+
+                updateLoadingProgress(10, '正在分析JD岗位要求...');
+
+                const response = await fetch(`${API_BASE}/api/v1/interview-evaluation/evaluate-v2`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateLoadingProgress(90, '正在生成评价报告...');
+
+                const data = await response.json();
+
+                if (data.success) {
+                    updateLoadingProgress(100, '完成！');
+                    setTimeout(() => {
+                        displayInterviewResultV2(data);
+                        showLoading(false);
+                    }, 500);
+                } else {
+                    showLoading(false);
+                    alert('面试评价失败: ' + (data.detail || '未知错误'));
+                }
+            } catch (error) {
+                showLoading(false);
+                alert('请求失败: ' + error.message);
+            }
+        }
+
+        // 显示面试评价结果 V2
+        function displayInterviewResultV2(data) {
+            document.getElementById('interviewResult').classList.remove('hidden');
+
+            // 1. 渲染问题提取（基于结构化面试问题）
+            renderInterviewQuestions(data.question_answers);
+
+            // 2. 渲染双雷达图对比
+            // 左侧：JD岗位要求
+            renderJdRadarChart(data.jd_dimensions);
+            // 右侧：员工面试表现
+            renderInterviewRadarChart(data.candidate_dimensions);
+
+            // 3. 渲染JD维度评分和理由（左侧）
+            renderJdDimensionDetails(data.jd_dimensions);
+
+            // 4. 渲染候选人维度评分和理由（右侧）
+            renderCandidateDimensionDetails(data.candidate_dimensions);
+
+            // 5. 综合评分
+            document.getElementById('interviewScore').textContent = data.overall_score;
+            document.getElementById('interviewLevel').textContent = data.evaluation_level;
+
+            // 6. 真伪验证结果
+            renderAuthenticityCheck(data.authenticity_check);
+
+            // 7. 面试总结
+            document.getElementById('interviewSummary').textContent = data.summary;
+
+            // 8. 候选人优势
+            document.getElementById('interviewStrengths').innerHTML = data.strengths.map(s =>
+                `<span class="tag tag-success">${s}</span>`
+            ).join('');
+
+            // 9. 建议
+            document.getElementById('interviewRecommendations').innerHTML = data.recommendations.map(r =>
+                `<span class="tag tag-info">${r}</span>`
+            ).join('');
+
+            document.getElementById('interviewResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 渲染JD维度评分详情（左侧）
+        function renderJdDimensionDetails(dimensions) {
+            const container = document.getElementById('jdDimensionDetails');
+            if (!container) return;
+
+            const html = dimensions.map(d => `
+                <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #fff5f5; border-radius: 8px; border-left: 4px solid #ff6b6b;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: #333;">${d.name}</span>
+                        <span style="background: #ff6b6b; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+                    </div>
+                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                        <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 渲染候选人维度评分详情（右侧）
+        function renderCandidateDimensionDetails(dimensions) {
+            const container = document.getElementById('candidateDimensionDetails');
+            if (!container) return;
+
+            const html = dimensions.map(d => `
+                <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: #333;">${d.name}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="background: ${d.gap >= 0 ? '#4caf50' : '#ff9800'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                ${d.gap >= 0 ? '+' : ''}${d.gap}
+                            </span>
+                            <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+                        </div>
+                    </div>
+                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                        <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 渲染真伪验证结果
+        function renderAuthenticityCheck(authenticity) {
+            const container = document.getElementById('authenticityCheck');
+            if (!container) return;
+
+            const status = authenticity.status || '一致';
+            const confidence = authenticity.confidence || 80;
+            const inconsistencies = authenticity.inconsistencies || [];
+
+            let statusColor = '#4caf50';
+            if (status === '部分一致') statusColor = '#ff9800';
+            if (status === '存疑') statusColor = '#f44336';
+
+            let html = `
+                <div style="padding: 20px; background: ${statusColor}10; border-radius: 8px; border-left: 4px solid ${statusColor};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <span style="font-weight: 600; font-size: 16px; color: ${statusColor};">
+                            🔍 真伪验证：${status}
+                        </span>
+                        <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">
+                            可信度：${confidence}%
+                        </span>
+                    </div>
+                    <div style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                        ${authenticity.analysis || '简历与面试回答基本一致'}
+                    </div>
+            `;
+
+            if (inconsistencies.length > 0) {
+                html += `<div style="margin-top: 10px;"><strong>发现的不一致项：</strong></div>`;
+                html += inconsistencies.map(item => `
+                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px;">
+                        <div style="color: #f44336; font-weight: 600; margin-bottom: 5px;">${item.item}</div>
+                        <div style="font-size: 12px; color: #666;">
+                            <div>📄 简历：${item.resume}</div>
+                            <div>🎙️ 面试：${item.interview}</div>
+                            <div style="margin-top: 5px; color: ${item.severity === '严重' ? '#f44336' : item.severity === '中等' ? '#ff9800' : '#ff9800'};">
+                                严重程度：${item.severity}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (authenticity.recommendations && authenticity.recommendations.length > 0) {
+                html += `
+                    <div style="margin-top: 15px;">
+                        <strong>建议：</strong>
+                        ${authenticity.recommendations.map(r => `<div style="margin-top: 5px; font-size: 13px;">• ${r}</div>`).join('')}
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 渲染面试问题提取
+        function renderInterviewQuestions(questionAnswers) {
+            const container = document.getElementById('interviewQuestions');
+            if (!container) return;
+
+            if (!questionAnswers || questionAnswers.length === 0) {
+                container.innerHTML = '<div style="color: #999; padding: 20px;">未提取到面试问题</div>';
+                return;
+            }
+
+            const html = questionAnswers.map((qa, index) => `
+                <div class="question-item" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">
+                        问题 ${index + 1}：${qa.question}
+                    </div>
+                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                        <strong>回答：</strong>${qa.answer_summary || '无回答内容'}
+                    </div>
+                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
+                        <span style="background: ${qa.score >= 80 ? '#4caf50' : qa.score >= 60 ? '#ff9800' : '#f44336'}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px;">
+                            ${qa.score}分
+                        </span>
+                        <span style="font-size: 13px; color: #666;">${qa.evaluation || ''}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 渲染双雷达图对比
+        function renderDualRadarCharts(dimensions) {
+            // 员工面试表现雷达图
+            renderInterviewRadarChart(dimensions);
+            
+            // 岗位要求雷达图（模拟数据，实际应从JD分析获取）
+            renderJdRadarChart(dimensions);
+        }
+
+        // 渲染岗位要求雷达图
+        function renderJdRadarChart(dimensions) {
+            const chartDom = document.getElementById('jdRadarChart');
+            if (!chartDom) return;
+
+            if (window.jdRadarChart && typeof window.jdRadarChart.dispose === 'function') {
+                window.jdRadarChart.dispose();
+            }
+            window.jdRadarChart = echarts.init(chartDom);
+
+            // 岗位要求的标准分数（假设都是80分作为基准）
+            const jdScores = dimensions.map(() => 80);
+
+            const indicators = dimensions.map(d => ({
+                name: d.name,
+                max: 100
+            }));
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}分'
+                },
+                radar: {
+                    indicator: indicators,
+                    radius: '65%',
+                    axisName: { color: '#ff6b6b', fontSize: 12, fontWeight: 'bold' },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['rgba(255, 107, 107, 0.05)', 'rgba(255, 107, 107, 0.1)']
+                        }
+                    },
+                    axisLine: { lineStyle: { color: '#ff6b6b' } },
+                    splitLine: { lineStyle: { color: '#ff6b6b' } }
+                },
+                series: [{
+                    name: '岗位要求',
+                    type: 'radar',
+                    data: [{
+                        value: jdScores,
+                        name: '岗位要求',
+                        areaStyle: {
+                            color: 'rgba(255, 107, 107, 0.3)'
+                        },
+                        lineStyle: {
+                            color: '#ff6b6b',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#ff6b6b'
+                        }
+                    }]
+                }]
+            };
+
+            window.jdRadarChart.setOption(option);
+        }
+
+        // 切换转录文本显示/隐藏
+        function toggleTranscript() {
+            const transcriptDiv = document.getElementById('interviewTranscript');
+            const toggleSpan = document.getElementById('transcriptToggle');
+            
+            if (transcriptDiv.classList.contains('hidden')) {
+                transcriptDiv.classList.remove('hidden');
+                toggleSpan.textContent = '▲';
+            } else {
+                transcriptDiv.classList.add('hidden');
+                toggleSpan.textContent = '▼';
+            }
+        }
+
+        // 渲染面试评价雷达图
+        function renderInterviewRadarChart(dimensions) {
+            const chartDom = document.getElementById('interviewRadarChart');
+            if (!chartDom) return;
+
+            if (window.interviewRadarChart && typeof window.interviewRadarChart.dispose === 'function') {
+                window.interviewRadarChart.dispose();
+            }
+            window.interviewRadarChart = echarts.init(chartDom);
+
+            const indicators = dimensions.map(d => ({
+                name: d.name,
+                max: 100
+            }));
+
+            const scores = dimensions.map(d => d.score);
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const data = dimensions.find(d => d.name === params.name);
+                        if (data) {
+                            return `<strong>${params.name}</strong><br/>得分: ${data.score}分<br/>权重: ${data.weight}%<br/>分析: ${data.analysis.substring(0, 30)}...`;
+                        }
+                        return params.name;
+                    }
+                },
+                radar: {
+                    indicator: indicators,
+                    radius: '65%',
+                    axisName: { color: '#667eea', fontSize: 12, fontWeight: 'bold' },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['rgba(102, 126, 234, 0.05)', 'rgba(102, 126, 234, 0.1)']
+                        }
+                    },
+                    axisLine: { lineStyle: { color: '#667eea' } },
+                    splitLine: { lineStyle: { color: '#667eea' } }
+                },
+                series: [{
+                    name: '面试能力维度',
+                    type: 'radar',
+                    data: [{
+                        value: scores,
+                        name: '面试评分',
+                        areaStyle: {
+                            color: 'rgba(102, 126, 234, 0.3)'
+                        },
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#667eea'
+                        }
+                    }]
+                }]
+            };
+
+            window.interviewRadarChart.setOption(option);
+        }
+
+        // 渲染维度评分详情
+        function renderInterviewDimensionDetails(dimensions) {
+            const container = document.getElementById('interviewDimensionDetails');
+            if (!container) return;
+
+            const html = dimensions.map(d => `
+                <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 600; color: #333; font-size: 16px;">${d.name}</span>
+                        <span style="background: linear-gradient(90deg, #667eea, #764ba2); color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+                    </div>
+                    <div style="font-size: 13px; color: #666; margin-bottom: 8px;">
+                        <strong>权重：</strong>${d.weight}% | <strong>分析：</strong>${d.analysis}
+                    </div>
+                    <div style="background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: ${d.score}%; border-radius: 4px; transition: width 0.5s ease;"></div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 渲染问题回答评价
+        function renderInterviewQuestionAnswers(questionAnswers) {
+            const container = document.getElementById('interviewQuestionAnswers');
+            if (!container) return;
+
+            if (!questionAnswers || questionAnswers.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">暂无问题回答评价数据</div>';
+                return;
+            }
+
+            const html = questionAnswers.map((qa, index) => `
+                <div class="question-answer-item" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #764ba2;">
+                    <div style="font-weight: 600; color: #764ba2; margin-bottom: 10px; font-size: 14px;">
+                        问题 ${index + 1}：${qa.question}
+                    </div>
+                    <div style="font-size: 13px; color: #666; margin-bottom: 8px; line-height: 1.6;">
+                        <strong>回答摘要：</strong>${qa.answer_summary || '无'}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: ${qa.score >= 80 ? '#4caf50' : qa.score >= 60 ? '#ff9800' : '#f44336'}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px;">
+                            ${qa.score}分
+                        </span>
+                        <span style="font-size: 13px; color: #666;">${qa.evaluation || '无评价'}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // 清空面试评价
+        function clearInterview() {
+            document.getElementById('interviewJdContent').value = '';
+            document.getElementById('interviewResumeContent').value = '';
+            removeInterviewFile('interviewJd');
+            removeInterviewFile('interviewResume');
+            removeInterviewFile('interviewAudio');
+            removeInterviewFile('interviewQuestions');
+            document.getElementById('interviewResult').classList.add('hidden');
+        }
+
         // 窗口大小改变时重绘图表
         window.addEventListener('resize', function() {
             if (radarChart) radarChart.resize();
             if (textRadarChart) textRadarChart.resize();
+            if (window.interviewRadarChart) window.interviewRadarChart.resize();
         });
     </script>
 </body>

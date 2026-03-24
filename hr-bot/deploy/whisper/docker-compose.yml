@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  whisper-api:
+    build: .
+    container_name: whisper-api
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./models:/root/.cache/whisper  # 持久化模型文件
+      - /tmp:/tmp  # 临时文件目录
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WHISPER_MODEL=medium
+    restart: unless-stopped
+    # 使用CPU运行，不占用GPU资源
+    # 24核CPU足够处理音频转录，不影响现有VLLM服务

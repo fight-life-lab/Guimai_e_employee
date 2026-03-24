@@ -32,6 +32,10 @@
 - **Embedding 模型**: `BAAI/bge-base-zh-v1.5`
 - **运行设备**: `cuda`
 
+<br />
+
+<br />
+
 #### 2. 数据库配置
 
 - **ChromaDB**：
