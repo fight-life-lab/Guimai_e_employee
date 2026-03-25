@@ -754,7 +754,7 @@
             <!-- AI面试评价 -->
             <div id="interview" class="tab-content">
                 <h2><span class="icon">🎙️</span>AI面试评价分析</h2>
-                <p style="color: #666; margin-bottom: 20px;">上传面试录音，AI将自动转录并基于JD、简历和结构化面试问题进行综合评价</p>
+                <p style="color: #666; margin-bottom: 20px;">上传面试录音，AI将自动转录并基于JD、简历和结构化面试问题进行深度综合评价</p>
 
                 <!-- JD输入 -->
                 <div class="form-group">
@@ -808,10 +808,19 @@
                     <div class="file-upload-area" id="interviewAudioUpload" onclick="document.getElementById('interviewAudioFile').click()">
                         <div class="upload-icon">🎙️</div>
                         <div class="upload-text">点击或拖拽上传面试录音</div>
-                        <div class="upload-hint">支持 AAC, MP3, WAV, M4A 格式</div>
+                        <div class="upload-hint">支持 AAC, MP3, WAV, M4A 格式，或输入候选人姓名使用预存数据</div>
                     </div>
                     <input type="file" id="interviewAudioFile" class="hidden" accept=".aac,.mp3,.wav,.m4a" onchange="handleInterviewFileSelect(this, 'interviewAudio')">
                     <div class="file-list" id="interviewAudioFileList"></div>
+                </div>
+
+                <!-- 候选人姓名输入（用于匹配预存ASR数据） -->
+                <div class="form-group">
+                    <label>候选人姓名（可选）</label>
+                    <input type="text" id="interviewCandidateName" placeholder="输入姓名可优先匹配预存面试数据，不上传录音时必填" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        💡 提示：输入姓名后系统将优先查找预存的面试录音转录数据
+                    </div>
                 </div>
 
                 <!-- 面试问题文件（可选） -->
@@ -846,53 +855,79 @@
                         </div>
                     </div>
 
-                    <!-- 第二部分：双雷达图对比 -->
+                    <!-- 第二部分：能力雷达图 -->
                     <div style="background: #f8f9ff; border-radius: 12px; padding: 20px; margin: 30px 0;">
-                        <h3 style="text-align: center; margin-bottom: 15px; color: #667eea; font-size: 18px;">📊 岗位要求 vs 员工面试雷达图对比</h3>
+                        <h3 style="text-align: center; margin-bottom: 15px; color: #667eea; font-size: 18px;">📊 能力雷达图</h3>
                         <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
                             <!-- 岗位要求雷达图 -->
                             <div style="flex: 1; min-width: 400px;">
                                 <h4 style="text-align: center; color: #333; margin-bottom: 10px;">岗位要求</h4>
-                                <div class="chart-container" id="jdRadarChart" style="height: 350px;"></div>
+                                <div class="chart-container" id="interviewJdRadarChart" style="height: 350px;"></div>
                             </div>
-                            <!-- 员工面试雷达图 -->
+                            <!-- 候选人面试雷达图 -->
                             <div style="flex: 1; min-width: 400px;">
-                                <h4 style="text-align: center; color: #333; margin-bottom: 10px;">员工面试表现</h4>
-                                <div class="chart-container" id="interviewRadarChart" style="height: 350px;"></div>
+                                <h4 style="text-align: center; color: #333; margin-bottom: 10px;">候选人面试表现</h4>
+                                <div class="chart-container" id="interviewCandidateRadarChart" style="height: 350px;"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 第三部分：JD维度评分 + 理由（左侧详情） -->
-                    <div class="analysis-section">
-                        <h3>📋 岗位要求 - AI评分与理由</h3>
-                        <div id="jdDimensionDetails" style="margin-top: 15px;">
-                            <!-- 动态加载JD维度评分和理由 -->
+                    <!-- 第三部分：各项分数对比（左右对齐） -->
+                    <div style="display: flex; gap: 20px; margin: 30px 0; flex-wrap: wrap;">
+                        <!-- 左侧：岗位要求各项分数 -->
+                        <div style="flex: 1; min-width: 400px;">
+                            <div class="analysis-section">
+                                <h3>📋 岗位要求 - 各项分数</h3>
+                                <div id="jdDimensionScores" style="margin-top: 15px;">
+                                    <!-- 动态加载JD各项分数 -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：候选人各项分数 -->
+                        <div style="flex: 1; min-width: 400px;">
+                            <div class="analysis-section">
+                                <h3>🎯 候选人表现 - 各项分数</h3>
+                                <div id="candidateDimensionScores" style="margin-top: 15px;">
+                                    <!-- 动态加载候选人各项分数 -->
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- 第四部分：候选人维度评分 + 理由（右侧详情） -->
-                    <div class="analysis-section">
-                        <h3>🎯 候选人表现 - AI评分与理由</h3>
-                        <div id="candidateDimensionDetails" style="margin-top: 15px;">
-                            <!-- 动态加载候选人维度评分和理由 -->
+                    <!-- 第四部分：薪酬匹配情况 -->
+                    <div class="analysis-section" style="margin: 30px 0;">
+                        <h3>💰 薪酬匹配情况</h3>
+                        <div id="salaryMatchDetails" style="margin-top: 15px;">
+                            <!-- 动态加载薪酬匹配详情 -->
                         </div>
                     </div>
 
-                    <!-- 第五部分：真伪验证 -->
-                    <div class="analysis-section">
-                        <h3>🔍 真伪验证</h3>
-                        <div id="authenticityCheck" style="margin-top: 15px;">
-                            <!-- 动态加载真伪验证结果 -->
-                        </div>
-                    </div>
-
-                    <!-- 第六部分：综合评分 -->
-                    <div style="display: flex; justify-content: center; margin: 30px 0;">
-                        <div class="score-display" style="min-width: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <!-- 第五部分：综合评分 + 薪酬匹配度 -->
+                    <div style="display: flex; justify-content: center; gap: 20px; margin: 30px 0; flex-wrap: wrap;">
+                        <!-- 综合评分 -->
+                        <div class="score-display" style="min-width: 280px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                             <div class="score-value" id="interviewScore">0</div>
                             <div class="score-label">综合面试评分</div>
                             <div class="match-level" id="interviewLevel">-</div>
+                            <div id="dimensionAnalysis" style="margin-top: 10px; font-size: 12px; opacity: 0.9;"></div>
+                            <div class="tag-list" id="interviewTags" style="margin-top: 10px; font-size: 12px;"></div>
+                        </div>
+                        
+                        <!-- 薪酬匹配度 -->
+                        <div class="score-display" style="min-width: 280px; background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);">
+                            <div class="score-value" id="salaryMatchScore">0</div>
+                            <div class="score-label">薪酬匹配度</div>
+                            <div class="match-level" id="salaryMatchLevel">-</div>
+                            <div id="salaryAnalysis" style="margin-top: 10px; font-size: 12px; opacity: 0.9;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 第六部分：真伪验证（简化版） -->
+                    <div class="analysis-section">
+                        <h3>🔍 真伪验证</h3>
+                        <div id="authenticityCheck" style="margin-top: 15px;">
+                            <!-- 动态加载真伪验证汇总结果 -->
                         </div>
                     </div>
 
@@ -1047,6 +1082,21 @@
                     <span class="file-remove" onclick="removeFile('${type}')">✕</span>
                 </div>
             `;
+
+            // 隐藏上传框
+            const uploadAreaMap = {
+                'singleJd': 'singleJdUpload',
+                'singleResume': 'singleResumeUpload',
+                'textJd': 'textJdUpload',
+                'textResume': 'textResumeUpload'
+            };
+            const uploadAreaId = uploadAreaMap[type];
+            if (uploadAreaId) {
+                const uploadArea = document.getElementById(uploadAreaId);
+                if (uploadArea) {
+                    uploadArea.style.display = 'none';
+                }
+            }
         }
 
         // 移除文件
@@ -1054,6 +1104,21 @@
             files[type] = null;
             document.getElementById(type + 'FileList').innerHTML = '';
             document.getElementById(type + 'File').value = '';
+
+            // 显示上传框
+            const uploadAreaMap = {
+                'singleJd': 'singleJdUpload',
+                'singleResume': 'singleResumeUpload',
+                'textJd': 'textJdUpload',
+                'textResume': 'textResumeUpload'
+            };
+            const uploadAreaId = uploadAreaMap[type];
+            if (uploadAreaId) {
+                const uploadArea = document.getElementById(uploadAreaId);
+                if (uploadArea) {
+                    uploadArea.style.display = 'block';
+                }
+            }
         }
 
         // 单人分析
@@ -1685,12 +1750,21 @@
             }
         }
 
+        // 显示/隐藏进度条
+        function showLoadingProgress(show) {
+            const progressContainer = document.getElementById('loadingProgressContainer');
+            const progressText = document.getElementById('loadingProgressText');
+            
+            progressContainer.style.display = show ? 'block' : 'none';
+            progressText.style.display = show ? 'block' : 'none';
+        }
+
         // 更新加载进度
         function updateLoadingProgress(percent, stepText) {
             const progressContainer = document.getElementById('loadingProgressContainer');
             const progressBar = document.getElementById('loadingProgressBar');
             const progressText = document.getElementById('loadingProgressText');
-            
+
             progressContainer.style.display = 'block';
             progressText.style.display = 'block';
             progressBar.style.width = percent + '%';
@@ -1752,6 +1826,21 @@
                     <span class="file-remove" onclick="removeInterviewFile('${type}')">✕</span>
                 </div>
             `;
+
+            // 隐藏上传框
+            const uploadAreaMap = {
+                'interviewJd': 'interviewJdUpload',
+                'interviewResume': 'interviewResumeUpload',
+                'interviewAudio': 'interviewAudioUpload',
+                'interviewQuestions': 'interviewQuestionsUpload'
+            };
+            const uploadAreaId = uploadAreaMap[type];
+            if (uploadAreaId) {
+                const uploadArea = document.getElementById(uploadAreaId);
+                if (uploadArea) {
+                    uploadArea.style.display = 'none';
+                }
+            }
         }
 
         // 移除面试评价文件
@@ -1759,9 +1848,24 @@
             files[type] = null;
             document.getElementById(type + 'FileList').innerHTML = '';
             document.getElementById(type + 'File').value = '';
+
+            // 显示上传框
+            const uploadAreaMap = {
+                'interviewJd': 'interviewJdUpload',
+                'interviewResume': 'interviewResumeUpload',
+                'interviewAudio': 'interviewAudioUpload',
+                'interviewQuestions': 'interviewQuestionsUpload'
+            };
+            const uploadAreaId = uploadAreaMap[type];
+            if (uploadAreaId) {
+                const uploadArea = document.getElementById(uploadAreaId);
+                if (uploadArea) {
+                    uploadArea.style.display = 'block';
+                }
+            }
         }
 
-        // AI面试评价分析
+        // AI面试评价分析 - 流式响应版本
         async function analyzeInterview() {
             const jdText = document.getElementById('interviewJdContent').value.trim();
             const jdFile = files.interviewJd;
@@ -1769,6 +1873,7 @@
             const resumeFile = files.interviewResume;
             const audioFile = files.interviewAudio;
             const questionsFile = files.interviewQuestions;
+            const candidateNameInput = document.getElementById('interviewCandidateName').value.trim();
 
             // 验证必填项
             if (!jdText && !jdFile) {
@@ -1781,12 +1886,14 @@
                 return;
             }
 
-            if (!audioFile) {
-                alert('请上传面试录音文件');
+            // 录音文件或候选人姓名至少填一个
+            if (!audioFile && !candidateNameInput) {
+                alert('请上传面试录音文件或输入候选人姓名使用预存数据');
                 return;
             }
 
-            showLoading(true, '正在进行AI面试评价分析...');
+            showLoading(true, '正在初始化AI面试评价...');
+            showLoadingProgress(true);
             updateLoadingProgress(5, '准备数据...');
 
             try {
@@ -1816,184 +1923,744 @@
                     formData.append('questions_file', questionsFile);
                 }
 
-                // 添加候选人姓名和岗位名称用于缓存
-                const candidateName = resumeText.match(/姓名[：:]\s*(\S+)/)?.[1] || '';
+                // 添加候选人姓名（优先使用输入的，其次从简历提取）
+                const candidateName = candidateNameInput || resumeText.match(/姓名[：:]\s*(\S+)/)?.[1] || '';
                 const jdTitle = jdText.match(/(\S+)(岗位|职位)/)?.[1] || '';
                 if (candidateName) formData.append('candidate_name', candidateName);
                 if (jdTitle) formData.append('jd_title', jdTitle);
 
-                updateLoadingProgress(10, '正在分析JD岗位要求...');
-
-                const response = await fetch(`${API_BASE}/api/v1/interview-evaluation/evaluate-v2`, {
+                // 使用流式API
+                const response = await fetch(`${API_BASE}/api/v1/interview-evaluation/evaluate-stream`, {
                     method: 'POST',
                     body: formData
                 });
 
-                updateLoadingProgress(90, '正在生成评价报告...');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-                const data = await response.json();
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let finalData = null;
 
-                if (data.success) {
-                    updateLoadingProgress(100, '完成！');
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const eventData = JSON.parse(line.slice(6));
+
+                                if (eventData.type === 'progress') {
+                                    // 更新进度
+                                    updateLoadingProgress(eventData.progress, eventData.message);
+                                } else if (eventData.type === 'result') {
+                                    // 收到最终结果
+                                    finalData = eventData.data;
+                                    updateLoadingProgress(100, '完成！');
+                                } else if (eventData.type === 'error') {
+                                    throw new Error(eventData.message);
+                                }
+                            } catch (e) {
+                                console.error('解析流数据失败:', e, line);
+                            }
+                        }
+                    }
+                }
+
+                if (finalData && finalData.success) {
+                    console.log('[DEBUG] 最终数据:', finalData);
+                    console.log('[DEBUG] 问题答案:', finalData.question_answers);
+                    console.log('[DEBUG] JD维度:', finalData.jd_dimensions);
+                    console.log('[DEBUG] 候选人维度:', finalData.candidate_dimensions);
+                    
                     setTimeout(() => {
-                        displayInterviewResultV2(data);
+                        displayInterviewResultV2(finalData);
                         showLoading(false);
+                        showLoadingProgress(false);
                     }, 500);
                 } else {
+                    console.log('[DEBUG] 数据失败:', finalData);
                     showLoading(false);
-                    alert('面试评价失败: ' + (data.detail || '未知错误'));
+                    showLoadingProgress(false);
+                    alert('面试评价失败: 未收到有效数据');
                 }
+
             } catch (error) {
                 showLoading(false);
+                showLoadingProgress(false);
                 alert('请求失败: ' + error.message);
             }
         }
 
-        // 显示面试评价结果 V2
+        // 显示面试评价结果 V2 - 性能优化版
         function displayInterviewResultV2(data) {
-            document.getElementById('interviewResult').classList.remove('hidden');
+            const interviewResult = document.getElementById('interviewResult');
+            if (!interviewResult) return;
+            
+            console.log('[DEBUG] 完整数据结构:', data);
+            console.log('[DEBUG] 问题答案:', data.question_answers);
+            console.log('[DEBUG] JD维度:', data.jd_dimensions);
+            console.log('[DEBUG] 候选人维度:', data.candidate_dimensions);
+            // 详细打印每个维度的分数
+            if (data.candidate_dimensions) {
+                data.candidate_dimensions.forEach(d => {
+                    console.log(`[DEBUG] 维度: ${d.name}, 分数: ${d.score}, gap: ${d.gap}`);
+                });
+            }
+            console.log('[DEBUG] 真伪验证:', data.authenticity_check);
+            
+            // 一次性显示结果区域
+            interviewResult.classList.remove('hidden');
 
-            // 1. 渲染问题提取（基于结构化面试问题）
-            renderInterviewQuestions(data.question_answers);
+            // 计算维度分析（优势项、短板、均衡度）
+            const dimensionAnalysis = analyzeDimensions(data.candidate_dimensions || [], data.jd_dimensions || []);
+            
+            // 使用API返回的JD和简历文本
+            const jdText = data.jd_content || '';
+            const resumeText = data.resume_content || '';
+            
+            // 计算薪酬匹配度（传入JD和简历文本用于提取薪酬信息）
+            const salaryMatch = calculateSalaryMatch(data.candidate_dimensions || [], data.jd_dimensions || [], jdText, resumeText);
+            
+            // 保存文本用于后续渲染
+            data._jdText = jdText;
+            data._resumeText = resumeText;
 
-            // 2. 渲染双雷达图对比
-            // 左侧：JD岗位要求
-            renderJdRadarChart(data.jd_dimensions);
-            // 右侧：员工面试表现
-            renderInterviewRadarChart(data.candidate_dimensions);
+            // 批量更新DOM内容
+            const updates = [
+                // 综合评分（带维度分析）
+                () => {
+                    const interviewScore = document.getElementById('interviewScore');
+                    const interviewLevel = document.getElementById('interviewLevel');
+                    const dimensionAnalysisDiv = document.getElementById('dimensionAnalysis');
+                    
+                    // 使用API返回的分数和标签
+                    if (interviewScore) interviewScore.textContent = data.overall_score || 0;
+                    // 优先使用维度分析标签，如果没有则使用API返回的evaluation_level
+                    const label = dimensionAnalysis.label || data.evaluation_level || '待评估';
+                    if (interviewLevel) interviewLevel.textContent = label;
+                    if (dimensionAnalysisDiv) {
+                        dimensionAnalysisDiv.innerHTML = dimensionAnalysis.description || '';
+                    }
+                },
+                
+                // 薪酬匹配度 - 上方橙色卡片只显示分数和等级，不显示详细分析
+                () => {
+                    const salaryMatchScore = document.getElementById('salaryMatchScore');
+                    const salaryMatchLevel = document.getElementById('salaryMatchLevel');
+                    const salaryAnalysisDiv = document.getElementById('salaryAnalysis');
+                    
+                    // 使用API返回的salary_analysis字段（优先）
+                    const apiSalaryAnalysis = data.salary_analysis;
+                    const finalScore = apiSalaryAnalysis?.salary_match_score ?? salaryMatch.score;
+                    const finalLevel = apiSalaryAnalysis?.salary_match_level ?? salaryMatch.level;
+                    
+                    if (salaryMatchScore) salaryMatchScore.textContent = finalScore + '%';
+                    if (salaryMatchLevel) salaryMatchLevel.textContent = finalLevel;
+                    if (salaryAnalysisDiv) {
+                        salaryAnalysisDiv.textContent = ''; // 清空底部文字，缩小卡片高度
+                    }
+                },
+                
+                // 薪酬匹配详情（在setTimeout中渲染）
+                () => {
+                    // 薪酬匹配详情将在setTimeout中渲染
+                },
+                
+                // 面试总结
+                () => {
+                    const interviewSummary = document.getElementById('interviewSummary');
+                    if (interviewSummary) interviewSummary.textContent = data.summary;
+                },
+                
+                // 候选人标签
+                () => {
+                    const interviewTags = document.getElementById('interviewTags');
+                    if (interviewTags) {
+                        const tags = data.tags || [];
+                        interviewTags.innerHTML = tags.map(tag =>
+                            `<span class="tag tag-info">${tag}</span>`
+                        ).join('');
+                    }
+                },
+                
+                // 候选人优势
+                () => {
+                    const interviewStrengths = document.getElementById('interviewStrengths');
+                    if (interviewStrengths) {
+                        interviewStrengths.innerHTML = data.strengths.map(s =>
+                            `<span class="tag tag-success">${s}</span>`
+                        ).join('');
+                    }
+                },
+                
+                // 建议
+                () => {
+                    const interviewRecommendations = document.getElementById('interviewRecommendations');
+                    if (interviewRecommendations) {
+                        interviewRecommendations.innerHTML = data.recommendations.map(r =>
+                            `<span class="tag tag-info">${r}</span>`
+                        ).join('');
+                    }
+                }
+            ];
+            
+            // 先显示结果区域（确保容器可见）
+            interviewResult.classList.remove('hidden');
+            
+            // 强制浏览器重绘，确保容器有尺寸
+            void interviewResult.offsetWidth;
+            
+            // 执行批量更新
+            updates.forEach(fn => fn());
 
-            // 3. 渲染JD维度评分和理由（左侧）
-            renderJdDimensionDetails(data.jd_dimensions);
-
-            // 4. 渲染候选人维度评分和理由（右侧）
-            renderCandidateDimensionDetails(data.candidate_dimensions);
-
-            // 5. 综合评分
-            document.getElementById('interviewScore').textContent = data.overall_score;
-            document.getElementById('interviewLevel').textContent = data.evaluation_level;
-
-            // 6. 真伪验证结果
-            renderAuthenticityCheck(data.authenticity_check);
-
-            // 7. 面试总结
-            document.getElementById('interviewSummary').textContent = data.summary;
-
-            // 8. 候选人优势
-            document.getElementById('interviewStrengths').innerHTML = data.strengths.map(s =>
-                `<span class="tag tag-success">${s}</span>`
-            ).join('');
-
-            // 9. 建议
-            document.getElementById('interviewRecommendations').innerHTML = data.recommendations.map(r =>
-                `<span class="tag tag-info">${r}</span>`
-            ).join('');
-
-            document.getElementById('interviewResult').scrollIntoView({ behavior: 'smooth' });
+            // 延迟渲染图表，确保DOM已更新
+            setTimeout(() => {
+                console.log('[显示结果] 开始渲染图表，JD维度:', data.jd_dimensions);
+                console.log('[显示结果] 候选人维度:', data.candidate_dimensions);
+                
+                // 渲染雷达图
+                renderInterviewJdRadarChart(data.jd_dimensions);
+                renderInterviewCandidateRadarChart(data.candidate_dimensions);
+                
+                // 渲染各项分数（简化版，只显示分数）
+                console.log('[DEBUG] JD维度数据:', data.jd_dimensions);
+                console.log('[DEBUG] 候选人维度数据:', data.candidate_dimensions);
+                renderDimensionScores(data.jd_dimensions || [], 'jd');
+                renderDimensionScores(data.candidate_dimensions || [], 'candidate');
+                
+                // 渲染薪酬匹配详情 - 优先使用API返回的salary_analysis数据
+                const apiSalaryAnalysis = data.salary_analysis;
+                renderSalaryMatchSection(data.jd_dimensions, data.candidate_dimensions, salaryMatch, data.jd_content, data.resume_content, apiSalaryAnalysis);
+                
+                // 渲染真伪验证（简化版）
+                renderAuthenticityCheckSummary(data.authenticity_check);
+                
+                // 渲染问题提取
+                console.log('[DEBUG] 问题答案数据:', data.question_answers);
+                renderInterviewQuestions(data.question_answers || []);
+                
+                // 滚动到结果区域
+                interviewResult.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
         }
 
-        // 渲染JD维度评分详情（左侧）
-        function renderJdDimensionDetails(dimensions) {
-            const container = document.getElementById('jdDimensionDetails');
-            if (!container) return;
-
-            const html = dimensions.map(d => `
-                <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #fff5f5; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 600; color: #333;">${d.name}</span>
-                        <span style="background: #ff6b6b; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
-                    </div>
-                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                        <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
-                    </div>
-                </div>
-            `).join('');
-
-            container.innerHTML = html;
-        }
-
-        // 渲染候选人维度评分详情（右侧）
-        function renderCandidateDimensionDetails(dimensions) {
-            const container = document.getElementById('candidateDimensionDetails');
-            if (!container) return;
-
-            const html = dimensions.map(d => `
-                <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span style="font-weight: 600; color: #333;">${d.name}</span>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="background: ${d.gap >= 0 ? '#4caf50' : '#ff9800'}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
-                                ${d.gap >= 0 ? '+' : ''}${d.gap}
-                            </span>
-                            <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+        // 渲染各项分数（带理由）
+        function renderDimensionScores(dimensions, type) {
+            const containerId = type === 'jd' ? 'jdDimensionScores' : 'candidateDimensionScores';
+            const container = document.getElementById(containerId);
+            if (!container || !dimensions || dimensions.length === 0) return;
+            
+            // 固定维度顺序
+            const fixedOrder = ['专业能力', '工作经验', '沟通表达', '逻辑思维', '学习能力', '综合素质'];
+            
+            // 按照固定顺序排序维度
+            const sortedDimensions = fixedOrder.map(name => {
+                return dimensions.find(d => d.name === name) || { name, score: 0, reason: '暂无数据' };
+            });
+            
+            let html = '';
+            for (let i = 0; i < sortedDimensions.length; i++) {
+                const d = sortedDimensions[i];
+                const score = d.score || 0;
+                const name = d.name || '';
+                const reason = d.reason || d.analysis || '';
+                
+                // 根据分数设置颜色
+                let color = '#4caf50';
+                if (score < 60) color = '#f44336';
+                else if (score < 75) color = '#ff9800';
+                
+                html += `
+                    <div style="padding: 15px; margin-bottom: 15px; background: ${type === 'jd' ? '#fff5f5' : '#f0f9ff'}; border-radius: 8px; border-left: 4px solid ${type === 'jd' ? '#ff6b6b' : '#667eea'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 600; color: #333;">${name}</span>
+                            <span style="background: ${color}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${score}分</span>
                         </div>
+                        ${reason ? `
+                            <div style="font-size: 13px; color: #666; line-height: 1.6; margin-top: 8px;">
+                                <strong>评分理由：</strong>${reason}
+                            </div>
+                        ` : ''}
                     </div>
-                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                        <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
-                    </div>
-                </div>
-            `).join('');
-
+                `;
+            }
+            
             container.innerHTML = html;
         }
 
-        // 渲染真伪验证结果
-        function renderAuthenticityCheck(authenticity) {
+        // 渲染薪酬匹配详情区域
+        function renderSalaryMatchSection(jdDims, candidateDims, salaryMatch, jdText, resumeText, apiSalaryAnalysis) {
+            const container = document.getElementById('salaryMatchDetails');
+            if (!container) return;
+
+            const jdSalary = extractSalary(jdText);
+            const candidateSalary = extractSalary(resumeText);
+            
+            // 优先使用API返回的薪酬分析数据
+            const finalSalaryMatch = apiSalaryAnalysis || salaryMatch;
+            const finalScore = apiSalaryAnalysis?.salary_match_score ?? salaryMatch.score;
+            const finalLevel = apiSalaryAnalysis?.salary_match_level ?? salaryMatch.level;
+            const finalDescription = apiSalaryAnalysis?.salary_analysis ?? salaryMatch.description;
+
+            let html = '<div style="padding: 20px; background: #f5f5f5; border-radius: 8px;">';
+            
+            // 薪酬信息部分
+            html += '<div style="display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 20px;">';
+            
+            // 岗位薪酬（能提供的薪酬）- 统一单位为万/年
+            let jdSalaryDisplay = '';
+            if (apiSalaryAnalysis?.jd_salary_range) {
+                // 从API返回的数据中提取，如 "48-72万/年(40k-60k/月)" -> "48-72万/年"
+                const match = apiSalaryAnalysis.jd_salary_range.match(/(\d+-\d+万\/年)/);
+                jdSalaryDisplay = match ? match[1] : apiSalaryAnalysis.jd_salary_range;
+            } else if (jdSalary) {
+                jdSalaryDisplay = `${jdSalary.min}-${jdSalary.max}万/年`;
+            }
+            if (jdSalaryDisplay) {
+                html += `
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 8px;">能提供的薪酬</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #ff9800;">${jdSalaryDisplay}</div>
+                    </div>
+                `;
+            }
+            
+            // 候选人期望薪酬 - 统一单位为万/年
+            let candidateSalaryDisplay = '';
+            if (apiSalaryAnalysis?.expected_salary) {
+                // 确保格式为 "100万/年"
+                const match = apiSalaryAnalysis.expected_salary.match(/(\d+万\/年)/);
+                candidateSalaryDisplay = match ? match[1] : apiSalaryAnalysis.expected_salary;
+            } else if (candidateSalary) {
+                candidateSalaryDisplay = `${candidateSalary.min}万/年`;
+            }
+            if (candidateSalaryDisplay) {
+                // 判断薪酬是否超出范围（用于颜色显示）
+                let salaryColor = '#4caf50';
+                let salaryStatus = '在范围内';
+                
+                // 如果有API返回的匹配等级，根据等级判断
+                if (apiSalaryAnalysis?.salary_match_level) {
+                    const level = apiSalaryAnalysis.salary_match_level;
+                    if (level.includes('不匹配') || level.includes('低')) {
+                        salaryColor = '#f44336';
+                        salaryStatus = '超出范围';
+                    } else if (level.includes('基本')) {
+                        salaryColor = '#ff9800';
+                        salaryStatus = '基本匹配';
+                    }
+                } else if (jdSalary && candidateSalary) {
+                    const isWithinRange = candidateSalary.min >= jdSalary.min && candidateSalary.min <= jdSalary.max;
+                    const isBelowRange = candidateSalary.min < jdSalary.min;
+                    const isAboveRange = candidateSalary.min > jdSalary.max;
+                    
+                    if (isAboveRange) {
+                        salaryColor = '#f44336';
+                        salaryStatus = '超出范围';
+                    } else if (isBelowRange) {
+                        salaryStatus = '低于范围（性价比高）';
+                    }
+                }
+                
+                html += `
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 8px;">候选人期望薪酬</div>
+                        <div style="font-size: 24px; font-weight: bold; color: ${salaryColor};">${candidateSalaryDisplay}</div>
+                        <div style="font-size: 13px; color: ${salaryColor}; margin-top: 4px;">${salaryStatus}</div>
+                    </div>
+                `;
+            }
+            
+            // 薪酬匹配度 - 使用API返回的数据
+            html += `
+                <div style="flex: 1; min-width: 200px;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 8px;">薪酬匹配度</div>
+                    <div style="font-size: 24px; font-weight: bold; color: ${finalScore >= 75 ? '#4caf50' : finalScore >= 60 ? '#ff9800' : '#f44336'};">${finalScore}</div>
+                    <div style="font-size: 13px; color: #666; margin-top: 4px;">${finalLevel}</div>
+                </div>
+            `;
+            
+            html += '</div>';
+            
+            // 薪酬分析说明 - 放在下面单独显示
+            if (apiSalaryAnalysis?.salary_analysis) {
+                html += '<div style="margin-top: 15px; padding: 15px; background: white; border-radius: 6px; border-left: 4px solid #667eea;">';
+                html += '<h4 style="margin-bottom: 10px; color: #667eea;">薪酬分析</h4>';
+                html += `<p style="font-size: 14px; color: #666; line-height: 1.6;">${apiSalaryAnalysis.salary_analysis}</p>`;
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 分析维度数据，生成标签和描述
+        function analyzeDimensions(candidateDims, jdDims) {
+            if (!candidateDims || candidateDims.length === 0) {
+                return { label: '待评估', description: '暂无维度数据' };
+            }
+
+            const scores = candidateDims.map(d => d.score || 0);
+            const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const maxScore = Math.max(...scores);
+            const minScore = Math.min(...scores);
+            const variance = maxScore - minScore;
+
+            // 找出优势项（高于均值10分以上）和短板（低于均值10分以上）
+            const advantages = candidateDims.filter(d => d.score >= avgScore + 10).map(d => d.name);
+            const weaknesses = candidateDims.filter(d => d.score <= avgScore - 10).map(d => d.name);
+
+            let label, description;
+
+            if (variance <= 10) {
+                // 各维度差异不大
+                if (avgScore >= 85) {
+                    label = '全面优秀';
+                    description = '各维度均衡发展，整体表现优秀';
+                } else if (avgScore >= 70) {
+                    label = '全面发展';
+                    description = '各维度较为均衡，整体表现良好';
+                } else {
+                    label = '全面待提升';
+                    description = '各维度较为均衡，但整体有待提升';
+                }
+            } else {
+                // 有优势项或短板
+                if (advantages.length > 0 && weaknesses.length > 0) {
+                    label = '优势与短板并存';
+                    description = `优势：${advantages.join('、')}；短板：${weaknesses.join('、')}`;
+                } else if (advantages.length > 0) {
+                    label = '有明显优势';
+                    description = `优势项：${advantages.join('、')}`;
+                } else if (weaknesses.length > 0) {
+                    label = '存在明显短板';
+                    description = `需提升：${weaknesses.join('、')}`;
+                } else {
+                    label = '发展均衡';
+                    description = '各维度发展较为均衡';
+                }
+            }
+
+            return { label, description, avgScore, variance, advantages, weaknesses };
+        }
+
+        // 从文本中提取薪酬信息（单位：万元/年）
+        function extractSalary(text) {
+            if (!text) return null;
+            
+            // 匹配各种薪酬格式
+            // 支持：40k-60k, 40-60k, 40k-60, 40-60万, 百万年薪, 100万, 50w-80w 等
+            const patterns = [
+                // 匹配 "40k-60k" 或 "40k-60" 或 "40-60k"
+                /(\d+)\s*[kK]\s*[-~～]\s*(\d+)\s*[kK]?/,
+                // 匹配 "40-60万" 或 "40万-60万"
+                /(\d+)\s*[-~～]?\s*(\d+)?\s*万/,
+                // 匹配 "百万年薪" 或 "年薪百万"
+                /(百万|100万|一百万).*?(?:年薪|薪酬|工资)|(?:年薪|薪酬|工资).*?(百万|100万|一百万)/,
+                // 匹配 "50w-80w" 或 "50w"
+                /(\d+)\s*[wW]\s*[-~～]?\s*(\d+)?\s*[wW]?/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (match) {
+                    // 处理 "百万" 特殊情况
+                    if (match[0].includes('百万') || match[0].includes('100万')) {
+                        return { min: 100, max: 100, unit: '万/年', original: match[0] };
+                    }
+                    
+                    // 处理 k 单位 (假设是月薪，转换为年薪)
+                    if (match[0].toLowerCase().includes('k')) {
+                        const min = parseInt(match[1]) * 12 / 10; // k转万，月薪转年薪
+                        const max = match[2] ? parseInt(match[2]) * 12 / 10 : min;
+                        return { min: Math.round(min), max: Math.round(max), unit: '万/年', original: match[0] };
+                    }
+                    
+                    // 处理 w 单位 (万)
+                    if (match[0].toLowerCase().includes('w')) {
+                        const min = parseInt(match[1]);
+                        const max = match[2] ? parseInt(match[2]) : min;
+                        return { min, max, unit: '万/年', original: match[0] };
+                    }
+                    
+                    // 处理 "万" 单位
+                    if (match[0].includes('万')) {
+                        const min = parseInt(match[1]);
+                        const max = match[2] ? parseInt(match[2]) : min;
+                        return { min, max, unit: '万/年', original: match[0] };
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // 计算薪酬匹配度
+        function calculateSalaryMatch(candidateDims, jdDims, jdText, resumeText) {
+            // 提取薪酬信息
+            const jdSalary = extractSalary(jdText);
+            const candidateSalary = extractSalary(resumeText);
+            
+            // 如果提取到了薪酬信息，进行薪酬匹配计算
+            if (jdSalary && candidateSalary) {
+                const jdMin = jdSalary.min;
+                const jdMax = jdSalary.max;
+                const candidateMin = candidateSalary.min;
+                
+                // 计算薪酬匹配度（越高越好，但超过范围会降低）
+                let score, level, description;
+                
+                // 情况1：候选人期望在岗位范围内 - 最佳匹配
+                if (candidateMin >= jdMin && candidateMin <= jdMax) {
+                    // 在范围内，越接近中位数匹配度越高
+                    const mid = (jdMin + jdMax) / 2;
+                    const diff = Math.abs(candidateMin - mid);
+                    const range = jdMax - jdMin;
+                    score = Math.round(90 + (1 - diff / range) * 10); // 90-100分
+                    level = '薪酬高度匹配';
+                    description = `候选人期望薪酬在岗位范围内，匹配度优秀`;
+                }
+                // 情况2：候选人期望低于岗位最低薪酬 - 性价比高（但不宜过低）
+                else if (candidateMin < jdMin) {
+                    const ratio = candidateMin / jdMin;
+                    if (ratio >= 0.7) {
+                        // 差距不大，性价比高
+                        score = Math.round(85 + (1 - ratio) * 20); // 85-91分
+                        level = '薪酬匹配（性价比高）';
+                        description = `候选人期望低于岗位范围，性价比较高`;
+                    } else {
+                        // 差距过大，可能能力不匹配
+                        score = Math.round(60 + ratio * 25); // 60-77分
+                        level = '薪酬偏低';
+                        description = `候选人期望明显低于岗位范围，需关注能力匹配度`;
+                    }
+                }
+                // 情况3：候选人期望高于岗位最高薪酬 - 匹配度降低
+                else {
+                    const ratio = jdMax / candidateMin;
+                    if (ratio >= 0.8) {
+                        // 稍微超出，可接受
+                        score = Math.round(70 + ratio * 15); // 70-82分
+                        level = '薪酬基本匹配';
+                        description = `候选人期望略高于岗位范围，可协商`;
+                    } else if (ratio >= 0.6) {
+                        // 超出较多
+                        score = Math.round(50 + ratio * 25); // 50-65分
+                        level = '薪酬匹配度低';
+                        description = `候选人期望超出岗位范围，差距较大`;
+                    } else {
+                        // 严重超出（如百万年薪 vs 40-60k）
+                        score = Math.round(ratio * 50); // 0-30分
+                        level = '薪酬严重不匹配';
+                        description = `候选人期望${candidateSalary.min}${candidateSalary.unit}远超岗位范围${jdSalary.min}-${jdSalary.max}${jdSalary.unit}`;
+                    }
+                }
+                
+                return {
+                    score: Math.min(score, 100),
+                    level,
+                    description,
+                    jdSalary,
+                    candidateSalary,
+                    mismatch: candidateMin > jdMax * 1.2
+                };
+            }
+            
+            // 如果没有提取到薪酬信息，基于能力维度计算
+            if (!candidateDims || !jdDims || candidateDims.length === 0 || jdDims.length === 0) {
+                return { score: 75, level: '一般匹配', description: '基于基本评估', mismatch: false };
+            }
+
+            // 计算候选人与岗位要求的匹配度
+            let totalMatch = 0;
+            let count = 0;
+            
+            for (let i = 0; i < candidateDims.length; i++) {
+                const candidateDim = candidateDims[i];
+                const jdDim = jdDims.find(jd => jd.name === candidateDim.name);
+                
+                if (jdDim && jdDim.score > 0) {
+                    // 计算匹配度：候选人得分 / 岗位要求得分
+                    const match = (candidateDim.score / jdDim.score) * 100;
+                    totalMatch += match;
+                    count++;
+                }
+            }
+
+            const avgMatch = count > 0 ? totalMatch / count : 75;
+            const score = Math.round(avgMatch);
+
+            let level, description;
+            if (score >= 90) {
+                level = '高度匹配';
+                description = '能力全面符合岗位要求，可给予目标薪酬';
+            } else if (score >= 75) {
+                level = '基本匹配';
+                description = '能力基本符合要求，薪酬可适度调整';
+            } else if (score >= 60) {
+                level = '部分匹配';
+                description = '部分能力有差距，建议薪酬向下调整';
+            } else {
+                level = '匹配度低';
+                description = '能力差距较大，建议谨慎考虑';
+            }
+
+            return { score, level, description, avgMatch, mismatch: false };
+        }
+
+        // 渲染薪酬匹配详情
+        function renderSalaryMatchDetails(jdDims, candidateDims, salaryMatch, jdText, resumeText) {
+            // 提取薪酬信息用于显示
+            const jdSalary = extractSalary(jdText);
+            const candidateSalary = extractSalary(resumeText);
+            
+            // JD薪酬匹配
+            const jdSalaryContent = document.getElementById('jdSalaryContent');
+            if (jdSalaryContent) {
+                let html = '<div style="font-size: 14px; color: #333;">';
+                
+                if (jdSalary) {
+                    html += `<div style="margin-bottom: 8px;"><strong>岗位薪酬范围：</strong><span style="color: #ff9800; font-size: 18px; font-weight: bold;">${jdSalary.min}-${jdSalary.max}${jdSalary.unit}</span></div>`;
+                }
+                
+                if (jdDims) {
+                    const avgRequirement = Math.round(jdDims.reduce((sum, d) => sum + (d.score || 0), 0) / jdDims.length);
+                    html += `<div style="margin-bottom: 8px;"><strong>岗位能力要求均值：</strong><span style="color: #ff9800; font-weight: bold;">${avgRequirement}分</span></div>`;
+                }
+                
+                html += '<div style="font-size: 13px; color: #666;">基于6个维度综合评估</div></div>';
+                jdSalaryContent.innerHTML = html;
+            }
+
+            // 候选人薪酬期望匹配
+            const candidateSalaryContent = document.getElementById('candidateSalaryContent');
+            if (candidateSalaryContent) {
+                let html = '<div style="font-size: 14px; color: #333;">';
+                
+                if (candidateSalary) {
+                    const salaryColor = salaryMatch.mismatch ? '#f44336' : '#4caf50';
+                    html += `<div style="margin-bottom: 8px;"><strong>候选人期望薪酬：</strong><span style="color: ${salaryColor}; font-size: 18px; font-weight: bold;">${candidateSalary.min}${candidateSalary.unit}</span></div>`;
+                }
+                
+                if (candidateDims) {
+                    const avgPerformance = Math.round(candidateDims.reduce((sum, d) => sum + (d.score || 0), 0) / candidateDims.length);
+                    html += `<div style="margin-bottom: 8px;"><strong>候选人能力均值：</strong><span style="color: #4caf50; font-weight: bold;">${avgPerformance}分</span></div>`;
+                }
+                
+                const matchColor = salaryMatch.score >= 75 ? '#4caf50' : salaryMatch.score >= 60 ? '#ff9800' : '#f44336';
+                html += `<div style="margin-bottom: 8px;"><strong>薪酬匹配度：</strong><span style="color: ${matchColor}; font-weight: bold;">${salaryMatch.score}%</span></div>`;
+                html += `<div style="font-size: 13px; color: #666;">${salaryMatch.description}</div></div>`;
+                
+                candidateSalaryContent.innerHTML = html;
+            }
+        }
+
+        // 渲染真伪验证（简化版 - 只显示汇总）
+        function renderAuthenticityCheckSummary(authenticity) {
             const container = document.getElementById('authenticityCheck');
             if (!container) return;
 
-            const status = authenticity.status || '一致';
-            const confidence = authenticity.confidence || 80;
-            const inconsistencies = authenticity.inconsistencies || [];
+            const status = authenticity?.status || '一致';
+            const confidence = authenticity?.confidence || 80;
+            const analysis = authenticity?.analysis || '简历与面试回答基本一致';
 
             let statusColor = '#4caf50';
             if (status === '部分一致') statusColor = '#ff9800';
             if (status === '存疑') statusColor = '#f44336';
 
-            let html = `
+            const html = `
                 <div style="padding: 20px; background: ${statusColor}10; border-radius: 8px; border-left: 4px solid ${statusColor};">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <span style="font-weight: 600; font-size: 16px; color: ${statusColor};">
-                            🔍 真伪验证：${status}
+                            🔍 验证结果：${status}
                         </span>
                         <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">
                             可信度：${confidence}%
                         </span>
                     </div>
-                    <div style="font-size: 14px; color: #666; margin-bottom: 15px;">
-                        ${authenticity.analysis || '简历与面试回答基本一致'}
+                    <div style="font-size: 14px; color: #666; line-height: 1.6;">
+                        ${analysis}
                     </div>
+                </div>
             `;
 
-            if (inconsistencies.length > 0) {
-                html += `<div style="margin-top: 10px;"><strong>发现的不一致项：</strong></div>`;
-                html += inconsistencies.map(item => `
-                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px;">
-                        <div style="color: #f44336; font-weight: 600; margin-bottom: 5px;">${item.item}</div>
-                        <div style="font-size: 12px; color: #666;">
-                            <div>📄 简历：${item.resume}</div>
-                            <div>🎙️ 面试：${item.interview}</div>
-                            <div style="margin-top: 5px; color: ${item.severity === '严重' ? '#f44336' : item.severity === '中等' ? '#ff9800' : '#ff9800'};">
-                                严重程度：${item.severity}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+            container.innerHTML = html;
+        }
+
+        // 渲染JD维度评分详情（左侧）- 性能优化版
+        function renderJdDimensionDetails(dimensions) {
+            const container = document.getElementById('jdDimensionDetails');
+            if (!container || !dimensions || dimensions.length === 0) {
+                if (container) container.innerHTML = '<div style="color: #999; padding: 20px;">暂无JD维度数据</div>';
+                return;
             }
 
-            if (authenticity.recommendations && authenticity.recommendations.length > 0) {
+            // 批量生成HTML，减少DOM操作
+            let html = '';
+            for (let i = 0; i < dimensions.length; i++) {
+                const d = dimensions[i];
                 html += `
-                    <div style="margin-top: 15px;">
-                        <strong>建议：</strong>
-                        ${authenticity.recommendations.map(r => `<div style="margin-top: 5px; font-size: 13px;">• ${r}</div>`).join('')}
+                    <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #fff5f5; border-radius: 8px; border-left: 4px solid #ff6b6b;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: 600; color: #333;">${d.name}</span>
+                            <span style="background: #ff6b6b; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+                        </div>
+                        <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                            <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                        </div>
                     </div>
                 `;
             }
 
-            html += '</div>';
             container.innerHTML = html;
         }
 
-        // 渲染面试问题提取
+        // 渲染候选人维度评分详情（右侧）- 性能优化版
+        function renderCandidateDimensionDetails(dimensions) {
+            const container = document.getElementById('candidateDimensionDetails');
+            if (!container || !dimensions || dimensions.length === 0) {
+                if (container) container.innerHTML = '<div style="color: #999; padding: 20px;">暂无候选人维度数据</div>';
+                return;
+            }
+
+            // 批量生成HTML，减少DOM操作
+            let html = '';
+            for (let i = 0; i < dimensions.length; i++) {
+                const d = dimensions[i];
+                const gapColor = d.gap >= 0 ? '#4caf50' : '#ff9800';
+                const gapText = d.gap >= 0 ? '+' + d.gap : '' + d.gap;
+                
+                html += `
+                    <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-weight: 600; color: #333;">${d.name}</span>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="background: ${gapColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
+                                    ${gapText}
+                                </span>
+                                <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                            <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // 渲染真伪验证结果
+        // 渲染面试问题提取 - 性能优化版
         function renderInterviewQuestions(questionAnswers) {
             const container = document.getElementById('interviewQuestions');
             if (!container) return;
@@ -2003,22 +2670,29 @@
                 return;
             }
 
-            const html = questionAnswers.map((qa, index) => `
-                <div class="question-item" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
-                    <div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">
-                        问题 ${index + 1}：${qa.question}
+            // 批量生成HTML，减少DOM操作
+            let html = '';
+            for (let i = 0; i < questionAnswers.length; i++) {
+                const qa = questionAnswers[i];
+                const scoreColor = qa.score >= 80 ? '#4caf50' : qa.score >= 60 ? '#ff9800' : '#f44336';
+                
+                html += `
+                    <div class="question-item" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">
+                            问题 ${i + 1}：${qa.question}
+                        </div>
+                        <div style="font-size: 13px; color: #666; line-height: 1.6;">
+                            <strong>回答：</strong>${qa.answer_summary || '无回答内容'}
+                        </div>
+                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
+                            <span style="background: ${scoreColor}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px;">
+                                ${qa.score}分
+                            </span>
+                            <span style="font-size: 13px; color: #666;">${qa.evaluation || ''}</span>
+                        </div>
                     </div>
-                    <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                        <strong>回答：</strong>${qa.answer_summary || '无回答内容'}
-                    </div>
-                    <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
-                        <span style="background: ${qa.score >= 80 ? '#4caf50' : qa.score >= 60 ? '#ff9800' : '#f44336'}; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px;">
-                            ${qa.score}分
-                        </span>
-                        <span style="font-size: 13px; color: #666;">${qa.evaluation || ''}</span>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }
 
             container.innerHTML = html;
         }
@@ -2035,15 +2709,18 @@
         // 渲染岗位要求雷达图
         function renderJdRadarChart(dimensions) {
             const chartDom = document.getElementById('jdRadarChart');
-            if (!chartDom) return;
+            if (!chartDom) {
+                console.error('[DEBUG] jdRadarChart element not found!');
+                return;
+            }
 
             if (window.jdRadarChart && typeof window.jdRadarChart.dispose === 'function') {
                 window.jdRadarChart.dispose();
             }
             window.jdRadarChart = echarts.init(chartDom);
 
-            // 岗位要求的标准分数（假设都是80分作为基准）
-            const jdScores = dimensions.map(() => 80);
+            // 使用JD维度的实际分数
+            const jdScores = dimensions.map(d => d.score || 75);
 
             const indicators = dimensions.map(d => ({
                 name: d.name,
@@ -2053,7 +2730,14 @@
             const option = {
                 tooltip: {
                     trigger: 'item',
-                    formatter: '{b}: {c}分'
+                    formatter: function(params) {
+                        const data = params.data || params;
+                        let result = data.name + '<br/>';
+                        dimensions.forEach((dim, idx) => {
+                            result += dim.name + ': ' + (data.value[idx] || 0) + '分<br/>';
+                        });
+                        return result;
+                    }
                 },
                 radar: {
                     indicator: indicators,
@@ -2088,6 +2772,189 @@
             };
 
             window.jdRadarChart.setOption(option);
+            console.log('[DEBUG] JD雷达图已渲染，分数:', jdScores);
+        }
+
+        // 渲染面试评价页面的JD雷达图 - 性能优化版
+        function renderInterviewJdRadarChart(dimensions) {
+            const chartDom = document.getElementById('interviewJdRadarChart');
+            if (!chartDom || !dimensions || dimensions.length === 0) {
+                console.log('[雷达图] JD维度数据为空或容器不存在');
+                return;
+            }
+
+            // 确保容器可见
+            if (chartDom.offsetWidth === 0 || chartDom.offsetHeight === 0) {
+                console.log('[雷达图] JD雷达图容器不可见，延迟渲染');
+                setTimeout(() => renderInterviewJdRadarChart(dimensions), 100);
+                return;
+            }
+
+            // 直接重新初始化图表，避免dispose方法错误
+            try {
+                if (window.interviewJdRadarChart) {
+                    window.interviewJdRadarChart.dispose();
+                }
+            } catch (e) {
+                console.log('[雷达图] 销毁旧实例失败，创建新实例:', e.message);
+            }
+            window.interviewJdRadarChart = echarts.init(chartDom);
+
+            // 固定维度顺序
+            const fixedOrder = ['专业能力', '工作经验', '沟通表达', '逻辑思维', '学习能力', '综合素质'];
+            
+            // 按照固定顺序排序维度
+            const sortedDimensions = fixedOrder.map(name => {
+                return dimensions.find(d => d.name === name) || { name, score: 0 };
+            });
+
+            // 缓存计算结果
+            const jdScores = sortedDimensions.map(d => d.score || 0);
+            const indicators = sortedDimensions.map(d => ({
+                name: d.name,
+                max: 100
+            }));
+
+            // 预计算tooltip格式化函数需要的数据
+            const tooltipData = sortedDimensions.map(d => d.name);
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        let result = params.name + '<br/>';
+                        tooltipData.forEach((name, idx) => {
+                            result += name + ': ' + (params.data.value[idx] || 0) + '分<br/>';
+                        });
+                        return result;
+                    }
+                },
+                radar: {
+                    indicator: indicators,
+                    radius: '65%',
+                    axisName: { color: '#ff6b6b', fontSize: 12, fontWeight: 'bold' },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['rgba(255, 107, 107, 0.05)', 'rgba(255, 107, 107, 0.1)']
+                        }
+                    },
+                    axisLine: { lineStyle: { color: '#ff6b6b' } },
+                    splitLine: { lineStyle: { color: '#ff6b6b' } }
+                },
+                series: [{
+                    name: '岗位要求',
+                    type: 'radar',
+                    data: [{
+                        value: jdScores,
+                        name: '岗位要求',
+                        areaStyle: {
+                            color: 'rgba(255, 107, 107, 0.3)'
+                        },
+                        lineStyle: {
+                            color: '#ff6b6b',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#ff6b6b'
+                        }
+                    }]
+                }]
+            };
+
+            window.interviewJdRadarChart.setOption(option);
+            console.log('[雷达图] JD雷达图渲染完成，分数:', jdScores);
+        }
+
+        // 渲染面试评价页面的候选人雷达图 - 性能优化版
+        function renderInterviewCandidateRadarChart(dimensions) {
+            const chartDom = document.getElementById('interviewCandidateRadarChart');
+            if (!chartDom || !dimensions || dimensions.length === 0) {
+                console.log('[雷达图] 候选人维度数据为空或容器不存在');
+                return;
+            }
+
+            // 确保容器可见
+            if (chartDom.offsetWidth === 0 || chartDom.offsetHeight === 0) {
+                console.log('[雷达图] 候选人雷达图容器不可见，延迟渲染');
+                setTimeout(() => renderInterviewCandidateRadarChart(dimensions), 100);
+                return;
+            }
+
+            // 直接重新初始化图表，避免dispose方法错误
+            try {
+                if (window.interviewCandidateRadarChart) {
+                    window.interviewCandidateRadarChart.dispose();
+                }
+            } catch (e) {
+                console.log('[雷达图] 销毁旧实例失败，创建新实例:', e.message);
+            }
+            window.interviewCandidateRadarChart = echarts.init(chartDom);
+
+            // 固定维度顺序
+            const fixedOrder = ['专业能力', '工作经验', '沟通表达', '逻辑思维', '学习能力', '综合素质'];
+            
+            // 按照固定顺序排序维度
+            const sortedDimensions = fixedOrder.map(name => {
+                return dimensions.find(d => d.name === name) || { name, score: 0 };
+            });
+
+            // 缓存计算结果
+            const candidateScores = sortedDimensions.map(d => d.score || 0);
+            const indicators = sortedDimensions.map(d => ({
+                name: d.name,
+                max: 100
+            }));
+
+            // 预计算tooltip格式化函数需要的数据
+            const tooltipData = sortedDimensions.map(d => ({
+                name: d.name,
+                gap: d.gap !== undefined ? (d.gap >= 0 ? '+' : '') + d.gap : 0
+            }));
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        let result = params.name + '<br/>';
+                        tooltipData.forEach((data, idx) => {
+                            result += data.name + ': ' + (params.data.value[idx] || 0) + '分 (差距' + data.gap + ')<br/>';
+                        });
+                        return result;
+                    }
+                },
+                radar: {
+                    indicator: indicators,
+                    radius: '65%',
+                    axisName: { color: '#667eea', fontSize: 12, fontWeight: 'bold' },
+                    splitArea: {
+                        areaStyle: {
+                            color: ['rgba(102, 126, 234, 0.05)', 'rgba(102, 126, 234, 0.1)']
+                        }
+                    },
+                    axisLine: { lineStyle: { color: '#667eea' } },
+                    splitLine: { lineStyle: { color: '#667eea' } }
+                },
+                series: [{
+                    name: '候选人表现',
+                    type: 'radar',
+                    data: [{
+                        value: candidateScores,
+                        name: '候选人表现',
+                        areaStyle: {
+                            color: 'rgba(102, 126, 234, 0.3)'
+                        },
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#667eea'
+                        }
+                    }]
+                }]
+            };
+
+            window.interviewCandidateRadarChart.setOption(option);
         }
 
         // 切换转录文本显示/隐藏
@@ -2104,7 +2971,7 @@
             }
         }
 
-        // 渲染面试评价雷达图
+        // 渲染面试评价雷达图（旧函数，保留兼容）
         function renderInterviewRadarChart(dimensions) {
             const chartDom = document.getElementById('interviewRadarChart');
             if (!chartDom) return;

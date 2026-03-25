@@ -232,7 +232,7 @@ def save_emp_to_database(emp_data: Dict[str, Any]) -> bool:
 
 # ============ API路由 ============
 
-@router.post("/batch-upload")
+@router.post("/batch-import")
 async def batch_upload_emp_roster(file: UploadFile = File(...)):
     """
     批量上传员工花名册Excel文件

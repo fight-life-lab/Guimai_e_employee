@@ -20,6 +20,8 @@ from app.api.professional_ability_routes import router as professional_ability_r
 from app.api.work_experience_routes import router as work_experience_router
 from app.api.interview_evaluation_routes import router as interview_evaluation_router
 from app.api.interview_evaluation_routes_v2 import router as interview_evaluation_v2_router
+from app.api.interview_evaluation_ws import router as interview_evaluation_ws_router
+from app.api.interview_evaluation_optimized import router as interview_evaluation_optimized_router
 from app.config import get_settings
 from app.database.models import init_database
 
@@ -79,7 +81,7 @@ app.include_router(feishu_router)
 app.include_router(alignment_router)
 app.include_router(detailed_alignment_router)
 app.include_router(jd_match_router)
-app.include_router(job_description_router)
+app.include_router(job_description_router, prefix="/api/v1/job-description")
 app.include_router(emp_roster_router)
 app.include_router(attendance_router)
 app.include_router(attendance_summary_router)
@@ -87,6 +89,8 @@ app.include_router(professional_ability_router)
 app.include_router(work_experience_router)
 app.include_router(interview_evaluation_router)
 app.include_router(interview_evaluation_v2_router)
+app.include_router(interview_evaluation_ws_router)
+app.include_router(interview_evaluation_optimized_router)
 
 # Mount static files (for web UI)
 if os.path.exists("./static"):

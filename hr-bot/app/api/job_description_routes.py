@@ -29,7 +29,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 # 创建路由
-router = APIRouter(prefix="/api/v1/job-description", tags=["岗位说明书管理"])
+router = APIRouter(tags=["岗位说明书管理"])
 
 # MySQL数据库配置
 MYSQL_HOST = "localhost"

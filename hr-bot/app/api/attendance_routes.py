@@ -70,7 +70,7 @@ def get_db():
         db.close()
 
 
-@router.post("/batch-upload")
+@router.post("/batch-import")
 async def batch_upload_attendance(file: UploadFile = File(...)):
     """
     批量导入考勤明细数据

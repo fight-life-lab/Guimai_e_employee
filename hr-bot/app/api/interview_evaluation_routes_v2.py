@@ -355,8 +355,11 @@ async def check_authenticity(
     resume_content: str,
     transcript: str
 ) -> dict:
-    """检查面试回答与简历的一致性，识别真伪"""
-    prompt = f"""你是一位资深HR背景调查专家，请对比候选人的简历和面试回答，检查是否存在不一致或可疑之处。
+    """检查面试回答与简历的一致性，识别真伪
+    
+    只检查简历和面试中实际存在的冲突，不自行添加衍生内容
+    """
+    prompt = f"""你是一位资深HR背景调查专家，请严格对比候选人的简历和面试回答，只报告实际发现的不一致之处。
 
 ## 候选人简历
 {resume_content}
@@ -364,11 +367,17 @@ async def check_authenticity(
 ## 面试录音转录
 {transcript[:3000]}
 
-请分析：
-1. 面试中提到的经历、项目是否与简历一致
-2. 时间线是否有矛盾
-3. 技能描述是否匹配
-4. 是否存在夸大或虚假信息的嫌疑
+请严格检查以下内容，只报告实际存在的冲突：
+1. 工作经历：公司名称、职位、时间是否在简历和面试中一致
+2. 项目经历：项目名称、职责、成果是否在两者中一致
+3. 技能描述：技能掌握程度描述是否一致
+4. 时间线：入职离职时间是否有矛盾
+
+重要规则：
+- 只报告简历和面试中**实际存在**的不一致
+- 不要推测或添加未明确提及的内容
+- 如果面试中未提及某内容，不要作为不一致
+- 只有简历和面试都提到但内容冲突时，才列为不一致
 
 请按以下JSON格式输出：
 ```json
@@ -377,21 +386,22 @@ async def check_authenticity(
     "confidence": 85,
     "inconsistencies": [
         {{
-            "item": "不一致项描述",
-            "resume": "简历中的描述",
-            "interview": "面试中的描述",
+            "item": "具体不一致项（如：工作经历时间）",
+            "resume": "简历中的原文描述",
+            "interview": "面试中的原文描述",
             "severity": "轻微/中等/严重"
         }}
     ],
-    "analysis": "整体一致性分析说明",
-    "recommendations": ["建议进一步核实的内容"]
+    "analysis": "基于实际对比的整体分析",
+    "recommendations": ["基于实际不一致的建议"]
 }}
 ```
 
 注意：
-1. 如未发现问题，inconsistencies可为空数组
-2. severity表示问题的严重程度
-3. 只输出JSON格式内容"""
+1. 如未发现实际不一致，inconsistencies必须为空数组
+2. 只有简历和面试都明确提及且内容冲突时，才列入inconsistencies
+3. 不要添加推测性的不一致项
+4. 只输出JSON格式内容"""
 
     content = await call_qwen_model(prompt, temperature=0.3)
     
@@ -527,12 +537,24 @@ async def evaluate_interview_v2(
                 QuestionItem(category="通用", question="请介绍一下你的工作经历", evaluation_points="考察工作经验")
             ]
         
-        # 5. 分析JD生成岗位要求（左侧雷达图）
-        logger.info(f"[面试评价] 开始分析JD...")
-        jd_analysis = await analyze_jd_requirements(jd_text)
+        # 5. 并行执行JD分析和候选人评估（这两个可以并行）
+        logger.info(f"[面试评价] 开始并行分析JD和评估候选人...")
         
-        # 6. 评估候选人 vs JD（右侧雷达图）
-        logger.info(f"[面试评价] 开始评估候选人...")
+        import asyncio
+        
+        # 并行执行JD分析和候选人评估
+        jd_analysis_task = analyze_jd_requirements(jd_text)
+        candidate_eval_task = evaluate_candidate_vs_jd(
+            jd_content=jd_text,
+            resume_content=resume_text,
+            transcript=transcript,
+            jd_dimensions=[]  # 先不传，等JD分析完成后再评估
+        )
+        
+        # 等待JD分析完成
+        jd_analysis = await jd_analysis_task
+        
+        # 使用JD分析结果重新评估候选人
         candidate_eval = await evaluate_candidate_vs_jd(
             jd_content=jd_text,
             resume_content=resume_text,
@@ -540,13 +562,17 @@ async def evaluate_interview_v2(
             jd_dimensions=jd_analysis.get("dimensions", [])
         )
         
-        # 7. 基于结构化问题评估回答
-        logger.info(f"[面试评价] 开始评估问题回答...")
-        question_answers = await evaluate_question_answers(transcript, questions)
+        # 6. 并行执行问题评估和真伪验证
+        logger.info(f"[面试评价] 开始并行评估问题和真伪验证...")
         
-        # 8. 真伪验证
-        logger.info(f"[面试评价] 开始真伪验证...")
-        authenticity = await check_authenticity(resume_text, transcript)
+        question_answers_task = evaluate_question_answers(transcript, questions)
+        authenticity_task = check_authenticity(resume_text, transcript)
+        
+        # 同时等待两个任务完成
+        question_answers, authenticity = await asyncio.gather(
+            question_answers_task, 
+            authenticity_task
+        )
         
         return InterviewEvaluationResponseV2(
             success=True,
