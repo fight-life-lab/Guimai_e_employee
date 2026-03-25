@@ -93,36 +93,69 @@ def get_employee_info(db, emp_name: str):
     return None
 
 
-def get_job_description(db, position_name: str):
+def get_job_description(db, position_name: str, emp_name: str = None):
     """从MySQL获取岗位描述"""
-    sql = text("""
-        SELECT position_name, department, position_purpose,
-               duties_and_responsibilities, 
-               qualifications_education, qualifications_major,
-               qualifications_job_work_experience, 
-               qualifications_required_professional_certification,
-               qualifications_skills, qualifications_others,
-               kpis
-        FROM ods_emp_job_description
-        WHERE position_name LIKE :position_name
-        LIMIT 1
-    """)
-    result = db.execute(sql, {'position_name': f'%{position_name}%'})
-    row = result.fetchone()
-    if row:
-        return {
-            'position_name': row.position_name,
-            'department': row.department,
-            'position_purpose': row.position_purpose,
-            'duties': row.duties_and_responsibilities,
-            'qualifications_education': row.qualifications_education,
-            'qualifications_major': row.qualifications_major,
-            'qualifications_job_work_experience': row.qualifications_job_work_experience,
-            'qualifications_cert': row.qualifications_required_professional_certification,
-            'qualifications_skills': row.qualifications_skills,
-            'qualifications_others': row.qualifications_others,
-            'kpis': row.kpis
-        }
+    if emp_name:
+        # 优先根据员工姓名查询岗位信息
+        sql = text("""
+            SELECT position_name, department, position_purpose,
+                   duties_and_responsibilities, 
+                   qualifications_education, qualifications_major,
+                   qualifications_job_work_experience, 
+                   qualifications_required_professional_certification,
+                   qualifications_skills, qualifications_others,
+                   kpis
+            FROM ods_emp_job_description
+            WHERE emp_name = :emp_name
+            LIMIT 1
+        """)
+        result = db.execute(sql, {'emp_name': emp_name})
+        row = result.fetchone()
+        if row:
+            return {
+                'position_name': row.position_name,
+                'department': row.department,
+                'position_purpose': row.position_purpose,
+                'duties': row.duties_and_responsibilities,
+                'qualifications_education': row.qualifications_education,
+                'qualifications_major': row.qualifications_major,
+                'qualifications_job_work_experience': row.qualifications_job_work_experience,
+                'qualifications_cert': row.qualifications_required_professional_certification,
+                'qualifications_skills': row.qualifications_skills,
+                'qualifications_others': row.qualifications_others,
+                'kpis': row.kpis
+            }
+    
+    # 如果没有提供员工姓名，或者根据员工姓名没有找到岗位信息，再根据岗位名称查询
+    if position_name:
+        sql = text("""
+            SELECT position_name, department, position_purpose,
+                   duties_and_responsibilities, 
+                   qualifications_education, qualifications_major,
+                   qualifications_job_work_experience, 
+                   qualifications_required_professional_certification,
+                   qualifications_skills, qualifications_others,
+                   kpis
+            FROM ods_emp_job_description
+            WHERE position_name LIKE :position_name
+            LIMIT 1
+        """)
+        result = db.execute(sql, {'position_name': f'%{position_name}%'})
+        row = result.fetchone()
+        if row:
+            return {
+                'position_name': row.position_name,
+                'department': row.department,
+                'position_purpose': row.position_purpose,
+                'duties': row.duties_and_responsibilities,
+                'qualifications_education': row.qualifications_education,
+                'qualifications_major': row.qualifications_major,
+                'qualifications_job_work_experience': row.qualifications_job_work_experience,
+                'qualifications_cert': row.qualifications_required_professional_certification,
+                'qualifications_skills': row.qualifications_skills,
+                'qualifications_others': row.qualifications_others,
+                'kpis': row.kpis
+            }
     return None
 
 
@@ -760,10 +793,12 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     计算学习能力维度得分（权重20%）
     基于：学历、持续学习
     """
+    import json
     education = emp_info.get('education') or ''
     school = emp_info.get('school') or ''
     school_type = emp_info.get('school_type') or ''
     highest_degree = emp_info.get('highest_degree') or ''
+    major = emp_info.get('highest_degree_major') or ''
     reasons = []
 
 
@@ -793,6 +828,72 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     elif '211' in school_type or 'QS前100' in school_type:
         add_score = 10
         reasons.append(f"毕业学校为{education},为{school_type},加分{add_score}")
+    
+    # 专业匹配加分
+    if major and job_desc:
+        qual_major = job_desc.get('qualifications_major')
+        if qual_major:
+            # 提取岗位要求的专业
+            import json
+            try:
+                if isinstance(qual_major, str):
+                    qual_major = json.loads(qual_major)
+                job_major = qual_major.get('requirement', '')
+                if job_major:
+                    # 使用大模型判断专业匹配度
+                    import requests
+                    from app.config import get_settings
+                    
+                    settings = get_settings()
+                    
+                    # 构建提示词
+                    prompt = f"""请判断以下员工的专业是否与岗位要求的专业匹配。
+
+员工专业：{major}
+岗位要求专业：{job_major}
+
+请分析员工专业是否与岗位要求的专业匹配，返回"匹配"或"不匹配"。
+
+判断标准：
+1. 员工专业与岗位要求的专业名称完全相同
+2. 员工专业与岗位要求的专业属于同一学科门类
+3. 员工专业与岗位要求的专业在知识结构和技能要求上有较高的相关性
+
+只返回"匹配"或"不匹配"，不要返回其他内容。"""
+                    
+                    # 调用大模型 API
+                    try:
+                        response = requests.post(
+                            settings.LLM_URL,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {settings.LLM_API_KEY}"
+                            },
+                            json={
+                                "model": settings.LLM_MODEL,
+                                "messages": [
+                                    {"role": "system", "content": "你是一个专业的HR分析师，擅长判断员工专业与岗位要求的匹配度。"},
+                                    {"role": "user", "content": prompt}
+                                ],
+                                "temperature": 0.3,
+                                "max_tokens": 50
+                            },
+                            timeout=10
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                            if  '匹配' in content:
+                                add_score += 5
+                                reasons.append(f"员工是{major}，与岗位要求专业{job_major}匹配，加分5分")
+                    except Exception as e:
+                        # 如果大模型调用失败，跳过专业匹配加分
+                        pass
+            except Exception as e:
+                # 如果解析失败，跳过专业匹配加分
+                pass
+    
     score = base_score + add_score
 
     
@@ -822,9 +923,10 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     else:
         job_requirement = 60
         job_reason_parts.append("未获取信息，默认为本科及以上学历")
-    if qual_major:
+    major  = json.loads(qual_major).get('requirement', '')
+    if major:
         job_requirement += 5
-        job_reason_parts.append(f"需要{qual_major}相关专业")
+        job_reason_parts.append(f"需要{major}相关专业")
     
     # 精简岗位理由
     job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
@@ -1083,7 +1185,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         
         # 2. 获取岗位描述
         position_name = request.position_name or emp_info.get('position', '')
-        job_desc = get_job_description(db, position_name) if position_name else None
+        job_desc = get_job_description(db, position_name, emp_info['emp_name']) if position_name else None
         
         # 3. 获取考勤数据
         attendance = get_attendance_summary(db, emp_info['emp_code'])
