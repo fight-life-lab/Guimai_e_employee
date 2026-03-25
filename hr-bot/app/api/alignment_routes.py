@@ -437,6 +437,12 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     - 5年：80分
     - 8年：90分
     - 10年以上：100分
+
+    荣誉
+    （1）国家级荣誉：20分
+    （2）省部级荣誉：15分
+    （3）集团级荣誉：10分
+    （4）公司级荣誉：5分
     """
     from datetime import datetime, date
     from app.models.emp_work_experience import EmpWorkExperience
@@ -723,7 +729,7 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
     if reasons:
         employee_reason = "；".join(reasons) + f"。累计得分{total_score}分（上限100分）"
     else:
-        employee_reason = "无专利和荣誉记录，得分0分"
+        employee_reason = "无专利，得分0分"
     
     # 基于岗位说明书确定创新要求
     qual_skills = job_desc.get('qualifications_skills') if job_desc else None
@@ -872,8 +878,8 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
         employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
     
     # 工作态度要求相对固定，基于通用职业规范
-    job_requirement = 80
-    job_reason = "要求：遵守考勤纪律，积极主动，标准分80分"
+    job_requirement = 70
+    job_reason = "要求：遵守考勤纪律，积极主动，标准分70分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -1016,17 +1022,17 @@ def generate_gap_analysis(dimensions: List[DimensionScore]) -> List[Dict]:
     analysis = []
     
     for dim in dimensions:
-        gap = dim.job_requirement - dim.score
+        gap = dim.score - dim.job_requirement
         
-        if gap > 15:
+        if gap < -15:
             level = "严重不足"
             color = "#ff4d4f"
             suggestion = f"急需提升，建议制定专项培训计划"
-        elif gap > 5:
+        elif gap < -5:
             level = "有待提升"
             color = "#faad14"
             suggestion = f"存在差距，建议针对性学习提升"
-        elif gap > -5:
+        elif gap < 5:
             level = "基本匹配"
             color = "#52c41a"
             suggestion = f"符合要求，继续保持"
@@ -1098,7 +1104,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         dimensions.append(DimensionScore(
             name="经验",
             score=exp_score,
-            weight=10,
+            weight=20,
             job_requirement=exp_req,
             description="基于本专业/相关专业工作年限",
             employee_reason=exp_emp_reason,
@@ -1110,9 +1116,9 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         dimensions.append(DimensionScore(
             name="创新能力",
             score=innov_score,
-            weight=20,
+            weight=10,
             job_requirement=innov_req,
-            description="基于专利、荣誉奖项（专利：发明50分/外观35分/实用25分；荣誉：国家级100分/省部级75分/集团级50分）",
+            description="基于专利(专利：发明100分/外观70分/实用50分）",
             employee_reason=innov_emp_reason,
             job_reason=innov_job_reason
         ))
