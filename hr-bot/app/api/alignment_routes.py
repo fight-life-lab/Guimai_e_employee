@@ -67,7 +67,7 @@ def get_employee_info(db, emp_name: str):
     """从MySQL获取员工信息"""
     sql = text("""
         SELECT emp_code, emp_name, dept_level1, dept_level2, position_name,
-               highest_education, highest_degree_school, highest_degree_school_type,
+               highest_education, highest_degree, highest_degree_school, highest_degree_school_type,
                entry_date, job_level, work_years, company_years
         FROM emp_roster
         WHERE emp_name LIKE :emp_name
@@ -82,6 +82,7 @@ def get_employee_info(db, emp_name: str):
             'department': f"{row.dept_level1 or ''} {row.dept_level2 or ''}".strip(),
             'position': row.position_name,
             'education': row.highest_education,
+            'highest_degree': row.highest_degree,
             'school': row.highest_degree_school,
             'school_type': row.highest_degree_school_type,
             'entry_date': row.entry_date,
@@ -129,16 +130,17 @@ def get_attendance_summary(db, emp_code: str):
     """从MySQL获取考勤汇总数据"""
     sql = text("""
         SELECT 
-            SUM(normal_attendance_days) as total_normal_days,
-            SUM(expected_attendance_days) as total_expected_days,
-            SUM(late_count) as total_late,
-            SUM(early_leave_count) as total_early_leave,
-            SUM(leave_count) as total_leave,
-            SUM(outing_count) as total_outing,
-            SUM(overtime_count) as total_overtime,
-            SUM(overtime_hours) as total_overtime_hours
+            avg(normal_attendance_days) as total_normal_days,
+            avg(expected_attendance_days) as total_expected_days,
+            avg(late_count) as total_late,
+            avg(early_leave_count) as total_early_leave,
+            avg(leave_count) as total_leave,
+            avg(outing_count) as total_outing,
+            avg(overtime_count) as total_overtime,
+            avg(overtime_hours) as total_overtime_hours
         FROM ods_attendance_summary
         WHERE emp_code = :emp_code
+        AND normal_attendance_days>0 
     """)
     result = db.execute(sql, {'emp_code': emp_code})
     row = result.fetchone()
@@ -202,7 +204,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                 excellent_count = 0
                 basic_count = 0
                 # 只统计2023、2024、2025年的绩效
-                valid_years = ['2023', '2024', '2025']
+                valid_years = ['2023', '2024', '2022']
                 for perf in perf_history:
                     year = str(perf.get('year', ''))
                     if year in valid_years:
@@ -214,10 +216,10 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                 
                 if excellent_count > 0:
                     performance_bonus = 10 * excellent_count
-                    performance_reason = f"2023-2025年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
+                    performance_reason = f"2022-2024年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
                 elif basic_count > 0:
                     performance_bonus = -10 * basic_count
-                    performance_reason = f"2023-2025年{basic_count}次年度绩效基本称职，{performance_bonus}分"
+                    performance_reason = f"2022-2024年{basic_count}次年度绩效基本称职，{performance_bonus}分"
         
         if performance_bonus != 0:
             score += performance_bonus
@@ -280,7 +282,11 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         reasons.append("暂无专业能力数据")
     
     score = min(score, 100)
-    employee_reason = "；".join(reasons) + f"。最终得分{score}分"
+
+    if len(reasons) ==1:
+        employee_reason = ";".join(reasons) + f"近3年绩效都是称职，无任何加分项,最终得分{score}分"
+    else:
+        employee_reason = "；".join(reasons) + f",最终得分{score}分"
     
     # 基于岗位说明书确定岗位要求
     qual_skills = job_desc.get('qualifications_skills') if job_desc else None
@@ -751,33 +757,38 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     education = emp_info.get('education') or ''
     school = emp_info.get('school') or ''
     school_type = emp_info.get('school_type') or ''
-
+    highest_degree = emp_info.get('highest_degree') or ''
     reasons = []
-    # 学历基础分
-    if education and ('985' in education or 'QS前50' in education):
-        score = 100
-        reasons.append("985/QS前50院校背景，基础分100分")
-    elif education and ('211' in education or 'QS50-100' in education):
-        score = 90
-        reasons.append("211/QS50-100院校背景，基础分90分")
-    elif '博士' in education:
-        score = 90
-        reasons.append("博士学历，基础分90分")
-    elif '硕士' in education:
-        score = 80
-        reasons.append("硕士学历，基础分80分")
-    elif '本科' in education:
-        score = 70
-        reasons.append("本科学历，基础分70分")
+
+
+    if  "学士" in highest_degree:
+        base_score  = 60
+        reasons.append(f"本科学历,基础分为{base_score}")
+    elif "硕士" in highest_degree:
+        base_score = 70
+        reasons.append(f"硕士学历,基础分为{base_score}")
+    elif '博士' in highest_degree:
+        base_score = 80
+        reasons.append(f"博士学历,基础分为{base_score}")
+    elif '本科' in education and '无学位' in highest_degree:
+        base_score = 55
+        reasons.append(f"本科毕业，但无学位,基础分为{base_score}")
+    elif '专科' in education:
+        base_score = 55
+        reasons.append(f"专科学校，基础分为{base_score}")
     else:
-        score = 60
-        reasons.append("其他学历，基础分60分")
-    
-    # 学校加分
-    if school:
-        reasons.append(f"毕业院校：{school}")
-    if school_type:
-        reasons.append(f"院校类型：{school_type}")
+        base_score = 50
+        reasons.append(f"专科以下，基础分为{base_score}")
+    # 学历基础分
+    add_score = 0
+    if '985' in school_type or 'QS前50' in school_type:
+        add_score = 20
+        reasons.append(f"毕业学校为{education},为{school_type},加分{add_score}")
+    elif '211' in school_type or 'QS前100' in school_type:
+        add_score = 10
+        reasons.append(f"毕业学校为{education},为{school_type},加分{add_score}")
+    score = base_score + add_score
+
     
     employee_reason = "；".join(reasons) + f"，最终得分{score}分"
     
@@ -830,19 +841,16 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
         # 迟到/早退扣分：每月大于3次，3次以上每次扣1分，最多扣10分
         if late_count > 0:
             if late_count > 3:
-                late_deduction = min((late_count - 3), 10)
+                late_deduction = min(int((late_count - 3)), 10)
                 score -= late_deduction
                 reasons.append(f"迟到{late_count}次，扣{late_deduction}分")
             else:
                 reasons.append(f"迟到{late_count}次（3次以内不扣分）")
         
         if early_leave_count > 0:
-            if early_leave_count > 3:
-                early_deduction = min((early_leave_count - 3), 10)
-                score -= early_deduction
-                reasons.append(f"早退{early_leave_count}次，扣{early_deduction}分")
-            else:
-                reasons.append(f"早退{early_leave_count}次（3次以内不扣分）")
+            early_deduction = min(int(early_leave_count), 10)
+            score -= early_deduction
+            reasons.append(f"早退{early_leave_count}次，扣{early_deduction}分")
         
         # 加分项
         overtime_hours = attendance.get('overtime_hours', 0)
@@ -852,8 +860,8 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
         if overtime_hours >= 36:
             score += 20
             reasons.append(f"加班{overtime_hours:.1f}小时，+20分")
-        elif overtime_hours > 0:
-            bonus = min(overtime_hours / 10, 3)
+        elif overtime_count > 0:
+            bonus = min(int(overtime_count), 20)
             score += bonus
             reasons.append(f"加班{overtime_hours:.1f}小时，+{bonus:.1f}分")
         
@@ -1134,8 +1142,8 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 5. 计算综合得分（加权平均）
-        overall_score = sum(d.score * d.weight / 100 for d in dimensions)
-        job_requirement_score = sum(d.job_requirement * d.weight / 100 for d in dimensions)
+        overall_score = sum(float(d.score) * d.weight / 100 for d in dimensions)
+        job_requirement_score = sum(float(d.job_requirement) * d.weight / 100 for d in dimensions)
         
         # 6. 生成结论和建议
         conclusion, evaluation, recommendations = generate_conclusion(dimensions, overall_score, job_requirement_score)

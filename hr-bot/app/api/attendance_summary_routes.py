@@ -64,13 +64,16 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
             '员工编号': 'emp_code',
             '员工姓名': 'emp_name',
             '部门/事业部': 'department',
+            '正常出勤天数': 'normal_attendance_days',
             '正常出勤天': 'normal_attendance_days',
+            '理应出勤天数': 'expected_attendance_days',
             '理应出勤天': 'expected_attendance_days',
             '迟到次数': 'late_count',
             '早退次数': 'early_leave_count',
             '请假次数': 'leave_count',
             '外出次数': 'outing_count',
             '加班次数': 'overtime_count',
+            '加班时长（小时）': 'overtime_hours',
             '加班时长（20:30以后加班时长-小时）': 'overtime_hours',
             '加班时长': 'overtime_hours'
         }
@@ -91,6 +94,9 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
         success_count = 0
         fail_count = 0
         error_messages = []
+        
+        # 打印所有列名，用于调试
+        logger.info(f"[AttendanceSummary] Excel列名: {list(df.columns)}")
         
         for idx, row in df.iterrows():
             try:
@@ -138,20 +144,52 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
                         updated_at = CURRENT_TIMESTAMP
                 """)
                 
+                # 处理数值字段，确保正确转换
+                def get_numeric_value(value, default=0):
+                    if pd.isna(value):
+                        return default
+                    try:
+                        # 尝试转换为数字
+                        if isinstance(value, str):
+                            # 移除可能的非数字字符
+                            value = ''.join(c for c in value if c.isdigit() or c == '.')
+                        return float(value)
+                    except:
+                        return default
+                
+                # 处理整数字段
+                def get_integer_value(value, default=0):
+                    if pd.isna(value):
+                        return default
+                    try:
+                        # 尝试转换为整数
+                        if isinstance(value, str):
+                            # 移除可能的非数字字符
+                            value = ''.join(c for c in value if c.isdigit())
+                        return int(float(value))
+                    except:
+                        return default
+                
+                # 打印原始数据
+                logger.info(f"[AttendanceSummary] 第{idx + 2}行数据: normal_attendance_days={row.get('normal_attendance_days')}, overtime_hours={row.get('overtime_hours')}")
+                
                 params = {
                     'attendance_month': attendance_month,
                     'emp_code': str(row.get('emp_code', '')).strip(),
                     'emp_name': str(row.get('emp_name', '')).strip() if pd.notna(row.get('emp_name')) else None,
                     'department': str(row.get('department', '')).strip() if pd.notna(row.get('department')) else None,
-                    'normal_attendance_days': float(row.get('normal_attendance_days', 0)) if pd.notna(row.get('normal_attendance_days')) else 0,
-                    'expected_attendance_days': float(row.get('expected_attendance_days', 0)) if pd.notna(row.get('expected_attendance_days')) else 0,
-                    'late_count': int(row.get('late_count', 0)) if pd.notna(row.get('late_count')) else 0,
-                    'early_leave_count': int(row.get('early_leave_count', 0)) if pd.notna(row.get('early_leave_count')) else 0,
-                    'leave_count': int(row.get('leave_count', 0)) if pd.notna(row.get('leave_count')) else 0,
-                    'outing_count': int(row.get('outing_count', 0)) if pd.notna(row.get('outing_count')) else 0,
-                    'overtime_count': int(row.get('overtime_count', 0)) if pd.notna(row.get('overtime_count')) else 0,
-                    'overtime_hours': float(row.get('overtime_hours', 0)) if pd.notna(row.get('overtime_hours')) else 0
+                    'normal_attendance_days': get_numeric_value(row.get('normal_attendance_days')),
+                    'expected_attendance_days': get_numeric_value(row.get('expected_attendance_days')),
+                    'late_count': get_integer_value(row.get('late_count')),
+                    'early_leave_count': get_integer_value(row.get('early_leave_count')),
+                    'leave_count': get_integer_value(row.get('leave_count')),
+                    'outing_count': get_integer_value(row.get('outing_count')),
+                    'overtime_count': get_integer_value(row.get('overtime_count')),
+                    'overtime_hours': get_numeric_value(row.get('overtime_hours'))
                 }
+                
+                # 打印处理后的数据
+                logger.info(f"[AttendanceSummary] 第{idx + 2}行处理后: normal_attendance_days={params['normal_attendance_days']}, overtime_hours={params['overtime_hours']}")
                 
                 db.execute(sql, params)
                 success_count += 1
