@@ -73,7 +73,7 @@ def parse_job_description_excel(file_path: str, emp_id: str, emp_name: str) -> D
         import pandas as pd
         
         # 读取Excel文件
-        df = pd.read_excel(file_path, header=None)
+        df = pd.read_excel(file_path, header=None, dtype=str)
         
         # 初始化数据结构
         data = {
@@ -177,16 +177,22 @@ def parse_job_description_excel(file_path: str, emp_id: str, emp_name: str) -> D
                     dim_name = str(row_values[0]).strip()
                     dim_value = str(row_values[1]).strip()
                     
-                    if '学历' in dim_name:
+                    # 学历要求
+                    if any(keyword in dim_name for keyword in ['学历', '文化程度', '教育背景']):
                         data['qualifications_education'] = {'requirement': dim_value}
-                    elif '专业' in dim_name:
-                        data['qualifications_major'] = {'requirement': dim_value}
-                    elif '工作经验' in dim_name or '岗位工作经验' in dim_name:
-                        data['qualifications_job_work_experience'] = {'requirement': dim_value}
-                    elif '专业认证' in dim_name or '必备专业认证' in dim_name:
+                    # 专业认证要求
+                    elif any(keyword in dim_name for keyword in ['专业认证', '必备专业认证', '资格证书', '证书要求']):
                         data['qualifications_required_professional_certification'] = {'requirement': dim_value}
-                    elif '知识技能' in dim_name or '知识技能能力' in dim_name:
+                    # 专业要求
+                    elif any(keyword in dim_name for keyword in ['专业', '专业要求', '专业背景', '所学专业', '专业知识']):
+                        data['qualifications_major'] = {'requirement': dim_value}
+                    # 工作经验要求
+                    elif any(keyword in dim_name for keyword in ['工作经验', '岗位工作经验', '从业经验', '经验要求']):
+                        data['qualifications_job_work_experience'] = {'requirement': dim_value}
+                    # 知识技能要求
+                    elif any(keyword in dim_name for keyword in ['知识技能', '知识技能能力', '技能要求', '能力要求']):
                         data['qualifications_skills'] = {'requirement': dim_value}
+                    # 其他要求
                     elif '其他' in dim_name:
                         data['qualifications_others'] = {'requirement': dim_value}
         
@@ -252,7 +258,7 @@ def save_to_database(data: Dict[str, Any]) -> bool:
     # 先检查是否已存在
     check_sql = """
     SELECT id FROM ods_emp_job_description 
-    WHERE emp_id = :emp_id OR emp_name = :emp_name
+    WHERE emp_id = :emp_id AND emp_name = :emp_name
     LIMIT 1
     """
     

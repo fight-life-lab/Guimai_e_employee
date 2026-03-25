@@ -801,26 +801,30 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     # 基于岗位说明书确定学习要求
     qual_edu = job_desc.get('qualifications_education') if job_desc else None
     qual_major = job_desc.get('qualifications_major') if job_desc else None
-    
-    job_requirement = 75
+    print('')
+
     job_reason_parts = []
     
     if qual_edu:
         edu_str = str(qual_edu)
-        if '博士' in edu_str or '研究生' in edu_str:
-            job_requirement = 85
-            job_reason_parts.append("博士/硕士学历")
+        if '博士' in edu_str  :
+            job_requirement= 80
+            job_reason_parts.append("博士学历")
+        elif '研究生' in edu_str:
+            job_requirement= 70
+            job_reason_parts.append("硕士及以上学历")
         elif '本科' in edu_str:
-            job_requirement = 75
-            job_reason_parts.append("本科学历")
+            job_requirement = 60
+            job_reason_parts.append("本科及以上学历")
         else:
-            job_requirement = 70
+            job_requirement = 55
             job_reason_parts.append("大专及以上")
     else:
-        job_reason_parts.append("本科及以上")
-    
+        job_requirement = 60
+        job_reason_parts.append("未获取信息，默认为本科及以上学历")
     if qual_major:
-        job_reason_parts.append("专业对口")
+        job_requirement += 5
+        job_reason_parts.append(f"需要{qual_major}相关专业")
     
     # 精简岗位理由
     job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
@@ -849,14 +853,14 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
             if late_count > 3:
                 late_deduction = min(int((late_count - 3)), 10)
                 score -= late_deduction
-                reasons.append(f"迟到{late_count}次，扣{late_deduction}分")
+                reasons.append(f"月平均迟到{late_count}次，扣{late_deduction}分")
             else:
-                reasons.append(f"迟到{late_count}次（3次以内不扣分）")
+                reasons.append(f"月平均迟到{late_count}次（3次以内不扣分）")
         
         if early_leave_count > 0:
             early_deduction = min(int(early_leave_count), 10)
             score -= early_deduction
-            reasons.append(f"早退{early_leave_count}次，扣{early_deduction}分")
+            reasons.append(f"月平均早退{early_leave_count}次，扣{early_deduction}分")
         
         # 加分项
         overtime_hours = attendance.get('overtime_hours', 0)
@@ -865,14 +869,14 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
         # 月度加班时间达到36小时及以上，加20分
         if overtime_hours >= 36:
             score += 20
-            reasons.append(f"加班{overtime_hours:.1f}小时，+20分")
+            reasons.append(f"月平均加班{overtime_hours:.1f}小时，+20分")
         elif overtime_count > 0:
             bonus = min(int(overtime_count), 20)
             score += bonus
-            reasons.append(f"加班{overtime_hours:.1f}小时，+{bonus:.1f}分")
+            reasons.append(f"月平均加班{overtime_hours:.1f}小时，+{bonus:.1f}分")
         
         if overtime_count > 0:
-            reasons.append(f"加班天数{overtime_count}天")
+            reasons.append(f"月平均加班天数{overtime_count}天")   
         
         score = max(0, min(score, 100))
         employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
