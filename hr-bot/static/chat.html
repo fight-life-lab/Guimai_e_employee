@@ -3183,16 +3183,16 @@
             // 5. 综合评价和发展建议
             const conclusionHtml = `
                 <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div style="font-weight: 600; color: #2e7d32;">📝 综合评价</div>
-                        <button onclick="downloadPDF('${uniqueId}')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                            📄 下载PDF报告
-                        </button>
-                    </div>
+                    <div style="font-weight: 600; color: #2e7d32; margin-bottom: 10px;">📝 综合评价</div>
                     <div style="line-height: 1.6; margin-bottom: 15px; background: white; padding: 12px; border-radius: 8px;">${data.conclusion}</div>
                     <div style="font-weight: 600; color: #333; margin-bottom: 10px;">💡 发展建议</div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
                         ${data.recommendations.map(rec => `<div style="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #667eea;">${rec}</div>`).join('')}
+                    </div>
+                    <div style="display: flex; justify-content: center; margin-top: 20px;">
+                        <button onclick="downloadPDF('${uniqueId}', '${data.employee_name}', '${data.position}')" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📄 下载PDF报告
+                        </button>
                     </div>
                 </div>
             `;
@@ -3386,7 +3386,7 @@
         }
 
         // 下载PDF报告
-        async function downloadPDF(uniqueId) {
+        async function downloadPDF(uniqueId, employeeName, position) {
             const { jsPDF } = window.jspdf;
             
             // 找到包含分析结果的消息元素
@@ -3415,7 +3415,8 @@
                 const canvas = await html2canvas(targetElement, {
                     scale: 2, // 提高清晰度
                     useCORS: true,
-                    logging: false
+                    logging: false,
+                    backgroundColor: '#ffffff' // 确保背景为白色
                 });
                 
                 // 创建PDF
@@ -3446,8 +3447,11 @@
                     heightLeft -= pageHeight;
                 }
                 
-                // 保存PDF
-                const filename = `人岗适配分析报告_${new Date().getTime()}.pdf`;
+                // 生成文件名：名字-岗位-当天日期时间戳
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+                const timeStr = now.toISOString().slice(11, 19).replace(/:/g, ''); // HHMMSS
+                const filename = `${employeeName}-${position}-${dateStr}${timeStr}.pdf`;
                 pdf.save(filename);
                 
                 // 恢复按钮状态
