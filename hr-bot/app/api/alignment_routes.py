@@ -481,6 +481,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
     计算经验维度得分（权重10%）
     基于：从事本专业或相关专业的工作年限
+    工作年限权重为0.6   荣誉是0.4
     
     评分标准：
     - 3年：70分
@@ -494,6 +495,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     （3）集团级荣誉：10分
     （4）公司级荣誉：5分
     """
+    experience_dict  = {'work_experiences': 0.6,'honer':0.4}
     from datetime import datetime, date
     from app.models.emp_work_experience import EmpWorkExperience
     
@@ -639,19 +641,20 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     else:
         score = 60
         level = "3年以下"
-    
+    experience_dict = {'work_experiences': 0.6, 'honer': 0.4}
+    work_score = score * experience_dict['work_experiences']
     # 构建员工得分理由
     if relevant_experiences:
         exp_details = []
         for exp in relevant_experiences[:3]:  # 只显示前3条
             exp_details.append(f"{exp['company']}({exp['duration']:.1f}年)")
         
-        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)}。基础分70分，按年限档次得{score}分"
+        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)},按年限档次得{work_score}分"
     else:
         if relevant_years > 0:
-            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），基础分70分，按年限档次得{score}分"
+            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}，按年限档次得{work_score}分"
         else:
-            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历。基础分70分，按年限档次得{score}分"
+            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历,按年限档次得{work_score}分"
     
     # 基于岗位说明书确定经验要求
     qual_exp = job_desc.get('qualifications_job_work_experience') if job_desc else None
@@ -709,29 +712,30 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
                         
                         # 根据荣誉级别计算得分
                         if '国家' in honor_level:
-                            points = 20
+                            points = 100
                             level_name = '国家级'
                         elif '省部' in honor_level or '省级' in honor_level or '部级' in honor_level:
-                            points = 15
+                            points = 75
                             level_name = '省部级'
                         elif '集团' in honor_level:
-                            points = 10
+                            points = 50
                             level_name = '集团级'
                         elif '公司' in honor_level:
-                            points = 5
+                            points = 25
                             level_name = '公司级'
                         else:
-                            points = 5
+                            points = 25
                             level_name = '其他'
-                        
+                        points =  experience_dict[honor_level] * points
                         honor_score += points
                         honor_reasons.append(f"{honor_name}({level_name}+{points}分)")
     
     # 荣誉得分最高不超过10分
-    honor_score = min(honor_score, 10)
+    honor_score = min(honor_score, 40 )
     
-    # 3. 汇总得分（工作年限得分 + 荣誉得分，最高100分）
-    total_score = min(score + honor_score, 100)
+    # 3. 汇总得分（工作年限得分 * 0.4 + 荣誉得分 * 0.6，最高100分）
+    # total_score = min(score * 0.4 + honor_score * 0.6, 100)
+    total_score = work_score + honor_score
     
     # 构建员工得分理由
     if relevant_experiences:
@@ -739,18 +743,18 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
         for exp in relevant_experiences[:3]:  # 只显示前3条
             exp_details.append(f"{exp['company']}({exp['duration']:.1f}年)")
         
-        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)}。基础分{score}分"
+        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)},按照年限得分{work_score}分"
     else:
         if relevant_years > 0:
-            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），基础分{score}分"
+            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}）按照年限得分{work_score}分"
         else:
-            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历。基础分{score}分"
+            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历，按照年限得分{work_score}分"
     
     # 添加荣誉奖项理由
     if honor_reasons:
         employee_reason += f"；荣誉奖项：{'、'.join(honor_reasons[:3])}，荣誉加分{honor_score}分"
     
-    employee_reason += f"。累计得分{total_score}分"
+    # employee_reason += f"。累计得分{honor_score}分"
     
     # 精简岗位理由
     if job_reason_parts:
