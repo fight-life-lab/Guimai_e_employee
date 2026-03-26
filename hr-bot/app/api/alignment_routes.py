@@ -1146,7 +1146,7 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
     return score, job_requirement, employee_reason, job_reason
 
 
-def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, job_requirement_score: float) -> tuple:
+def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, job_requirement_score: float, emp_info: dict = None, job_desc: dict = None) -> tuple:
     """生成分析结论和评价"""
     
     # 找出最高和最低维度
@@ -1157,6 +1157,11 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
     # 计算差距最大的维度
     gap_dims = sorted(dimensions, key=lambda x: x.job_requirement - x.score, reverse=True)
     biggest_gap = gap_dims[0] if gap_dims else None
+    
+    # 计算人岗匹配率
+    match_rate = 0
+    if job_requirement_score > 0:
+        match_rate = (overall_score / job_requirement_score) * 100
     
     # 生成结论
     if overall_score >= 90:
@@ -1178,27 +1183,114 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
     # 生成建议
     recommendations = []
     
-    # 根据差距生成建议
-    for dim in gap_dims[:2]:  # 取差距最大的前2个
-        gap = dim.job_requirement - dim.score
-        if gap > 10:
-            if dim.name == "专业能力":
-                recommendations.append(f"重点提升专业能力：建议参加技能培训，考取相关职称证书")
-            elif dim.name == "经验":
-                recommendations.append(f"积累经验：建议多参与项目实践，向资深同事学习")
-            elif dim.name == "创新能力":
-                recommendations.append(f"培养创新思维：建议参与创新项目，积极申请专利")
-            elif dim.name == "学习能力":
-                recommendations.append(f"加强学习：建议制定学习计划，提升学历或专业技能")
-            elif dim.name == "工作态度":
-                recommendations.append(f"改善工作态度：注意考勤纪律，提高工作积极性")
+    # 使用大模型生成智能建议
+    if emp_info and job_desc:
+        import requests
+        
+        # 大模型配置
+        LLM_URL = "http://180.97.200.118:30071/v1/chat/completions"
+        LLM_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+        LLM_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+        
+        # 准备维度信息
+        dimension_info = []
+        for dim in dimensions:
+            gap = dim.job_requirement - dim.score
+            dimension_info.append(f"{dim.name}：员工得分{dim.score:.1f}分，岗位要求{dim.job_requirement:.1f}分，差距{gap:+.1f}分")
+        
+        # 构建提示词
+        prompt = f"""请根据以下员工和岗位信息，生成详细的发展建议：
+
+员工信息：
+- 姓名：{emp_info.get('emp_name', '未知')}
+- 岗位：{emp_info.get('position', '未知')}
+- 部门：{emp_info.get('department', '未知')}
+- 综合得分：{overall_score:.1f}分
+- 人岗匹配率：{match_rate:.1f}%
+
+岗位信息：
+- 岗位名称：{job_desc.get('position_name', '未知')}
+- 岗位职责：{job_desc.get('duties', '未知')}
+- 技能要求：{job_desc.get('qualifications_skills', '未知')}
+
+各维度得分：
+{chr(10).join(dimension_info)}
+
+分析要求：
+1. 如果人岗匹配率较高（>=80%）但员工个人分数偏低（<70分），建议提高个人技能，根据岗位提出具体要求
+2. 如果人岗匹配率较低（<80%），分析哪个维度差距最大，根据缺少的维度提出针对性建议
+3. 建议要具体、可操作，结合岗位要求和员工现状
+4. 给出3-5条具体建议
+
+请返回格式：
+建议：
+1. [具体建议1]
+2. [具体建议2]
+3. [具体建议3]
+4. [具体建议4]
+5. [具体建议5]
+
+不要返回其他内容。"""
+        
+        try:
+            response = requests.post(
+                LLM_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {LLM_API_KEY}"
+                },
+                json={
+                    "model": LLM_MODEL,
+                    "messages": [
+                        {"role": "system", "content": "你是一个专业的HR分析师，擅长根据人岗匹配数据给出具体的发展建议。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 500
+                },
+                timeout=15
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                
+                # 解析大模型返回的建议
+                lines = content.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('1.') or line.startswith('2.') or line.startswith('3.') or line.startswith('4.') or line.startswith('5.'):
+                        # 提取建议内容
+                        suggestion = line.split('.', 1)[1].strip()
+                        if suggestion:
+                            recommendations.append(suggestion)
+        except Exception as e:
+            # 如果大模型调用失败，使用默认逻辑
+            pass
     
+    # 如果大模型没有返回建议，使用默认逻辑
     if not recommendations:
-        if overall_score >= 85:
-            recommendations.append("继续保持优秀表现，争取晋升机会")
-            recommendations.append("可考虑担任导师，帮助团队其他成员成长")
-        else:
-            recommendations.append("继续保持良好表现，争取更高绩效")
+        # 根据差距生成建议
+        for dim in gap_dims[:2]:  # 取差距最大的前2个
+            gap = dim.job_requirement - dim.score
+            if gap > 10:
+                if dim.name == "专业能力":
+                    recommendations.append(f"重点提升专业能力：建议参加技能培训，考取相关职称证书")
+                elif dim.name == "经验":
+                    recommendations.append(f"积累经验：建议多参与项目实践，向资深同事学习")
+                elif dim.name == "创新能力":
+                    recommendations.append(f"培养创新思维：建议参与创新项目，积极申请专利")
+                elif dim.name == "学习能力":
+                    recommendations.append(f"加强学习：建议制定学习计划，提升学历或专业技能")
+                elif dim.name == "工作态度":
+                    recommendations.append(f"改善工作态度：注意考勤纪律，提高工作积极性")
+        
+        if not recommendations:
+            if overall_score >= 85:
+                recommendations.append("继续保持优秀表现，争取晋升机会")
+                recommendations.append("可考虑担任导师，帮助团队其他成员成长")
+            else:
+                recommendations.append("继续保持良好表现，争取更高绩效")
     
     return conclusion, evaluation, recommendations
 
@@ -1414,7 +1506,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         job_requirement_score = sum(float(d.job_requirement) * d.weight / 100 for d in dimensions)
         
         # 6. 生成结论和建议
-        conclusion, evaluation, recommendations = generate_conclusion(dimensions, overall_score, job_requirement_score)
+        conclusion, evaluation, recommendations = generate_conclusion(dimensions, overall_score, job_requirement_score, emp_info, job_desc)
         
         # 7. 生成四象限图数据
         quadrant_data = generate_quadrant_data(dimensions, overall_score, job_requirement_score)
