@@ -817,58 +817,66 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
             patent_set.add(type_name)
             # patent_details.append(f"{patent.patent_name}({type_name}+{points}分)")
 
-    # 累计得分最高不超过10分（权重10%），然后转换为百分制
+    # 累计得分最高不超过100分
     total_score = min(patent_score, 100)
-    # total_score = raw_score * 10  # 转换为百分制（0-100分）
     
     if patent_score > 0:
         patent_str = '、'.join(list(patent_set))
-        reasons.append(f"有{patent},专利({len(patents)}项),累积得分{patent_score}")
+        reasons.append(f"有{len(patents)}项专利({patent_str})，累积得分{patent_score}")
 
     # 2. 岗位创新要求（使用大模型判断并给出理由）
-    job_requirement_raw = 30  # 默认岗位要求7分（满分10分）
+    job_requirement_raw = 5  # 默认岗位要求5分（满分10分）
     job_requirement = job_requirement_raw * 10  # 转换为百分制（0-100分）
     job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护，技术栈相对成熟稳定，不需要过多的创新突破，但需要具备基本的创新意识和改进能力"
     
     if job_desc:
-        # 提取职责要求和技术栈
+        # 提取岗位信息
+        position_name = job_desc.get('position_name', '')
         duties = job_desc.get('duties', '')
         skills = job_desc.get('qualifications_skills', '')
         
-        if duties or skills:
+        if duties or skills or position_name:
             # 使用大模型生成岗位创新能力要求及理由
             import requests
-            from app.config import get_settings
             
-            settings = get_settings()
+            # 大模型配置
+            LLM_URL = "http://180.97.200.118:30071/v1/chat/completions"
+            LLM_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+            LLM_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
             
             # 构建提示词
-            prompt = f"""请分析以下岗位的职责要求和技术栈，判断该岗位对创新能力的要求程度，并给出详细的理由说明。
+            prompt = f"""请分析以下岗位信息，判断该岗位对创新能力的要求程度，并给出详细的理由说明。
 
+岗位名称：{position_name}
 岗位职责：{duties}
 技术栈要求：{skills}
 
+判断步骤：
+1. 首先判断该岗位是否为技术岗位
+2. 技术岗位的创新要求普遍偏高，非技术岗位的创新要求偏低
+3. 根据职责要求，进一步判断创新能力的具体要求程度
+
 请根据以下标准判断创新要求程度：
-1. 高创新要求（8-10分）：岗位职责中明确要求创新、研发、专利、发明等，技术栈要求前沿技术或需要自主研发
-2. 中创新要求（5-7分）：岗位职责中提到需要改进、优化、提升等，技术栈要求较新但非前沿
-3. 低创新要求（1-4分）：岗位职责主要是执行、维护、操作等，技术栈要求成熟稳定
+1. 高创新要求（8-10分）：技术岗位，岗位职责中明确要求创新、研发、专利、发明等，技术栈要求前沿技术或需要自主研发
+2. 中创新要求（6-7分）：技术岗位，岗位职责中提到需要改进、优化、提升等，技术栈要求较新但非前沿；或非技术岗位但需要一定创新能力
+3. 低创新要求（1-5分）：非技术岗位，岗位职责主要是执行、维护、操作等，技术栈要求成熟稳定
 
 请返回格式：
 分数：[1-10之间的整数]
-理由：[详细的理由说明，解释为什么该岗位需要这个程度的创新能力]
+理由：[详细的理由说明，包括：1.是否为技术岗位的判断 2.创新要求程度的判断依据 3.具体的创新能力要求内容]
 
 不要返回其他内容。"""
             
             # 调用大模型 API
             try:
                 response = requests.post(
-                    settings.LLM_URL,
+                    LLM_URL,
                     headers={
                         "Content-Type": "application/json",
-                        "Authorization": f"Bearer {settings.LLM_API_KEY}"
+                        "Authorization": f"Bearer {LLM_API_KEY}"
                     },
                     json={
-                        "model": settings.LLM_MODEL,
+                        "model": LLM_MODEL,
                         "messages": [
                             {"role": "system", "content": "你是一个专业的HR分析师，擅长分析岗位对创新能力的要求并给出专业评价。"},
                             {"role": "user", "content": prompt}
@@ -899,7 +907,11 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
                         job_requirement_raw = int(score_line)
                         job_requirement_raw = max(1, min(10, job_requirement_raw))  # 限制在1-10之间
                     except:
-                        job_requirement_raw = 7  # 默认7分
+                        # 根据岗位类型设置默认值
+                        # 技术岗位默认7分，非技术岗位默认4分
+                        is_tech = any(keyword in (position_name + duties + skills).lower() for keyword in 
+                                    ['开发', '工程师', '技术', '研发', '编程', '算法', '架构', '前端', '后端', '测试', '运维'])
+                        job_requirement_raw = 7 if is_tech else 4
                     
                     # 转换为百分制
                     job_requirement = job_requirement_raw * 10
@@ -908,12 +920,20 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
                     if reason_lines:
                         job_reason = "；".join(reason_lines)
                     else:
-                        job_reason = f"该岗位对创新能力的要求为{job_requirement_raw}分（满分10分），需要具备相应的创新能力和技术突破能力"
+                        if '开发' in position_name or '工程师' in position_name:
+                            job_reason = "技术岗位，需要具备一定的创新能力和技术突破能力"
+                        else:
+                            job_reason = "非技术岗位，主要需要执行和维护能力，创新要求较低"
             except Exception as e:
-                # 如果大模型调用失败，使用默认值
-                job_requirement_raw = 7
-                job_requirement = 70  # 百分制
-                job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护，技术栈相对成熟稳定，不需要过多的创新突破，但需要具备基本的创新意识和改进能力"
+                # 如果大模型调用失败，根据岗位类型设置默认值
+                is_tech = any(keyword in (position_name + duties + skills).lower() for keyword in 
+                            ['开发', '工程师', '技术', '研发', '编程', '算法', '架构', '前端', '后端', '测试', '运维'])
+                job_requirement_raw = 7 if is_tech else 4
+                job_requirement = job_requirement_raw * 10  # 百分制
+                if is_tech:
+                    job_reason = "技术岗位，默认对创新能力要求较高，需要具备技术创新和研发能力"
+                else:
+                    job_reason = "非技术岗位，默认对创新能力要求较低，主要需要执行和维护能力"
     
     # 构建员工得分理由
     if reasons:
