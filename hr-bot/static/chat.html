@@ -2741,6 +2741,13 @@
         // ==================== 人岗适配分析功能 ====================
         let alignmentRadarChart = null;
 
+        // 四象图配置选项
+        let quadrantConfig = {
+            centerX: 7, // 横轴中心值（员工分数）
+            centerY: 6, // 纵轴中心值（岗位匹配度）
+            maxValue: 10 // 最大值
+        };
+
         // 切换人岗适配分析面板
         function toggleAlignmentPanel() {
             const panel = document.getElementById('alignmentPanel');
@@ -2755,6 +2762,84 @@
             document.getElementById('alignmentEmpName').value = '';
             document.getElementById('alignmentStatusMsg').className = 'upload-status-msg';
         }
+
+        // 打开四象图配置面板
+        function openQuadrantConfigPanel() {
+            const configHtml = `
+                <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+                    <div style="background: white; padding: 30px; border-radius: 12px; width: 400px; max-width: 90%;">
+                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #667eea;">🎯 四象图配置</div>
+                        <div style="margin-bottom: 20px;">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #333;">横轴中心值（员工分数）</label>
+                                <input type="number" id="configCenterX" value="${quadrantConfig.centerX}" min="0" max="10" step="0.1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">建议值：5-8</div>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #333;">纵轴中心值（岗位匹配度）</label>
+                                <input type="number" id="configCenterY" value="${quadrantConfig.centerY}" min="0" max="10" step="0.1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">建议值：4-7</div>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-size: 14px; color: #333;">最大值</label>
+                                <input type="number" id="configMaxValue" value="${quadrantConfig.maxValue}" min="5" max="20" step="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">默认值：10</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="saveQuadrantConfig()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">保存配置</button>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding: 12px 20px; background: #f0f0f0; color: #666; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">取消</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', configHtml);
+        }
+
+        // 保存四象图配置
+        function saveQuadrantConfig() {
+            const centerX = parseFloat(document.getElementById('configCenterX').value) || 7;
+            const centerY = parseFloat(document.getElementById('configCenterY').value) || 6;
+            const maxValue = parseInt(document.getElementById('configMaxValue').value) || 10;
+            
+            quadrantConfig = {
+                centerX: centerX,
+                centerY: centerY,
+                maxValue: maxValue
+            };
+            
+            // 保存到localStorage
+            localStorage.setItem('quadrantConfig', JSON.stringify(quadrantConfig));
+            
+            // 关闭配置面板
+            document.querySelector('div[style*="position: fixed"]').remove();
+            
+            // 显示成功消息
+            alert('配置保存成功！');
+        }
+
+        // 加载四象图配置
+        function loadQuadrantConfig() {
+            const savedConfig = localStorage.getItem('quadrantConfig');
+            if (savedConfig) {
+                try {
+                    quadrantConfig = JSON.parse(savedConfig);
+                } catch (e) {
+                    console.error('加载配置失败:', e);
+                }
+            }
+        }
+
+        // 页面加载时加载配置
+        window.onload = function() {
+            loadQuadrantConfig();
+            if (messageHistory.length > 0) {
+                chatMessages.innerHTML = '';
+                messageHistory.forEach(msg => {
+                    appendMessage(msg.role, msg.content, msg.time, false);
+                });
+            }
+        };
 
         // 显示状态消息
         function showAlignmentStatus(message, type) {
@@ -3097,33 +3182,55 @@
             
             // 4. 人岗适配四象限图
             const quadrant = data.quadrant || {};
+            
+            // 计算点的位置，基于配置的中心轴值
+            function calculatePosition(value, center, max) {
+                // 将值映射到0-100%的位置
+                // 中心值对应50%的位置
+                const normalized = (value - (max - center)) / max * 100;
+                return Math.min(Math.max(normalized, 5), 95);
+            }
+            
+            // 将后端返回的百分比值转换为10分制
+            const xValue = (quadrant.x || 50) / 10; // 匹配度：0-100% -> 0-10
+            const yValue = (quadrant.y || 50) / 10; // 能力指数：0-100% -> 0-10
+            
+            // 计算所有位置值
+            const centerXPos = calculatePosition(quadrantConfig.centerX, quadrantConfig.centerX, quadrantConfig.maxValue);
+            const centerYPos = calculatePosition(quadrantConfig.centerY, quadrantConfig.centerY, quadrantConfig.maxValue);
+            const xPos = calculatePosition(xValue, quadrantConfig.centerX, quadrantConfig.maxValue);
+            const yPos = calculatePosition(yValue, quadrantConfig.centerY, quadrantConfig.maxValue);
+            
             const quadrantHtml = `
                 <div style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 12px;">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 15px; text-align: center;">🎯 人岗适配四象限图</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div style="font-weight: 600; color: #333; font-size: 16px;">🎯 人岗适配四象限图</div>
+                        <button onclick="openQuadrantConfigPanel()" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;">⚙️ 配置</button>
+                    </div>
                     <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center; justify-content: center;">
                         <div style="position: relative; width: 320px; height: 320px; background: white; border-radius: 12px; padding: 20px;">
                             <!-- 象限背景 -->
                             <div style="position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px;">
                                 <!-- 网格线 -->
-                                <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #e0e0e0;"></div>
-                                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e0e0e0;"></div>
+                                <div style="position: absolute; left: ${centerXPos}%; top: 0; bottom: 0; width: 1px; background: #e0e0e0;"></div>
+                                <div style="position: absolute; top: ${100 - centerYPos}%; left: 0; right: 0; height: 1px; background: #e0e0e0;"></div>
                                 <!-- 四个象限 -->
-                                <div style="position: absolute; top: 0; left: 50%; right: 0; bottom: 50%; background: rgba(82, 196, 26, 0.1); border-radius: 0 8px 0 0;">
+                                <div style="position: absolute; top: 0; left: ${centerXPos}%; right: 0; bottom: ${100 - centerYPos}%; background: rgba(82, 196, 26, 0.1); border-radius: 0 8px 0 0;">
                                     <div style="position: absolute; top: 5px; right: 5px; font-size: 11px; color: #52c41a; font-weight: 600;">核心人才</div>
                                 </div>
-                                <div style="position: absolute; top: 0; left: 0; right: 50%; bottom: 50%; background: rgba(24, 144, 255, 0.1); border-radius: 8px 0 0 0;">
+                                <div style="position: absolute; top: 0; left: 0; right: ${centerXPos}%; bottom: ${100 - centerYPos}%; background: rgba(24, 144, 255, 0.1); border-radius: 8px 0 0 0;">
                                     <div style="position: absolute; top: 5px; left: 5px; font-size: 11px; color: #1890ff; font-weight: 600;">潜力人才</div>
                                 </div>
-                                <div style="position: absolute; top: 50%; left: 0; right: 50%; bottom: 0; background: rgba(250, 173, 20, 0.1); border-radius: 0 0 0 8px;">
+                                <div style="position: absolute; top: ${100 - centerYPos}%; left: 0; right: ${centerXPos}%; bottom: 0; background: rgba(250, 173, 20, 0.1); border-radius: 0 0 0 8px;">
                                     <div style="position: absolute; bottom: 5px; left: 5px; font-size: 11px; color: #faad14; font-weight: 600;">待发展</div>
                                 </div>
-                                <div style="position: absolute; top: 50%; left: 50%; right: 0; bottom: 0; background: rgba(114, 46, 209, 0.1); border-radius: 0 0 8px 0;">
+                                <div style="position: absolute; top: ${100 - centerYPos}%; left: ${centerXPos}%; right: 0; bottom: 0; background: rgba(114, 46, 209, 0.1); border-radius: 0 0 8px 0;">
                                     <div style="position: absolute; bottom: 5px; right: 5px; font-size: 11px; color: #722ed1; font-weight: 600;">稳定贡献</div>
                                 </div>
                                 <!-- 中心点 -->
-                                <div style="position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; background: #999; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+                                <div style="position: absolute; left: ${centerXPos}%; top: ${100 - centerYPos}%; width: 6px; height: 6px; background: #999; border-radius: 50%; transform: translate(-50%, -50%);"></div>
                                 <!-- 员工点 -->
-                                <div style="position: absolute; left: ${Math.min(Math.max(quadrant.x || 50, 5), 95)}%; top: ${Math.min(Math.max(100 - (quadrant.y || 50), 5), 95)}%; width: 16px; height: 16px; background: ${quadrant.color || '#667eea'}; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); z-index: 10;"></div>
+                                <div style="position: absolute; left: ${xPos}%; top: ${100 - yPos}%; width: 16px; height: 16px; background: ${quadrant.color || '#667eea'}; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); z-index: 10;"></div>
                             </div>
                             <!-- 坐标轴标签 -->
                             <div style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 12px; color: #666;">匹配度 →</div>

@@ -194,18 +194,26 @@ def get_attendance_summary(db, emp_code: str):
 def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
     计算专业能力维度得分（权重30%）
-    基于：试用期分数、绩效、专家聘任、职称证书、职业技能
+    基于：绩效、职称证书、职业技能、专家聘任
     规则：
-    - 基础分70分
-    - 绩效（二选一）：试用期>=80加10分，<80减5分；或3年内年度绩效一次优秀+10分，一次基本称职-10分
-    - 专家聘任：公司专家+10分，高级专家+15分，首席专家+20分
-    - 职称证书：A级+10分，B级+7分，C级+5分，多项取高
-    - 职业技能：A级+7分，B级+5分，C级+3分，累计不超过14分
+    - 整体100分
+    - 绩效，基础分70（占比80%）
+      - 试用期考核分数：试用期考核大于等于80，加10分，小于80分，减5分
+      - 有绩效结果的近3年内年度绩效：一次优秀得15分；一次基本称职扣15分
+      - 以上条件二选一
+    - 按照《国脉文化认证目录（2025年版）》计算，累计得分（占比20%）
+      - 职称证书：A:40分、B:30分、C:20分，多项职称的就高取值
+      - 职业技能：A:30分、B:20分、C:10分，可累计
+    - 单独加分项：专家聘任
+      - 聘任为公司专家15分，聘任为高级专家20分，首席专家25分
     """
     from app.models.emp_professional_ability import EmpProfessionalAbility
     
-    score = 70  # 基础分70分
-    reasons = ["基础分70分"]
+    # 初始化得分和理由
+    performance_score = 70  # 绩效基础分70分
+    certification_score = 0  # 认证得分
+    expert_bonus = 0  # 专家聘任加分
+    reasons = ["绩效基础分70分（占比80%）"]
     
     emp_code = emp_info.get('emp_code')
     
@@ -218,19 +226,19 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
     
     if prof_ability:
         # 1. 绩效计算（二选一）
-        performance_bonus = 0
+        performance_adjustment = 0
         performance_reason = ""
         
         # 选项1：试用期分数
         if prof_ability.probation_score is not None:
             if float(prof_ability.probation_score) >= 80:
-                performance_bonus = 10
+                performance_adjustment = 10
                 performance_reason = f"试用期考核{prof_ability.probation_score}分≥80分，+10分"
             else:
-                performance_bonus = -5
+                performance_adjustment = -5
                 performance_reason = f"试用期考核{prof_ability.probation_score}分<80分，-5分"
         
-        # 选项2：3年内年度绩效（2023、2024、2025年）
+        # 选项2：3年内年度绩效
         elif prof_ability.performance_history:
             perf_history = prof_ability.performance_history
             if isinstance(perf_history, list):
@@ -248,35 +256,19 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                             basic_count += 1
                 
                 if excellent_count > 0:
-                    performance_bonus = 10 * excellent_count
-                    performance_reason = f"2022-2024年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
+                    performance_adjustment = 15 * excellent_count
+                    performance_reason = f"近3年{excellent_count}次年度绩效优秀，+{performance_adjustment}分"
                 elif basic_count > 0:
-                    performance_bonus = -10 * basic_count
-                    performance_reason = f"2022-2024年{basic_count}次年度绩效基本称职，{performance_bonus}分"
+                    performance_adjustment = -15 * basic_count
+                    performance_reason = f"近3年{basic_count}次年度绩效基本称职，{performance_adjustment}分"
         
-        if performance_bonus != 0:
-            score += performance_bonus
+        if performance_adjustment != 0:
+            performance_score += performance_adjustment
             reasons.append(performance_reason)
         
-        # 2. 专家聘任（最高20分）
-        expert_bonus = 0
-        expert_reason = ""
-        if prof_ability.is_chief_expert:
-            expert_bonus = 20
-            expert_reason = "为首席专家，+20分"
-        elif prof_ability.is_senior_expert:
-            expert_bonus = 15
-            expert_reason = "为高级专家，+15分"
-        elif prof_ability.is_company_expert:
-            expert_bonus = 10
-            expert_reason = "为公司专家，+10分"
-        
-        if expert_bonus > 0:
-            score += expert_bonus
-            reasons.append(expert_reason)
-        
-        # 3. 职称证书（多项取高）
-        title_bonus = 0
+        # 2. 按照《国脉文化认证目录（2025年版）》计算认证得分
+        # 2.1 职称证书（多项取高）
+        title_score = 0
         title_str = ''
         title_count = 0
         if prof_ability.professional_titles:
@@ -288,24 +280,16 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                     title_str += skill_name
                     title_count += 1
                     if level == 'A':
-                        title_bonus = max(title_bonus, 10)
+                        title_score = max(title_score, 40)
                     elif level == 'B':
-                        title_bonus = max(title_bonus, 7)
+                        title_score = max(title_score, 30)
                     elif level == 'C':
-                        title_bonus = max(title_bonus, 5)
+                        title_score = max(title_score, 20)
         
-        if title_bonus > 0:
-            score += title_bonus
-            if title_count > 1:
-                reasons.append(f"获得{title_count}项职称，有{title_str},累积+{title_bonus}分")
-            else:
-                reasons.append(f"获得{title_str}职称，+{title_bonus}分")
-        
-        # 4. 职业技能（累计不超过14分）
-        skill_bonus = 0
+        # 2.2 职业技能（可累计）
+        skill_score = 0
         skill_str = ''
         skill_count = 0
-
         if prof_ability.professional_skills:
             skills = prof_ability.professional_skills
             if isinstance(skills, list):
@@ -315,28 +299,53 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                     skill_str += skill_name
                     skill_count += 1
                     if level == 'A':
-                        skill_bonus += 7
+                        skill_score += 30
                     elif level == 'B':
-                        skill_bonus += 5
+                        skill_score += 20
                     elif level == 'C':
-                        skill_bonus += 3
+                        skill_score += 10
         
-        skill_bonus = min(skill_bonus, 14)  # 不超过14分
-        if skill_bonus > 0:
-            score += skill_bonus
-            if skill_count > 1:
-                reasons.append(f"获得{skill_count}项职业技能，包括{skill_str},累积+{skill_bonus}分（上限14分）")
-            else:
-                reasons.append(f"获得{skill_name}职业技能，+{skill_bonus}分（上限14分）")
+        # 计算认证总分（占比20%）
+        certification_score = (title_score + skill_score) * 0.2
+        if certification_score > 0:
+            cert_reason = []
+            if title_score > 0:
+                if title_count > 1:
+                    cert_reason.append(f"{title_count}项职称（{title_str}），{title_score}分")
+                else:
+                    cert_reason.append(f"{title_str}职称，{title_score}分")
+            if skill_score > 0:
+                if skill_count > 1:
+                    cert_reason.append(f"{skill_count}项职业技能（{skill_str}），{skill_score}分")
+                else:
+                    cert_reason.append(f"{skill_str}职业技能，{skill_score}分")
+            if cert_reason:
+                reasons.append(f"认证得分（20%）：{'; '.join(cert_reason)}，转换后+{certification_score:.1f}分")
+        
+        # 3. 专家聘任加分
+        if prof_ability.is_chief_expert:
+            expert_bonus = 25
+            reasons.append("为首席专家，+25分")
+        elif prof_ability.is_senior_expert:
+            expert_bonus = 20
+            reasons.append("为高级专家，+20分")
+        elif prof_ability.is_company_expert:
+            expert_bonus = 15
+            reasons.append("为公司专家，+15分")
     else:
         reasons.append("暂无专业能力数据")
     
-    score = min(score, 100)
+    # 计算最终得分
+    # 绩效得分（占比80%） + 认证得分（占比20%） + 专家聘任加分
+    score = performance_score * 0.8 + certification_score + expert_bonus
+    
+    # 确保分数在0-100之间
+    score = max(0, min(100, score))
 
-    if len(reasons) ==1:
-        employee_reason = ";".join(reasons) + f"近3年绩效都是称职，无任何加分项,最终得分{score}分"
+    if len(reasons) == 1:
+        employee_reason = ";".join(reasons) + f"近3年绩效都是称职，无任何加分项,最终得分{score:.1f}分"
     else:
-        employee_reason = "；".join(reasons) + f",最终得分{score}分"
+        employee_reason = "；".join(reasons) + f",最终得分{score:.1f}分"
     
     # 基于岗位说明书确定岗位要求
     qual_skills = job_desc.get('qualifications_skills') if job_desc else None
@@ -495,7 +504,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     （3）集团级荣誉：10分
     （4）公司级荣誉：5分
     """
-    experience_dict  = {'work_experiences': 0.6,'honer':0.4}
+    experience_dict  = {'work_experiences': 0.8,'honer':0.8}
     from datetime import datetime, date
     from app.models.emp_work_experience import EmpWorkExperience
     
@@ -641,7 +650,6 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     else:
         score = 60
         level = "3年以下"
-    experience_dict = {'work_experiences': 0.6, 'honer': 0.4}
     work_score = score * experience_dict['work_experiences']
     # 构建员工得分理由
     if relevant_experiences:
