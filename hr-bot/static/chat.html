@@ -3416,7 +3416,9 @@
                     scale: 2, // 提高清晰度
                     useCORS: true,
                     logging: false,
-                    backgroundColor: '#ffffff' // 确保背景为白色
+                    backgroundColor: null, // 不设置背景色，使用元素自身的背景
+                    allowTaint: true,
+                    letterRendering: true
                 });
                 
                 // 创建PDF
