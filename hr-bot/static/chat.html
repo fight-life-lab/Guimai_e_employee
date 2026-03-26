@@ -10,6 +10,9 @@
     <link rel="icon" type="image/png" href="/static/国脉底图.png?v=3">
     <!-- 引入 Chart.js 用于雷达图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入 jsPDF 和 html2canvas 用于PDF生成 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         // 强制刷新缓存
         if (location.search.indexOf('v=') === -1) {
@@ -3180,7 +3183,12 @@
             // 5. 综合评价和发展建议
             const conclusionHtml = `
                 <div style="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="font-weight: 600; color: #2e7d32; margin-bottom: 10px;">📝 综合评价</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="font-weight: 600; color: #2e7d32;">📝 综合评价</div>
+                        <button onclick="downloadPDF('${uniqueId}')" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📄 下载PDF报告
+                        </button>
+                    </div>
                     <div style="line-height: 1.6; margin-bottom: 15px; background: white; padding: 12px; border-radius: 8px;">${data.conclusion}</div>
                     <div style="font-weight: 600; color: #333; margin-bottom: 10px;">💡 发展建议</div>
                     <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -3375,6 +3383,87 @@
             const errorDiv = document.getElementById('alignmentError');
             errorDiv.textContent = message;
             errorDiv.classList.remove('hidden');
+        }
+
+        // 下载PDF报告
+        async function downloadPDF(uniqueId) {
+            const { jsPDF } = window.jspdf;
+            
+            // 找到包含分析结果的消息元素
+            const messageElements = document.querySelectorAll('.message.assistant');
+            let targetElement = null;
+            
+            // 查找包含唯一ID的元素
+            messageElements.forEach(element => {
+                if (element.innerHTML.includes(uniqueId)) {
+                    targetElement = element;
+                }
+            });
+            
+            if (!targetElement) {
+                alert('未找到分析结果，请先进行人岗适配分析');
+                return;
+            }
+            
+            try {
+                // 显示加载状态
+                const originalText = targetElement.querySelector('button').textContent;
+                targetElement.querySelector('button').textContent = '正在生成PDF...';
+                targetElement.querySelector('button').disabled = true;
+                
+                // 使用html2canvas捕获元素
+                const canvas = await html2canvas(targetElement, {
+                    scale: 2, // 提高清晰度
+                    useCORS: true,
+                    logging: false
+                });
+                
+                // 创建PDF
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                // 计算尺寸
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; // A4宽度
+                const pageHeight = 295;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                // 添加图片到PDF
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                // 如果内容太长，添加新页面
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                // 保存PDF
+                const filename = `人岗适配分析报告_${new Date().getTime()}.pdf`;
+                pdf.save(filename);
+                
+                // 恢复按钮状态
+                targetElement.querySelector('button').textContent = originalText;
+                targetElement.querySelector('button').disabled = false;
+                
+            } catch (error) {
+                console.error('PDF生成失败:', error);
+                alert('PDF生成失败，请重试');
+                
+                // 恢复按钮状态
+                if (targetElement.querySelector('button')) {
+                    targetElement.querySelector('button').textContent = '📄 下载PDF报告';
+                    targetElement.querySelector('button').disabled = false;
+                }
+            }
         }
     </script>
 </body>
