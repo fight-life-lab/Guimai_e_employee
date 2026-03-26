@@ -37,9 +37,13 @@ class EmpProfessionalAbility(Base):
     # 格式：[{"skill_name":"Python开发","cert_level":"高级","company_level":"部门级"},...]
     professional_skills = Column(JSON, comment="职业技能信息")
     
-    # 其他能力证明
-    patents_count = Column(Integer, default=0, comment="专利数量")
-    honors_count = Column(Integer, default=0, comment="荣誉奖项数量")
+    # 专利信息（JSON格式，支持多个专利）
+    # 格式：[{"patent_name":"一种基于AI的方法","patent_type":"发明专利"},...]
+    patents = Column(JSON, comment="专利信息")
+    
+    # 荣誉奖项信息（JSON格式，支持多个荣誉）
+    # 格式：[{"honor_name":"优秀员工","honor_level":"集团级","honor_date":"2023-01-01"},...]
+    honors = Column(JSON, comment="荣誉奖项信息")
     
     # 时间戳
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
@@ -67,8 +71,8 @@ class EmpProfessionalAbility(Base):
             "expert_appointment_date": self.expert_appointment_date.isoformat() if self.expert_appointment_date else None,
             "professional_titles": self.professional_titles,
             "professional_skills": self.professional_skills,
-            "patents_count": self.patents_count,
-            "honors_count": self.honors_count,
+            "patents": self.patents,
+            "honors": self.honors,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

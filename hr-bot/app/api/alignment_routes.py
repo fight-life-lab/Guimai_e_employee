@@ -263,13 +263,13 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         expert_reason = ""
         if prof_ability.is_chief_expert:
             expert_bonus = 20
-            expert_reason = "首席专家，+20分"
+            expert_reason = "为首席专家，+20分"
         elif prof_ability.is_senior_expert:
             expert_bonus = 15
-            expert_reason = "高级专家，+15分"
+            expert_reason = "为高级专家，+15分"
         elif prof_ability.is_company_expert:
             expert_bonus = 10
-            expert_reason = "公司专家，+10分"
+            expert_reason = "为公司专家，+10分"
         
         if expert_bonus > 0:
             score += expert_bonus
@@ -277,11 +277,16 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         
         # 3. 职称证书（多项取高）
         title_bonus = 0
+        title_str = ''
+        title_count = 0
         if prof_ability.professional_titles:
             titles = prof_ability.professional_titles
             if isinstance(titles, list):
                 for title in titles:
                     level = str(title.get('company_level', '')).upper()
+                    skill_name = str(title.get('title_name', ''))
+                    title_str += skill_name
+                    title_count += 1
                     if level == 'A':
                         title_bonus = max(title_bonus, 10)
                     elif level == 'B':
@@ -291,15 +296,24 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         
         if title_bonus > 0:
             score += title_bonus
-            reasons.append(f"职称证书最高等级，+{title_bonus}分")
+            if title_count > 1:
+                reasons.append(f"获得{title_count}项职称，有{title_str},累积+{title_bonus}分")
+            else:
+                reasons.append(f"获得{title_str}职称，+{title_bonus}分")
         
         # 4. 职业技能（累计不超过14分）
         skill_bonus = 0
+        skill_str = ''
+        skill_count = 0
+
         if prof_ability.professional_skills:
             skills = prof_ability.professional_skills
             if isinstance(skills, list):
                 for skill in skills:
                     level = str(skill.get('company_level', '')).upper()
+                    skill_name = str(skill.get('skill_name', ''))
+                    skill_str += skill_name
+                    skill_count += 1
                     if level == 'A':
                         skill_bonus += 7
                     elif level == 'B':
@@ -310,7 +324,10 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         skill_bonus = min(skill_bonus, 14)  # 不超过14分
         if skill_bonus > 0:
             score += skill_bonus
-            reasons.append(f"职业技能累计，+{skill_bonus}分（上限14分）")
+            if skill_count > 1:
+                reasons.append(f"获得{skill_count}项职业技能，包括{skill_str},累积+{skill_bonus}分（上限14分）")
+            else:
+                reasons.append(f"获得{skill_name}职业技能，+{skill_bonus}分（上限14分）")
     else:
         reasons.append("暂无专业能力数据")
     
@@ -664,34 +681,100 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     else:
         job_reason_parts.append("要求3-5年本专业经验")
     
+    # 2. 计算荣誉奖项得分
+    honor_score = 0
+    honor_reasons = []
+    
+    if db and emp_code:
+        from app.models.emp_professional_ability import EmpProfessionalAbility
+        import json
+        prof_ability = db.query(EmpProfessionalAbility).filter(
+            EmpProfessionalAbility.emp_code == emp_code
+        ).first()
+        
+        if prof_ability and prof_ability.honors:
+            honors = prof_ability.honors
+            # 如果是字符串，尝试解析成JSON
+            if isinstance(honors, str):
+                try:
+                    honors = json.loads(honors)
+                except:
+                    honors = None
+            
+            if isinstance(honors, list):
+                for honor in honors:
+                    if isinstance(honor, dict):
+                        honor_level = honor.get('honor_level', '')
+                        honor_name = honor.get('honor_name', '')
+                        
+                        # 根据荣誉级别计算得分
+                        if '国家' in honor_level:
+                            points = 20
+                            level_name = '国家级'
+                        elif '省部' in honor_level or '省级' in honor_level or '部级' in honor_level:
+                            points = 15
+                            level_name = '省部级'
+                        elif '集团' in honor_level:
+                            points = 10
+                            level_name = '集团级'
+                        elif '公司' in honor_level:
+                            points = 5
+                            level_name = '公司级'
+                        else:
+                            points = 5
+                            level_name = '其他'
+                        
+                        honor_score += points
+                        honor_reasons.append(f"{honor_name}({level_name}+{points}分)")
+    
+    # 荣誉得分最高不超过10分
+    honor_score = min(honor_score, 10)
+    
+    # 3. 汇总得分（工作年限得分 + 荣誉得分，最高100分）
+    total_score = min(score + honor_score, 100)
+    
+    # 构建员工得分理由
+    if relevant_experiences:
+        exp_details = []
+        for exp in relevant_experiences[:3]:  # 只显示前3条
+            exp_details.append(f"{exp['company']}({exp['duration']:.1f}年)")
+        
+        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)}。基础分{score}分"
+    else:
+        if relevant_years > 0:
+            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），基础分{score}分"
+        else:
+            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历。基础分{score}分"
+    
+    # 添加荣誉奖项理由
+    if honor_reasons:
+        employee_reason += f"；荣誉奖项：{'、'.join(honor_reasons[:3])}，荣誉加分{honor_score}分"
+    
+    employee_reason += f"。累计得分{total_score}分"
+    
     # 精简岗位理由
     if job_reason_parts:
         job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
     else:
         job_reason = f"要求：3-5年本专业工作经验，标准分{job_requirement}分"
     
-    return score, job_requirement, employee_reason, job_reason
+    return total_score, job_requirement, employee_reason, job_reason
 
 
 def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
-    计算创新能力维度得分（权重20%）
-    基于：专利、荣誉奖项
+    计算创新能力维度得分（权重10%）
+    基于：专利
     
     评分规则：
     1. 专利授权（排名前三）：
-       - 发明专利：50分
-       - 外观设计专利：35分
-       - 实用新型专利：25分
-    2. 荣誉奖项（5年以内的个人荣誉）：
-       - 国家级荣誉：100分
-       - 省部级荣誉：75分
-       - 集团级荣誉：50分
+       - 发明专利：100分
+       - 外观设计专利：70分
+       - 实用新型专利：50分
     
-    可单项累计，也可多项累计，最高不超过100分
+    可单项累计，也可多项累计，最高不超过10分（权重10%）
     """
     from app.models.emp_patent import EmpPatent
-    from datetime import datetime, timedelta
     
     emp_code = emp_info.get('emp_code')
     score = 0
@@ -699,7 +782,7 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
     
     # 1. 计算专利得分
     patent_score = 0
-    patent_details = []
+    patent_set = set()
     
     if db and emp_code:
         # 查询该员工的专利（排名前三）
@@ -714,76 +797,125 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
             
             # 根据专利类型计算得分
             if '发明' in patent_type:
-                points = 50
+                points = 100
                 type_name = '发明专利'
             elif '外观' in patent_type or '设计' in patent_type:
-                points = 35
+                points = 70
                 type_name = '外观设计专利'
             elif '实用' in patent_type:
-                points = 25
+                points = 50
                 type_name = '实用新型专利'
-            else:
-                points = 25  # 默认按实用新型
-                type_name = '专利'
+            # else:
+            #     points = 50  # 默认按实用新型
+            #     type_name = '专利'
             
             patent_score += points
-            patent_details.append(f"{patent.patent_name}({type_name}+{points}分)")
+            patent_set.add(type_name)
+            # patent_details.append(f"{patent.patent_name}({type_name}+{points}分)")
+
+    # 累计得分最高不超过10分（权重10%），然后转换为百分制
+    total_score = min(patent_score, 100)
+    # total_score = raw_score * 10  # 转换为百分制（0-100分）
     
     if patent_score > 0:
-        score += patent_score
-        reasons.append(f"专利({len(patents)}项)+{patent_score}分")
+        patent_str = '、'.join(list(patent_set))
+        reasons.append(f"有{patent},专利({len(patents)}项),累积得分{patent_score}")
+
+    # 2. 岗位创新要求（使用大模型判断并给出理由）
+    job_requirement_raw = 30  # 默认岗位要求7分（满分10分）
+    job_requirement = job_requirement_raw * 10  # 转换为百分制（0-100分）
+    job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护，技术栈相对成熟稳定，不需要过多的创新突破，但需要具备基本的创新意识和改进能力"
     
-    # 2. 计算荣誉奖项得分（5年以内）
-    honor_score = 0
-    honor_details = []
-    
-    # 计算5年前的日期
-    five_years_ago = datetime.now() - timedelta(days=5*365)
-    
-    # TODO: 查询荣誉奖项表（需要创建荣誉奖项表）
-    # 暂时使用专业能力表中的荣誉数量作为简化处理
-    if db and emp_code:
-        from app.models.emp_professional_ability import EmpProfessionalAbility
-        prof_ability = db.query(EmpProfessionalAbility).filter(
-            EmpProfessionalAbility.emp_code == emp_code
-        ).first()
+    if job_desc:
+        # 提取职责要求和技术栈
+        duties = job_desc.get('duties', '')
+        skills = job_desc.get('qualifications_skills', '')
         
-        if prof_ability and prof_ability.honors_count:
-            # 简化处理：假设每个荣誉按集团级50分计算
-            # 实际应该根据荣誉级别分别计算
-            honor_score = min(prof_ability.honors_count * 50, 100)
-            if honor_score > 0:
-                reasons.append(f"荣誉奖项+{honor_score}分")
-    
-    # 3. 汇总得分（最高不超过100分）
-    total_score = min(score + honor_score, 100)
+        if duties or skills:
+            # 使用大模型生成岗位创新能力要求及理由
+            import requests
+            from app.config import get_settings
+            
+            settings = get_settings()
+            
+            # 构建提示词
+            prompt = f"""请分析以下岗位的职责要求和技术栈，判断该岗位对创新能力的要求程度，并给出详细的理由说明。
+
+岗位职责：{duties}
+技术栈要求：{skills}
+
+请根据以下标准判断创新要求程度：
+1. 高创新要求（8-10分）：岗位职责中明确要求创新、研发、专利、发明等，技术栈要求前沿技术或需要自主研发
+2. 中创新要求（5-7分）：岗位职责中提到需要改进、优化、提升等，技术栈要求较新但非前沿
+3. 低创新要求（1-4分）：岗位职责主要是执行、维护、操作等，技术栈要求成熟稳定
+
+请返回格式：
+分数：[1-10之间的整数]
+理由：[详细的理由说明，解释为什么该岗位需要这个程度的创新能力]
+
+不要返回其他内容。"""
+            
+            # 调用大模型 API
+            try:
+                response = requests.post(
+                    settings.LLM_URL,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {settings.LLM_API_KEY}"
+                    },
+                    json={
+                        "model": settings.LLM_MODEL,
+                        "messages": [
+                            {"role": "system", "content": "你是一个专业的HR分析师，擅长分析岗位对创新能力的要求并给出专业评价。"},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 500
+                    },
+                    timeout=15
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                    # 解析大模型返回的内容
+                    lines = content.split('\n')
+                    score_line = ""
+                    reason_lines = []
+                    for line in lines:
+                        if line.startswith('分数：'):
+                            score_line = line.replace('分数：', '').strip()
+                        elif line.startswith('理由：'):
+                            reason_lines.append(line.replace('理由：', '').strip())
+                        elif reason_lines:  # 继续收集理由的后续行
+                            reason_lines.append(line.strip())
+                    
+                    # 提取分数（1-10分制）
+                    try:
+                        job_requirement_raw = int(score_line)
+                        job_requirement_raw = max(1, min(10, job_requirement_raw))  # 限制在1-10之间
+                    except:
+                        job_requirement_raw = 7  # 默认7分
+                    
+                    # 转换为百分制
+                    job_requirement = job_requirement_raw * 10
+                    
+                    # 构建岗位理由
+                    if reason_lines:
+                        job_reason = "；".join(reason_lines)
+                    else:
+                        job_reason = f"该岗位对创新能力的要求为{job_requirement_raw}分（满分10分），需要具备相应的创新能力和技术突破能力"
+            except Exception as e:
+                # 如果大模型调用失败，使用默认值
+                job_requirement_raw = 7
+                job_requirement = 70  # 百分制
+                job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护，技术栈相对成熟稳定，不需要过多的创新突破，但需要具备基本的创新意识和改进能力"
     
     # 构建员工得分理由
     if reasons:
-        employee_reason = "；".join(reasons) + f"。累计得分{total_score}分（上限100分）"
+        employee_reason = "；".join(reasons)
     else:
         employee_reason = "无专利，得分0分"
-    
-    # 基于岗位说明书确定创新要求
-    qual_skills = job_desc.get('qualifications_skills') if job_desc else None
-    
-    job_requirement = 70
-    job_reason_parts = []
-    
-    if qual_skills:
-        skills_str = str(qual_skills)
-        # 检查是否有创新相关要求
-        if any(kw in skills_str for kw in ['创新', '研发', '专利', '发明', '攻关']):
-            job_requirement = 75
-            job_reason_parts.append("需具备创新能力")
-        else:
-            job_requirement = 65
-            job_reason_parts.append("基础创新意识")
-    else:
-        job_reason_parts.append("基础创新要求")
-    
-    # 精简岗位理由
-    job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
     
     return total_score, job_requirement, employee_reason, job_reason
 
@@ -924,7 +1056,7 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
         job_requirement = 60
         job_reason_parts.append("未获取信息，默认为本科及以上学历")
     major  = json.loads(qual_major).get('requirement', '')
-    if major:
+    if major and not '不限专业' in major:
         job_requirement += 5
         job_reason_parts.append(f"需要{major}相关专业")
     
