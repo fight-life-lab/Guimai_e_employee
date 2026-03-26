@@ -3095,6 +3095,27 @@
                 `;
             }
             
+            // 添加分数框显示
+            const scoreBoxesHtml = `
+                <div style="margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 12px;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 15px; text-align: center;">🎯 人岗适配核心指标</div>
+                    <div style="display: flex; gap: 15px; justify-content: center;">
+                        <div style="flex: 1; background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 24px; font-weight: bold; color: #764ba2;">${(data.job_requirement_score || 0).toFixed(1)}</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">岗位能力分数</div>
+                        </div>
+                        <div style="flex: 1; background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 24px; font-weight: bold; color: #667eea;">${(data.overall_score || 0).toFixed(1)}</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">员工能力分数</div>
+                        </div>
+                        <div style="flex: 1; background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            <div style="font-size: 24px; font-weight: bold; color: #52c41a;">${((data.overall_score && data.job_requirement_score) ? ((data.overall_score / data.job_requirement_score) * 100).toFixed(1) : 0)}%</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">人岗适配率</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
             // 4. 人岗适配四象限图
             const quadrant = data.quadrant || {};
             const quadrantHtml = `
@@ -3139,12 +3160,16 @@
                             </div>
                             <div style="margin-top: 15px; display: flex; gap: 10px;">
                                 <div style="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${quadrant.ability_index || 0}%</div>
-                                    <div style="font-size: 12px; color: #999;">能力指数</div>
+                                    <div style="font-size: 20px; font-weight: bold; color: #764ba2;">${(data.job_requirement_score || 0).toFixed(1)}</div>
+                                    <div style="font-size: 12px; color: #999;">岗位能力分数</div>
                                 </div>
                                 <div style="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 20px; font-weight: bold; color: #764ba2;">${quadrant.match_index || 0}%</div>
-                                    <div style="font-size: 12px; color: #999;">匹配指数</div>
+                                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${(data.overall_score || 0).toFixed(1)}</div>
+                                    <div style="font-size: 12px; color: #999;">员工能力分数</div>
+                                </div>
+                                <div style="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 20px; font-weight: bold; color: #52c41a;">${((data.overall_score && data.job_requirement_score) ? ((data.overall_score / data.job_requirement_score) * 100).toFixed(1) : 0)}%</div>
+                                    <div style="font-size: 12px; color: #999;">人岗适配率</div>
                                 </div>
                             </div>
                         </div>
@@ -3164,8 +3189,10 @@
                 </div>
             `;
             
-            // 完整HTML - 按照手绘图顺序：标题 -> 雷达图+评分理由 -> 维度汇总 -> 四象限 -> 综合评价
-            const fullHtml = titleHtml + radarAndReasonsHtml + summaryHtml + quadrantHtml + conclusionHtml;
+            // 完整HTML - 按照手绘图顺序：标题 -> 雷达图+评分理由 -> 维度汇总 -> 分数框 -> 综合评价
+            // 注释掉四象限图，只显示分数框
+            // const fullHtml = titleHtml + radarAndReasonsHtml + summaryHtml + quadrantHtml + conclusionHtml;
+            const fullHtml = titleHtml + radarAndReasonsHtml + summaryHtml + scoreBoxesHtml + conclusionHtml;
             
             // 创建消息元素
             const messageDiv = document.createElement('div');

@@ -197,7 +197,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
     基于：试用期分数、绩效、专家聘任、职称证书、职业技能
     规则：
     - 基础分70分
-    - 绩效（二选一）：试用期>=80加10分，<80减5分；或3年内年度绩效一次优秀+10分，一次基本称职-10分
+    - 绩效（二选一）：试用期>=80加10分，<80减5分；或3年内年度绩效一次优秀+15分，一次基本称职-15分
     - 专家聘任：公司专家+10分，高级专家+15分，首席专家+20分
     - 职称证书：A级+10分，B级+7分，C级+5分，多项取高
     - 职业技能：A级+7分，B级+5分，C级+3分，累计不超过14分
@@ -248,7 +248,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
                             basic_count += 1
                 
                 if excellent_count > 0:
-                    performance_bonus = 10 * excellent_count
+                    performance_bonus = 15 * excellent_count
                     performance_reason = f"2022-2024年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
                 elif basic_count > 0:
                     performance_bonus = -10 * basic_count
@@ -495,7 +495,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     （3）集团级荣誉：10分
     （4）公司级荣誉：5分
     """
-    experience_dict  = {'work_experiences': 0.6,'honer':0.4}
+    experience_dict  = {'work_experiences': 0.8,'honer':0.2}
     from datetime import datetime, date
     from app.models.emp_work_experience import EmpWorkExperience
     
@@ -641,7 +641,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     else:
         score = 60
         level = "3年以下"
-    experience_dict = {'work_experiences': 0.6, 'honer': 0.4}
+    # experience_dict = {'work_experiences': 0.6, 'honer': 0.4}
     work_score = score * experience_dict['work_experiences']
     # 构建员工得分理由
     if relevant_experiences:
