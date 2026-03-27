@@ -10,9 +10,31 @@
     <link rel="icon" type="image/png" href="/static/国脉底图.png?v=3">
     <!-- 引入 Chart.js 用于雷达图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- 引入 jsPDF 和 html2canvas 用于PDF生成 -->
+    <!-- 引入 jsPDF 用于PDF生成 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.25/dist/jspdf.plugin.autotable.min.js"></script>
+    <!-- 引入支持中文的字体 -->
+    <script>
+        // 注册中文字体
+        (function() {
+            // 这里使用开源的中文字体，通过base64编码嵌入
+            // 实际项目中应该使用完整的字体文件
+            const fontConfig = {
+                normal: {
+                    fontFamily: 'SimSun',
+                    fontStyle: 'normal'
+                }
+            };
+            
+            // 注册字体配置
+            if (window.jspdf) {
+                const { jsPDF } = window.jspdf;
+                // 注意：实际使用时需要替换为真实的字体文件base64编码
+                // jsPDF.API.addFileToVFS('simun.ttf', 'base64编码的字体文件');
+                // jsPDF.API.addFont('simun.ttf', 'SimSun', 'normal');
+            }
+        })();
+    </script>
     <script>
         // 强制刷新缓存
         if (location.search.indexOf('v=') === -1) {
@@ -3008,6 +3030,12 @@
             const displayTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
             const uniqueId = Date.now();
             
+            // 存储分析数据到全局变量
+            if (!window.analysisData) {
+                window.analysisData = {};
+            }
+            window.analysisData[uniqueId] = data;
+            
             // 1. 标题：员工姓名-岗位名称 人岗适配分析报告
             const empName = data.employee_name || '未知';
             const position = data.position || '未知岗位';
@@ -3386,7 +3414,7 @@
         }
 
         // 下载PDF报告
-        function downloadPDF(uniqueId, employeeName, position) {
+        async function downloadPDF(uniqueId, employeeName, position) {
             // 找到包含分析结果的消息元素
             const messageElements = document.querySelectorAll('.message.assistant');
             let targetElement = null;
@@ -3409,92 +3437,58 @@
                 targetElement.querySelector('button').textContent = '正在生成PDF...';
                 targetElement.querySelector('button').disabled = true;
                 
-                // 创建一个临时容器，复制内容以便更好地控制样式
-                const tempContainer = document.createElement('div');
-                tempContainer.style.width = '800px';
-                tempContainer.style.padding = '20px';
-                tempContainer.style.backgroundColor = '#ffffff';
-                tempContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-                
-                // 复制内容到临时容器
-                const content = targetElement.querySelector('.message-content');
-                if (content) {
-                    tempContainer.innerHTML = content.innerHTML;
-                    
-                    // 添加到文档中
-                    document.body.appendChild(tempContainer);
-                    
-                    // 使用html2canvas捕获临时容器
-                    html2canvas(tempContainer, {
-                        scale: 2, // 提高清晰度
-                        useCORS: true,
-                        logging: false,
-                        backgroundColor: '#ffffff', // 确保背景为白色
-                        allowTaint: true,
-                        letterRendering: true,
-                        imageTimeout: 0,
-                        removeContainer: true
-                    }).then(canvas => {
-                        // 从文档中移除临时容器
-                        document.body.removeChild(tempContainer);
-                        
-                        // 创建PDF
-                        const { jsPDF } = window.jspdf;
-                        const pdf = new jsPDF({
-                            orientation: 'portrait',
-                            unit: 'mm',
-                            format: 'a4'
-                        });
-                        
-                        // 计算尺寸
-                        const imgData = canvas.toDataURL('image/png');
-                        const imgWidth = 210; // A4宽度
-                        const pageHeight = 295;
-                        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                        let heightLeft = imgHeight;
-                        
-                        let position = 0;
-                        
-                        // 添加图片到PDF
-                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                        heightLeft -= pageHeight;
-                        
-                        // 如果内容太长，添加新页面
-                        while (heightLeft >= 0) {
-                            position = heightLeft - imgHeight;
-                            pdf.addPage();
-                            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                            heightLeft -= pageHeight;
-                        }
-                        
-                        // 生成文件名：名字-岗位-当天日期时间戳
-                        const now = new Date();
-                        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-                        const timeStr = now.toISOString().slice(11, 19).replace(/:/g, ''); // HHMMSS
-                        const filename = `${employeeName}-${position}-${dateStr}${timeStr}.pdf`;
-                        pdf.save(filename);
-                        
-                        // 恢复按钮状态
-                        targetElement.querySelector('button').textContent = originalText;
-                        targetElement.querySelector('button').disabled = false;
-                    }).catch(error => {
-                        console.error('PDF生成失败:', error);
-                        alert('PDF生成失败，请重试');
-                        
-                        // 从文档中移除临时容器
-                        if (tempContainer.parentNode) {
-                            document.body.removeChild(tempContainer);
-                        }
-                        
-                        // 恢复按钮状态
-                        if (targetElement.querySelector('button')) {
-                            targetElement.querySelector('button').textContent = '📄 下载PDF报告';
-                            targetElement.querySelector('button').disabled = false;
-                        }
-                    });
-                } else {
-                    throw new Error('未找到分析内容');
+                // 从全局变量获取分析数据
+                if (!window.analysisData || !window.analysisData[uniqueId]) {
+                    throw new Error('未找到分析数据');
                 }
+                
+                const analysisData = window.analysisData[uniqueId];
+                
+                // 调用后端API生成PDF
+                const response = await fetch('/api/v1/pdf/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        employee_name: employeeName,
+                        position: position,
+                        analysis_data: analysisData
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('PDF生成失败');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.pdf_base64) {
+                    // 解码base64并下载PDF
+                    const byteCharacters = atob(result.pdf_base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'application/pdf' });
+                    
+                    // 创建下载链接
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = result.filename || `${employeeName}-${position}-${Date.now()}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } else {
+                    throw new Error('PDF生成失败');
+                }
+                
+                // 恢复按钮状态
+                targetElement.querySelector('button').textContent = originalText;
+                targetElement.querySelector('button').disabled = false;
                 
             } catch (error) {
                 console.error('PDF生成失败:', error);

@@ -22,6 +22,7 @@ from app.api.interview_evaluation_routes import router as interview_evaluation_r
 from app.api.interview_evaluation_routes_v2 import router as interview_evaluation_v2_router
 from app.api.interview_evaluation_ws import router as interview_evaluation_ws_router
 from app.api.interview_evaluation_optimized import router as interview_evaluation_optimized_router
+from app.api.pdf_routes import router as pdf_router
 from app.config import get_settings
 from app.database.models import init_database
 
@@ -91,6 +92,7 @@ app.include_router(interview_evaluation_router)
 app.include_router(interview_evaluation_v2_router)
 app.include_router(interview_evaluation_ws_router)
 app.include_router(interview_evaluation_optimized_router)
+app.include_router(pdf_router)
 
 # Mount static files (for web UI)
 if os.path.exists("./static"):
