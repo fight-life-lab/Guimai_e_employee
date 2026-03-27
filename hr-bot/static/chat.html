@@ -3443,47 +3443,25 @@
                 console.log('Employee:', employeeName);
                 console.log('Position:', position);
                 
-                // 创建一个临时容器，复制内容以便更好地控制样式
-                const tempContainer = document.createElement('div');
-                tempContainer.style.width = '900px'; // 增加宽度
-                tempContainer.style.padding = '30px'; // 增加内边距
-                tempContainer.style.backgroundColor = '#ffffff';
-                tempContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
-                tempContainer.style.position = 'absolute';
-                tempContainer.style.left = '-9999px';
-                tempContainer.style.top = '-9999px';
-                tempContainer.style.zIndex = '9999';
-                tempContainer.style.overflow = 'visible'; // 确保内容不被截断
-                tempContainer.style.whiteSpace = 'normal'; // 确保文本正常换行
-                
-                // 复制内容到临时容器
+                // 直接使用原始的消息内容元素进行截图
                 const content = targetElement.querySelector('.message-content');
                 if (content) {
-                    tempContainer.innerHTML = content.innerHTML;
+                    // 确保内容元素有足够的宽度
+                    const originalWidth = content.style.width;
+                    content.style.width = '900px';
                     
                     // 确保雷达图容器有足够的高度
-                    const chartContainers = tempContainer.querySelectorAll('.chart-container');
+                    const chartContainers = content.querySelectorAll('.chart-container');
                     chartContainers.forEach(container => {
                         container.style.height = '400px'; // 增加图表高度
                         container.style.width = '100%'; // 确保宽度适应
-                        container.style.position = 'relative'; // 确保定位正确
                     });
                     
                     // 等待图表渲染完成，增加等待时间
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     
-                    // 确保Canvas元素被正确处理
-                    const canvasElements = tempContainer.querySelectorAll('canvas');
-                    canvasElements.forEach(canvas => {
-                        canvas.style.maxWidth = '100%';
-                        canvas.style.height = 'auto';
-                    });
-                    
-                    // 添加到文档中
-                    document.body.appendChild(tempContainer);
-                    
-                    // 使用html2canvas捕获临时容器，提高精度
-                    const canvas = await html2canvas(tempContainer, {
+                    // 使用html2canvas捕获原始内容元素，提高精度
+                    const canvas = await html2canvas(content, {
                         scale: 3, // 提高清晰度，使用3倍缩放
                         useCORS: true,
                         logging: true, // 开启日志以便调试
@@ -3491,13 +3469,15 @@
                         allowTaint: true,
                         letterRendering: true,
                         imageTimeout: 5000, // 增加超时时间
-                        removeContainer: true,
+                        removeContainer: false,
                         windowWidth: 960, // 设置窗口宽度
-                        windowHeight: tempContainer.scrollHeight // 设置窗口高度为内容高度
+                        windowHeight: content.scrollHeight, // 设置窗口高度为内容高度
+                        preserveDrawingBuffer: true, // 确保Canvas内容被正确捕获
+                        useTransform: false // 避免变换导致的问题
                     });
                     
-                    // 从文档中移除临时容器
-                    document.body.removeChild(tempContainer);
+                    // 恢复原始宽度
+                    content.style.width = originalWidth;
                     
                     // 创建PDF
                     const { jsPDF } = window.jspdf;
