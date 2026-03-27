@@ -3466,10 +3466,18 @@
                     chartContainers.forEach(container => {
                         container.style.height = '400px'; // 增加图表高度
                         container.style.width = '100%'; // 确保宽度适应
+                        container.style.position = 'relative'; // 确保定位正确
                     });
                     
-                    // 等待图表渲染完成
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    // 等待图表渲染完成，增加等待时间
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // 确保Canvas元素被正确处理
+                    const canvasElements = tempContainer.querySelectorAll('canvas');
+                    canvasElements.forEach(canvas => {
+                        canvas.style.maxWidth = '100%';
+                        canvas.style.height = 'auto';
+                    });
                     
                     // 添加到文档中
                     document.body.appendChild(tempContainer);
