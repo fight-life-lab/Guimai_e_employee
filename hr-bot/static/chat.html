@@ -3445,7 +3445,7 @@
                 const analysisData = window.analysisData[uniqueId];
                 
                 // 调用后端API生成PDF
-                const response = await fetch('/api/v1/pdf/generate', {
+                const response = await fetch(`${API_BASE}/api/v1/pdf/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
