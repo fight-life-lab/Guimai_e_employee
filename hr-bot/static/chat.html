@@ -3437,58 +3437,82 @@
                 targetElement.querySelector('button').textContent = '正在生成PDF...';
                 targetElement.querySelector('button').disabled = true;
                 
-                // 从全局变量获取分析数据
-                if (!window.analysisData || !window.analysisData[uniqueId]) {
-                    throw new Error('未找到分析数据');
-                }
+                // 创建一个临时容器，复制内容以便更好地控制样式
+                const tempContainer = document.createElement('div');
+                tempContainer.style.width = '800px';
+                tempContainer.style.padding = '20px';
+                tempContainer.style.backgroundColor = '#ffffff';
+                tempContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.zIndex = '9999';
                 
-                const analysisData = window.analysisData[uniqueId];
-                
-                // 调用后端API生成PDF
-                const response = await fetch(`${API_BASE}/api/v1/pdf/generate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        employee_name: employeeName,
-                        position: position,
-                        analysis_data: analysisData
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('PDF生成失败');
-                }
-                
-                const result = await response.json();
-                
-                if (result.success && result.pdf_base64) {
-                    // 解码base64并下载PDF
-                    const byteCharacters = atob(result.pdf_base64);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                    }
-                    const byteArray = new Uint8Array(byteNumbers);
-                    const blob = new Blob([byteArray], { type: 'application/pdf' });
+                // 复制内容到临时容器
+                const content = targetElement.querySelector('.message-content');
+                if (content) {
+                    tempContainer.innerHTML = content.innerHTML;
                     
-                    // 创建下载链接
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = result.filename || `${employeeName}-${position}-${Date.now()}.pdf`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
+                    // 添加到文档中
+                    document.body.appendChild(tempContainer);
+                    
+                    // 使用html2canvas捕获临时容器，提高精度
+                    const canvas = await html2canvas(tempContainer, {
+                        scale: 3, // 提高清晰度，使用3倍缩放
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff', // 确保背景为白色
+                        allowTaint: true,
+                        letterRendering: true,
+                        imageTimeout: 0,
+                        removeContainer: true
+                    });
+                    
+                    // 从文档中移除临时容器
+                    document.body.removeChild(tempContainer);
+                    
+                    // 创建PDF
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
+                    // 计算尺寸
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 210; // A4宽度
+                    const pageHeight = 295;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    let heightLeft = imgHeight;
+                    
+                    let position = 0;
+                    
+                    // 添加图片到PDF
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                    
+                    // 如果内容太长，添加新页面
+                    while (heightLeft >= 0) {
+                        position = heightLeft - imgHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
+                    }
+                    
+                    // 生成文件名：名字-岗位-当天日期时间戳
+                    const now = new Date();
+                    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+                    const timeStr = now.toISOString().slice(11, 19).replace(/:/g, ''); // HHMMSS
+                    const filename = `${employeeName}-${position}-${dateStr}${timeStr}.pdf`;
+                    pdf.save(filename);
+                    
+                    // 恢复按钮状态
+                    targetElement.querySelector('button').textContent = originalText;
+                    targetElement.querySelector('button').disabled = false;
                 } else {
-                    throw new Error('PDF生成失败');
+                    throw new Error('未找到分析内容');
                 }
-                
-                // 恢复按钮状态
-                targetElement.querySelector('button').textContent = originalText;
-                targetElement.querySelector('button').disabled = false;
                 
             } catch (error) {
                 console.error('PDF生成失败:', error);
