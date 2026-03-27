@@ -3460,6 +3460,13 @@
                     // 等待图表渲染完成，增加等待时间
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     
+                    // 确保内容元素有足够的高度
+                    const originalHeight = content.style.height;
+                    content.style.height = 'auto';
+                    
+                    // 等待内容重新布局
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
                     // 使用html2canvas捕获原始内容元素，提高精度
                     const canvas = await html2canvas(content, {
                         scale: 3, // 提高清晰度，使用3倍缩放
@@ -3471,10 +3478,15 @@
                         imageTimeout: 5000, // 增加超时时间
                         removeContainer: false,
                         windowWidth: 960, // 设置窗口宽度
-                        windowHeight: content.scrollHeight, // 设置窗口高度为内容高度
+                        windowHeight: content.scrollHeight + 200, // 增加额外高度，确保内容不被截断
                         preserveDrawingBuffer: true, // 确保Canvas内容被正确捕获
-                        useTransform: false // 避免变换导致的问题
+                        useTransform: false, // 避免变换导致的问题
+                        scrollY: 0, // 确保从顶部开始捕获
+                        scrollX: 0
                     });
+                    
+                    // 恢复原始高度
+                    content.style.height = originalHeight;
                     
                     // 恢复原始宽度
                     content.style.width = originalWidth;
