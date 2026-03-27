@@ -11,8 +11,8 @@
     <!-- 引入 Chart.js 用于雷达图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- 引入 jsPDF 和 html2canvas 用于PDF生成 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?v=1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js?v=1"></script>
     <!-- 引入支持中文的字体 -->
     <script>
         // 注册中文字体
@@ -3437,21 +3437,39 @@
                 targetElement.querySelector('button').textContent = '正在生成PDF...';
                 targetElement.querySelector('button').disabled = true;
                 
+                // 添加调试信息
+                console.log('开始PDF生成');
+                console.log('使用的是前端html2canvas方法');
+                console.log('Employee:', employeeName);
+                console.log('Position:', position);
+                
                 // 创建一个临时容器，复制内容以便更好地控制样式
                 const tempContainer = document.createElement('div');
-                tempContainer.style.width = '800px';
-                tempContainer.style.padding = '20px';
+                tempContainer.style.width = '900px'; // 增加宽度
+                tempContainer.style.padding = '30px'; // 增加内边距
                 tempContainer.style.backgroundColor = '#ffffff';
                 tempContainer.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
                 tempContainer.style.position = 'absolute';
                 tempContainer.style.left = '-9999px';
                 tempContainer.style.top = '-9999px';
                 tempContainer.style.zIndex = '9999';
+                tempContainer.style.overflow = 'visible'; // 确保内容不被截断
+                tempContainer.style.whiteSpace = 'normal'; // 确保文本正常换行
                 
                 // 复制内容到临时容器
                 const content = targetElement.querySelector('.message-content');
                 if (content) {
                     tempContainer.innerHTML = content.innerHTML;
+                    
+                    // 确保雷达图容器有足够的高度
+                    const chartContainers = tempContainer.querySelectorAll('.chart-container');
+                    chartContainers.forEach(container => {
+                        container.style.height = '400px'; // 增加图表高度
+                        container.style.width = '100%'; // 确保宽度适应
+                    });
+                    
+                    // 等待图表渲染完成
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     
                     // 添加到文档中
                     document.body.appendChild(tempContainer);
@@ -3460,12 +3478,14 @@
                     const canvas = await html2canvas(tempContainer, {
                         scale: 3, // 提高清晰度，使用3倍缩放
                         useCORS: true,
-                        logging: false,
+                        logging: true, // 开启日志以便调试
                         backgroundColor: '#ffffff', // 确保背景为白色
                         allowTaint: true,
                         letterRendering: true,
-                        imageTimeout: 0,
-                        removeContainer: true
+                        imageTimeout: 5000, // 增加超时时间
+                        removeContainer: true,
+                        windowWidth: 960, // 设置窗口宽度
+                        windowHeight: tempContainer.scrollHeight // 设置窗口高度为内容高度
                     });
                     
                     // 从文档中移除临时容器
