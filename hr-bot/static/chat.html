@@ -10,9 +10,11 @@
     <link rel="icon" type="image/png" href="/static/国脉底图.png?v=3">
     <!-- 引入 Chart.js 用于雷达图 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- 引入 jsPDF 和 html2canvas 用于PDF生成 -->
+    <!-- 引入 jsPDF 用于PDF生成 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 引入支持中文的字体 -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.25/dist/jspdf.plugin.autotable.min.js"></script>
     <script>
         // 强制刷新缓存
         if (location.search.indexOf('v=') === -1) {
@@ -3387,8 +3389,6 @@
 
         // 下载PDF报告
         function downloadPDF(uniqueId, employeeName, position) {
-            const { jsPDF } = window.jspdf;
-            
             // 找到包含分析结果的消息元素
             const messageElements = document.querySelectorAll('.message.assistant');
             let targetElement = null;
@@ -3411,183 +3411,63 @@
                 targetElement.querySelector('button').textContent = '正在生成PDF...';
                 targetElement.querySelector('button').disabled = true;
                 
-                // 创建PDF
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: 'a4'
-                });
-                
-                // 设置字体
-                pdf.setFont('helvetica');
-                
-                // 页面边距
-                const margin = 20;
-                let yPosition = margin;
-                
-                // 标题
-                pdf.setFontSize(18);
-                pdf.setFont('helvetica', 'bold');
-                pdf.text(`${employeeName}-${position}人岗适配分析报告`, 210/2, yPosition, { align: 'center' });
-                yPosition += 20;
-                
-                // 提取分析结果数据
-                const content = targetElement.querySelector('.message-content');
-                if (!content) {
-                    throw new Error('未找到分析内容');
-                }
-                
-                // 提取标题部分
-                const titleElement = content.querySelector('h2');
-                if (titleElement) {
-                    pdf.setFontSize(14);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text(titleElement.textContent, margin, yPosition);
-                    yPosition += 15;
-                }
-                
-                // 提取雷达图和评分理由部分
-                const radarSection = content.querySelector('.radar-container');
-                if (radarSection) {
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('能力雷达对比与AI评分理由', margin, yPosition);
-                    yPosition += 10;
-                    
-                    // 提取评分理由
-                    const reasonSections = radarSection.querySelectorAll('div[style*="flex: 1; padding: 15px; background: #f8f9fa; border-radius: 8px;"]');
-                    reasonSections.forEach((section, index) => {
-                        const title = section.querySelector('h3');
-                        if (title) {
-                            pdf.setFontSize(10);
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.text(title.textContent, margin, yPosition);
-                            yPosition += 8;
-                        }
-                        
-                        const reasons = section.querySelectorAll('div[style*="margin-bottom: 8px;"]');
-                        reasons.forEach(reason => {
-                            const text = reason.textContent.trim();
-                            if (text) {
-                                pdf.setFontSize(8);
-                                pdf.setFont('helvetica', 'normal');
-                                // 自动换行
-                                const lines = pdf.splitTextToSize(text, 210 - margin * 2);
-                                lines.forEach(line => {
-                                    pdf.text(line, margin, yPosition);
-                                    yPosition += 6;
-                                });
-                            }
-                        });
-                        
-                        yPosition += 5;
+                // 使用html2canvas捕获元素（重新使用这种方法，因为直接构建PDF会导致中文乱码）
+                html2canvas(targetElement, {
+                    scale: 2, // 提高清晰度
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff', // 确保背景为白色
+                    allowTaint: true
+                }).then(canvas => {
+                    // 创建PDF
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
                     });
-                }
-                
-                // 提取维度汇总部分
-                const summarySection = content.querySelector('div[style*="background: #f0f8ff; border-radius: 8px; padding: 15px; margin-bottom: 15px;"]');
-                if (summarySection) {
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('维度得分汇总', margin, yPosition);
-                    yPosition += 10;
                     
-                    const tableRows = summarySection.querySelectorAll('table tr');
-                    tableRows.forEach((row, index) => {
-                        if (index === 0) {
-                            // 表头
-                            pdf.setFontSize(8);
-                            pdf.setFont('helvetica', 'bold');
-                        } else {
-                            // 数据行
-                            pdf.setFontSize(8);
-                            pdf.setFont('helvetica', 'normal');
-                        }
-                        
-                        const cells = row.querySelectorAll('td, th');
-                        let xPosition = margin;
-                        cells.forEach((cell, cellIndex) => {
-                            const text = cell.textContent.trim();
-                            pdf.text(text, xPosition, yPosition);
-                            xPosition += 35; // 列宽
-                        });
-                        yPosition += 6;
-                    });
-                }
-                
-                // 提取分数框部分
-                const scoreBoxesSection = content.querySelector('div[style*="display: flex; gap: 15px; margin-bottom: 15px;"]');
-                if (scoreBoxesSection) {
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('人岗适配核心指标', margin, yPosition);
-                    yPosition += 10;
+                    // 计算尺寸
+                    const imgData = canvas.toDataURL('image/png');
+                    const imgWidth = 210; // A4宽度
+                    const pageHeight = 295;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    let heightLeft = imgHeight;
                     
-                    const scoreBoxes = scoreBoxesSection.querySelectorAll('div[style*="flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center;"]');
-                    scoreBoxes.forEach(box => {
-                        const score = box.querySelector('div[style*="font-size: 20px; font-weight: bold;"]');
-                        const label = box.querySelector('div[style*="font-size: 12px; color: #999;"]');
-                        
-                        if (score && label) {
-                            pdf.setFontSize(10);
-                            pdf.setFont('helvetica', 'bold');
-                            pdf.text(score.textContent, margin, yPosition);
-                            pdf.setFontSize(8);
-                            pdf.setFont('helvetica', 'normal');
-                            pdf.text(label.textContent, margin, yPosition + 6);
-                            yPosition += 15;
-                        }
-                    });
-                }
-                
-                // 提取综合评价部分
-                const conclusionSection = content.querySelector('div[style*="background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px; border-radius: 8px;"]');
-                if (conclusionSection) {
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('综合评价', margin, yPosition);
-                    yPosition += 10;
+                    let position = 0;
                     
-                    const conclusionText = conclusionSection.querySelector('div[style*="line-height: 1.6; margin-bottom: 15px; background: white; padding: 12px; border-radius: 8px;"]');
-                    if (conclusionText) {
-                        pdf.setFontSize(8);
-                        pdf.setFont('helvetica', 'normal');
-                        const lines = pdf.splitTextToSize(conclusionText.textContent, 210 - margin * 2);
-                        lines.forEach(line => {
-                            pdf.text(line, margin, yPosition);
-                            yPosition += 6;
-                        });
-                        yPosition += 10;
+                    // 添加图片到PDF
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                    
+                    // 如果内容太长，添加新页面
+                    while (heightLeft >= 0) {
+                        position = heightLeft - imgHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                        heightLeft -= pageHeight;
                     }
                     
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text('发展建议', margin, yPosition);
-                    yPosition += 10;
+                    // 生成文件名：名字-岗位-当天日期时间戳
+                    const now = new Date();
+                    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+                    const timeStr = now.toISOString().slice(11, 19).replace(/:/g, ''); // HHMMSS
+                    const filename = `${employeeName}-${position}-${dateStr}${timeStr}.pdf`;
+                    pdf.save(filename);
                     
-                    const recommendations = conclusionSection.querySelectorAll('div[style*="background: white; padding: 10px; border-radius: 6px; border-left: 3px solid #667eea;"]');
-                    recommendations.forEach((rec, index) => {
-                        pdf.setFontSize(8);
-                        pdf.setFont('helvetica', 'normal');
-                        const lines = pdf.splitTextToSize(`${index + 1}. ${rec.textContent}`, 210 - margin * 2);
-                        lines.forEach(line => {
-                            pdf.text(line, margin, yPosition);
-                            yPosition += 6;
-                        });
-                        yPosition += 5;
-                    });
-                }
-                
-                // 生成文件名：名字-岗位-当天日期时间戳
-                const now = new Date();
-                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
-                const timeStr = now.toISOString().slice(11, 19).replace(/:/g, ''); // HHMMSS
-                const filename = `${employeeName}-${position}-${dateStr}${timeStr}.pdf`;
-                pdf.save(filename);
-                
-                // 恢复按钮状态
-                targetElement.querySelector('button').textContent = originalText;
-                targetElement.querySelector('button').disabled = false;
+                    // 恢复按钮状态
+                    targetElement.querySelector('button').textContent = originalText;
+                    targetElement.querySelector('button').disabled = false;
+                }).catch(error => {
+                    console.error('PDF生成失败:', error);
+                    alert('PDF生成失败，请重试');
+                    
+                    // 恢复按钮状态
+                    if (targetElement.querySelector('button')) {
+                        targetElement.querySelector('button').textContent = '📄 下载PDF报告';
+                        targetElement.querySelector('button').disabled = false;
+                    }
+                });
                 
             } catch (error) {
                 console.error('PDF生成失败:', error);
