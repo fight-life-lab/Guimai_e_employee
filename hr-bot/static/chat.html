@@ -3446,9 +3446,17 @@
                 // 直接使用原始的消息内容元素进行截图
                 const content = targetElement.querySelector('.message-content');
                 if (content) {
+                    // 找到并隐藏下载按钮，避免它出现在PDF中
+                    const downloadButton = content.querySelector('button');
+                    let buttonDisplay = '';
+                    if (downloadButton) {
+                        buttonDisplay = downloadButton.style.display;
+                        downloadButton.style.display = 'none';
+                    }
+                    
                     // 确保内容元素有足够的宽度
                     const originalWidth = content.style.width;
-                    content.style.width = '900px';
+                    content.style.width = '950px'; // 增加宽度，避免文字换行
                     
                     // 确保雷达图容器有足够的高度
                     const chartContainers = content.querySelectorAll('.chart-container');
@@ -3477,13 +3485,18 @@
                         letterRendering: true,
                         imageTimeout: 5000, // 增加超时时间
                         removeContainer: false,
-                        windowWidth: 960, // 设置窗口宽度
+                        windowWidth: 1000, // 设置窗口宽度
                         windowHeight: content.scrollHeight + 200, // 增加额外高度，确保内容不被截断
                         preserveDrawingBuffer: true, // 确保Canvas内容被正确捕获
                         useTransform: false, // 避免变换导致的问题
                         scrollY: 0, // 确保从顶部开始捕获
                         scrollX: 0
                     });
+                    
+                    // 恢复下载按钮的显示状态
+                    if (downloadButton) {
+                        downloadButton.style.display = buttonDisplay;
+                    }
                     
                     // 恢复原始高度
                     content.style.height = originalHeight;
