@@ -765,6 +765,45 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     return total_score, job_requirement, employee_reason, job_reason
 
 
+def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> tuple:
+    """
+    计算战略匹配维度得分（权重15%）
+    基于：员工战略匹配评分
+    
+    评分标准：
+    - 紧密关联：≥90分
+    - 一般关联：80分≤关联度≤90分
+    - 较差关联：<80分
+    """
+    from app.models.strategic_alignment import StrategicAlignmentScore
+    from datetime import datetime
+    
+    emp_code = emp_info.get('emp_code')
+    
+    # 从数据库获取员工战略匹配分数
+    score_record = None
+    if db and emp_code:
+        current_year = datetime.now().year
+        score_record = db.query(StrategicAlignmentScore).filter(
+            StrategicAlignmentScore.emp_code == emp_code,
+            StrategicAlignmentScore.evaluation_year == current_year
+        ).first()
+    
+    if score_record:
+        score = score_record.score
+        employee_reason = f"战略匹配评分{score}分，由{score_record.evaluator or '部门负责人'}评定"
+    else:
+        # 如果没有找到记录，使用默认分数
+        score = 70.0
+        employee_reason = "暂无战略匹配评分数据，默认70分"
+    
+    # 岗位战略匹配要求（默认80分）
+    job_requirement = 80.0
+    job_reason = "岗位要求员工工作内容与公司战略及部门年度重点工作直接相关，或参与所在部门年度专项任务并承担明确职责"
+    
+    return score, job_requirement, employee_reason, job_reason
+
+
 def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
     计算创新能力维度得分（权重10%）
@@ -776,7 +815,7 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
        - 外观设计专利：70分
        - 实用新型专利：50分
     
-    可单项累计，也可多项累计，最高不超过10分（权重10%）
+    可单项累计，也可多项累计，最高不超过100分
     """
     from app.models.emp_patent import EmpPatent
     
@@ -809,13 +848,12 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
             elif '实用' in patent_type:
                 points = 50
                 type_name = '实用新型专利'
-            # else:
-            #     points = 50  # 默认按实用新型
-            #     type_name = '专利'
+            else:
+                points = 50
+                type_name = '专利'
             
             patent_score += points
             patent_set.add(type_name)
-            # patent_details.append(f"{patent.patent_name}({type_name}+{points}分)")
 
     # 累计得分最高不超过100分
     total_score = min(patent_score, 100)
@@ -824,116 +862,25 @@ def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
         patent_str = '、'.join(list(patent_set))
         reasons.append(f"有{len(patents)}项专利({patent_str})，累积得分{patent_score}")
 
-    # 2. 岗位创新要求（使用大模型判断并给出理由）
-    job_requirement_raw = 5  # 默认岗位要求5分（满分10分）
-    job_requirement = job_requirement_raw * 10  # 转换为百分制（0-100分）
-    job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护，技术栈相对成熟稳定，不需要过多的创新突破，但需要具备基本的创新意识和改进能力"
+    # 2. 岗位创新要求
+    job_requirement = 60.0  # 默认岗位要求60分
+    job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护"
     
     if job_desc:
         # 提取岗位信息
         position_name = job_desc.get('position_name', '')
         duties = job_desc.get('duties', '')
-        skills = job_desc.get('qualifications_skills', '')
         
-        if duties or skills or position_name:
-            # 使用大模型生成岗位创新能力要求及理由
-            import requests
-            
-            # 大模型配置
-            LLM_URL = "http://180.97.200.118:30071/v1/chat/completions"
-            LLM_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-            LLM_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
-            
-            # 构建提示词
-            prompt = f"""请分析以下岗位信息，判断该岗位对创新能力的要求程度，并给出详细的理由说明。
-
-岗位名称：{position_name}
-岗位职责：{duties}
-技术栈要求：{skills}
-
-判断步骤：
-1. 首先判断该岗位是否为技术岗位
-2. 技术岗位的创新要求普遍偏高，非技术岗位的创新要求偏低
-3. 根据职责要求，进一步判断创新能力的具体要求程度
-
-请根据以下标准判断创新要求程度：
-1. 高创新要求（8-10分）：技术岗位，岗位职责中明确要求创新、研发、专利、发明等，技术栈要求前沿技术或需要自主研发
-2. 中创新要求（6-7分）：技术岗位，岗位职责中提到需要改进、优化、提升等，技术栈要求较新但非前沿；或非技术岗位但需要一定创新能力
-3. 低创新要求（1-5分）：非技术岗位，岗位职责主要是执行、维护、操作等，技术栈要求成熟稳定
-
-请返回格式：
-分数：[1-10之间的整数]
-理由：[详细的理由说明，包括：1.是否为技术岗位的判断 2.创新要求程度的判断依据 3.具体的创新能力要求内容]
-
-不要返回其他内容。"""
-            
-            # 调用大模型 API
-            try:
-                response = requests.post(
-                    LLM_URL,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {LLM_API_KEY}"
-                    },
-                    json={
-                        "model": LLM_MODEL,
-                        "messages": [
-                            {"role": "system", "content": "你是一个专业的HR分析师，擅长分析岗位对创新能力的要求并给出专业评价。"},
-                            {"role": "user", "content": prompt}
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 500
-                    },
-                    timeout=15
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    # 解析大模型返回的内容
-                    lines = content.split('\n')
-                    score_line = ""
-                    reason_lines = []
-                    for line in lines:
-                        if line.startswith('分数：'):
-                            score_line = line.replace('分数：', '').strip()
-                        elif line.startswith('理由：'):
-                            reason_lines.append(line.replace('理由：', '').strip())
-                        elif reason_lines:  # 继续收集理由的后续行
-                            reason_lines.append(line.strip())
-                    
-                    # 提取分数（1-10分制）
-                    try:
-                        job_requirement_raw = int(score_line)
-                        job_requirement_raw = max(1, min(10, job_requirement_raw))  # 限制在1-10之间
-                    except:
-                        # 根据岗位类型设置默认值
-                        # 技术岗位默认7分，非技术岗位默认4分
-                        is_tech = any(keyword in (position_name + duties + skills).lower() for keyword in 
-                                    ['开发', '工程师', '技术', '研发', '编程', '算法', '架构', '前端', '后端', '测试', '运维'])
-                        job_requirement_raw = 7 if is_tech else 4
-                    
-                    # 转换为百分制
-                    job_requirement = job_requirement_raw * 10
-                    
-                    # 构建岗位理由
-                    if reason_lines:
-                        job_reason = "；".join(reason_lines)
-                    else:
-                        if '开发' in position_name or '工程师' in position_name:
-                            job_reason = "技术岗位，需要具备一定的创新能力和技术突破能力"
-                        else:
-                            job_reason = "非技术岗位，主要需要执行和维护能力，创新要求较低"
-            except Exception as e:
-                # 如果大模型调用失败，根据岗位类型设置默认值
-                is_tech = any(keyword in (position_name + duties + skills).lower() for keyword in 
-                            ['开发', '工程师', '技术', '研发', '编程', '算法', '架构', '前端', '后端', '测试', '运维'])
-                job_requirement_raw = 7 if is_tech else 4
-                job_requirement = job_requirement_raw * 10  # 百分制
-                if is_tech:
-                    job_reason = "技术岗位，默认对创新能力要求较高，需要具备技术创新和研发能力"
-                else:
-                    job_reason = "非技术岗位，默认对创新能力要求较低，主要需要执行和维护能力"
+        # 根据岗位类型设置创新要求
+        is_tech = any(keyword in (position_name + duties).lower() for keyword in 
+                    ['开发', '工程师', '技术', '研发', '编程', '算法', '架构'])
+        
+        if is_tech:
+            job_requirement = 70.0
+            job_reason = "技术岗位，需要具备一定的创新能力和技术突破能力"
+        else:
+            job_requirement = 50.0
+            job_reason = "非技术岗位，主要需要执行和维护能力，创新要求较低"
     
     # 构建员工得分理由
     if reasons:
@@ -1417,7 +1364,7 @@ def generate_gap_analysis(dimensions: List[DimensionScore]) -> List[Dict]:
 async def analyze_alignment(request: AlignmentAnalyzeRequest):
     """
     人岗适配分析
-    基于5维度模型：专业能力、经验、创新能力、学习能力、工作态度
+    基于6维度模型：专业能力、经验、战略匹配、学习能力、工作态度、创新能力
     """
     logger.info(f"[Alignment] 开始人岗适配分析，员工: {request.employee_name}")
     
@@ -1438,15 +1385,15 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         # 3. 获取考勤数据
         attendance = get_attendance_summary(db, emp_info['emp_code'])
         
-        # 4. 计算5维度得分
+        # 4. 计算6维度得分
         dimensions = []
         
-        # 维度1: 专业能力（权重30%）
+        # 维度1: 专业能力（权重25%）
         prof_score, prof_req, prof_emp_reason, prof_job_reason = calculate_professional_ability_score(emp_info, job_desc or {}, db)
         dimensions.append(DimensionScore(
             name="专业能力",
             score=prof_score,
-            weight=30,
+            weight=25,
             job_requirement=prof_req,
             description="基于绩效、专家聘任、职称证书、职业技能",
             employee_reason=prof_emp_reason,
@@ -1458,23 +1405,23 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         dimensions.append(DimensionScore(
             name="经验",
             score=exp_score,
-            weight=20,
+            weight=10,
             job_requirement=exp_req,
             description="基于本专业/相关专业工作年限",
             employee_reason=exp_emp_reason,
             job_reason=exp_job_reason
         ))
         
-        # 维度3: 创新能力（权重20%）
-        innov_score, innov_req, innov_emp_reason, innov_job_reason = calculate_innovation_score(emp_info, job_desc or {}, db)
+        # 维度3: 战略匹配（权重15%）- 新增维度
+        strategic_score, strategic_req, strategic_emp_reason, strategic_job_reason = calculate_strategic_alignment_score(emp_info, job_desc or {}, db)
         dimensions.append(DimensionScore(
-            name="创新能力",
-            score=innov_score,
-            weight=10,
-            job_requirement=innov_req,
-            description="基于专利(专利：发明100分/外观70分/实用50分）",
-            employee_reason=innov_emp_reason,
-            job_reason=innov_job_reason
+            name="战略匹配",
+            score=strategic_score,
+            weight=15,
+            job_requirement=strategic_req,
+            description="基于战略匹配评分",
+            employee_reason=strategic_emp_reason,
+            job_reason=strategic_job_reason
         ))
         
         # 维度4: 学习能力（权重20%）
@@ -1499,6 +1446,18 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
             description="基于考勤数据（迟到、早退、加班）",
             employee_reason=attitude_emp_reason,
             job_reason=attitude_job_reason
+        ))
+        
+        # 维度6: 创新能力（权重10%）
+        innov_score, innov_req, innov_emp_reason, innov_job_reason = calculate_innovation_score(emp_info, job_desc or {}, db)
+        dimensions.append(DimensionScore(
+            name="创新能力",
+            score=innov_score,
+            weight=10,
+            job_requirement=innov_req,
+            description="基于专利、荣誉奖项",
+            employee_reason=innov_emp_reason,
+            job_reason=innov_job_reason
         ))
         
         # 5. 计算综合得分（加权平均）
@@ -1559,7 +1518,7 @@ async def get_alignment_dimensions():
         "dimensions": [
             {
                 "name": "专业能力",
-                "weight": 30,
+                "weight": 25,
                 "description": "基于绩效、专家聘任、职称证书、职业技能",
                 "criteria": [
                     "基础分70分",
@@ -1582,16 +1541,14 @@ async def get_alignment_dimensions():
                 ]
             },
             {
-                "name": "创新能力",
-                "weight": 20,
-                "description": "基于专利、荣誉奖项",
+                "name": "战略匹配",
+                "weight": 15,
+                "description": "基于战略匹配评分",
                 "criteria": [
-                    "发明专利：10分",
-                    "外观设计专利：7分",
-                    "实用新型专利：5分",
-                    "国家级荣誉：20分",
-                    "省部级荣誉：15分",
-                    "集团级荣誉：10分"
+                    "紧密关联：≥90分",
+                    "一般关联：80分≤关联度≤90分",
+                    "较差关联：<80分",
+                    "由部门负责人综合评定"
                 ]
             },
             {
@@ -1617,6 +1574,19 @@ async def get_alignment_dimensions():
                     "加班：月度加班36小时以上，+20分",
                     "20:30后加班：+3分",
                     "党员：+5分"
+                ]
+            },
+            {
+                "name": "创新能力",
+                "weight": 10,
+                "description": "基于专利、荣誉奖项",
+                "criteria": [
+                    "发明专利：100分",
+                    "外观设计专利：70分",
+                    "实用新型专利：50分",
+                    "国家级荣誉：20分",
+                    "省部级荣誉：15分",
+                    "集团级荣誉：10分"
                 ]
             }
         ]

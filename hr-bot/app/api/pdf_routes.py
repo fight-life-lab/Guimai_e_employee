@@ -6,8 +6,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from io import BytesIO
 import base64
+import os
 
 router = APIRouter(prefix="/api/v1/pdf", tags=["pdf"])
 
@@ -20,6 +23,14 @@ class PDFRequest(BaseModel):
 async def generate_pdf(request: PDFRequest):
     """生成人岗适配分析PDF报告"""
     try:
+        # 注册中文字体
+        try:
+            # 尝试使用系统中的中文字体
+            pdfmetrics.registerFont(TTFont('SimSun', 'SimSun.ttf'))
+        except:
+            # 如果系统中没有SimSun字体，使用reportlab的默认字体
+            pass
+        
         # 创建PDF文档
         buffer = BytesIO()
         doc = SimpleDocTemplate(
@@ -41,7 +52,8 @@ async def generate_pdf(request: PDFRequest):
             parent=styles['Heading1'],
             fontSize=18,
             spaceAfter=20,
-            alignment=1  # 居中
+            alignment=1,  # 居中
+            fontName='SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
         )
         
         # 副标题样式
@@ -49,7 +61,8 @@ async def generate_pdf(request: PDFRequest):
             'CustomSubtitle',
             parent=styles['Heading2'],
             fontSize=14,
-            spaceAfter=15
+            spaceAfter=15,
+            fontName='SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
         )
         
         # 正文样式
@@ -58,7 +71,8 @@ async def generate_pdf(request: PDFRequest):
             parent=styles['BodyText'],
             fontSize=10,
             spaceAfter=8,
-            leading=12
+            leading=12,
+            fontName='SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
         )
         
         # 标题
@@ -97,8 +111,10 @@ async def generate_pdf(request: PDFRequest):
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 0), (-1, 0), 'SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'),
+                ('FONTNAME', (0, 1), (-1, -1), 'SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'),
                 ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
@@ -125,10 +141,10 @@ async def generate_pdf(request: PDFRequest):
             metrics_table = Table(metrics_data, colWidths=[60*mm, 40*mm])
             metrics_table.setStyle(TableStyle([
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 0), (-1, -1), 'SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'),
                 ('FONTSIZE', (0, 0), (0, -1), 10),
                 ('FONTSIZE', (1, 0), (1, -1), 12),
-                ('FONTNAME', (1, 0), (1, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (1, 0), (1, -1), 'SimSun' if 'SimSun' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black)
             ]))
             story.append(metrics_table)
