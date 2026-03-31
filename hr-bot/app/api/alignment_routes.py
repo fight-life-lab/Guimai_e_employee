@@ -804,91 +804,45 @@ def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> t
     return score, job_requirement, employee_reason, job_reason
 
 
-def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
+def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
-    计算创新能力维度得分（权重10%）
-    基于：专利
+    计算价值贡献维度得分（权重10%）
+    基于：绩效酬金偏离度
     
-    评分规则：
-    1. 专利授权（排名前三）：
-       - 发明专利：100分
-       - 外观设计专利：70分
-       - 实用新型专利：50分
-    
-    可单项累计，也可多项累计，最高不超过100分
+    计分规则：
+    - 基础分70分，满分上限100分
+    - 偏离度为100%时，不加分、不扣分
+    - 偏离度较100%，每高出0.5个百分点，加3分
+    - 偏离度较100%，每低出0.5个百分点，扣3分
     """
-    from app.models.emp_patent import EmpPatent
+    from app.models.value_contribution import ValueContributionScore
+    from datetime import datetime
     
     emp_code = emp_info.get('emp_code')
-    score = 0
-    reasons = []
     
-    # 1. 计算专利得分
-    patent_score = 0
-    patent_set = set()
-    
+    # 从数据库获取员工价值贡献分数
+    score_record = None
     if db and emp_code:
-        # 查询该员工的专利（排名前三）
-        patents = db.query(EmpPatent).filter(
-            EmpPatent.emp_code == emp_code,
-            EmpPatent.is_authorized == 1,
-            EmpPatent.rank_inventors <= 3  # 排名前三
-        ).all()
-        
-        for patent in patents:
-            patent_type = patent.patent_type or ''
-            
-            # 根据专利类型计算得分
-            if '发明' in patent_type:
-                points = 100
-                type_name = '发明专利'
-            elif '外观' in patent_type or '设计' in patent_type:
-                points = 70
-                type_name = '外观设计专利'
-            elif '实用' in patent_type:
-                points = 50
-                type_name = '实用新型专利'
-            else:
-                points = 50
-                type_name = '专利'
-            
-            patent_score += points
-            patent_set.add(type_name)
-
-    # 累计得分最高不超过100分
-    total_score = min(patent_score, 100)
+        current_year = datetime.now().year
+        score_record = db.query(ValueContributionScore).filter(
+            ValueContributionScore.emp_code == emp_code,
+            ValueContributionScore.evaluation_year == current_year
+        ).first()
     
-    if patent_score > 0:
-        patent_str = '、'.join(list(patent_set))
-        reasons.append(f"有{len(patents)}项专利({patent_str})，累积得分{patent_score}")
-
-    # 2. 岗位创新要求
-    job_requirement = 60.0  # 默认岗位要求60分
-    job_reason = "该岗位对创新能力的基础要求，主要涉及日常工作的执行和维护"
-    
-    if job_desc:
-        # 提取岗位信息
-        position_name = job_desc.get('position_name', '')
-        duties = job_desc.get('duties', '')
-        
-        # 根据岗位类型设置创新要求
-        is_tech = any(keyword in (position_name + duties).lower() for keyword in 
-                    ['开发', '工程师', '技术', '研发', '编程', '算法', '架构'])
-        
-        if is_tech:
-            job_requirement = 70.0
-            job_reason = "技术岗位，需要具备一定的创新能力和技术突破能力"
-        else:
-            job_requirement = 50.0
-            job_reason = "非技术岗位，主要需要执行和维护能力，创新要求较低"
-    
-    # 构建员工得分理由
-    if reasons:
-        employee_reason = "；".join(reasons)
+    if score_record:
+        score = score_record.score
+        deviation_rate = score_record.deviation_rate or 100
+        employee_reason = f"绩效酬金偏离度{deviation_rate}%，价值贡献评分{score}分"
     else:
-        employee_reason = "无专利，得分0分"
+        # 如果没有找到记录，使用默认分数
+        score = 70.0
+        employee_reason = "暂无价值贡献评分数据，默认70分"
     
-    return total_score, job_requirement, employee_reason, job_reason
+    # 岗位价值贡献要求（默认80分）
+    job_requirement = 80.0
+    job_reason = "岗位要求员工绩效酬金偏离度达到100%，即实际发放绩效与标准绩效一致"
+    
+    return score, job_requirement, employee_reason, job_reason
 
 
 def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
@@ -1448,16 +1402,16 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
             job_reason=attitude_job_reason
         ))
         
-        # 维度6: 创新能力（权重10%）
-        innov_score, innov_req, innov_emp_reason, innov_job_reason = calculate_innovation_score(emp_info, job_desc or {}, db)
+        # 维度6: 价值贡献（权重10%）
+        value_score, value_req, value_emp_reason, value_job_reason = calculate_value_contribution_score(emp_info, job_desc or {}, db)
         dimensions.append(DimensionScore(
-            name="创新能力",
-            score=innov_score,
+            name="价值贡献",
+            score=value_score,
             weight=10,
-            job_requirement=innov_req,
-            description="基于专利、荣誉奖项",
-            employee_reason=innov_emp_reason,
-            job_reason=innov_job_reason
+            job_requirement=value_req,
+            description="基于绩效酬金偏离度",
+            employee_reason=value_emp_reason,
+            job_reason=value_job_reason
         ))
         
         # 5. 计算综合得分（加权平均）
@@ -1577,16 +1531,14 @@ async def get_alignment_dimensions():
                 ]
             },
             {
-                "name": "创新能力",
+                "name": "价值贡献",
                 "weight": 10,
-                "description": "基于专利、荣誉奖项",
+                "description": "基于绩效酬金偏离度",
                 "criteria": [
-                    "发明专利：100分",
-                    "外观设计专利：70分",
-                    "实用新型专利：50分",
-                    "国家级荣誉：20分",
-                    "省部级荣誉：15分",
-                    "集团级荣誉：10分"
+                    "基础分70分，满分上限100分",
+                    "偏离度为100%时，不加分、不扣分",
+                    "偏离度较100%，每高出0.5个百分点，加3分",
+                    "偏离度较100%，每低出0.5个百分点，扣3分"
                 ]
             }
         ]
