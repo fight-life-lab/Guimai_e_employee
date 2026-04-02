@@ -3,16 +3,34 @@
 基于5维度模型进行员工与岗位的匹配度分析
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 import logging
+import os
+import uuid
+import asyncio
 
 router = APIRouter(prefix="/api/v1/alignment", tags=["人岗适配分析"])
 
 logger = logging.getLogger(__name__)
+
+# 创新能力文件上传目录（延迟初始化）
+INNOVATION_UPLOAD_DIR = None
+
+def get_innovation_upload_dir():
+    """获取创新能力文件上传目录，如果不存在则创建"""
+    global INNOVATION_UPLOAD_DIR
+    if INNOVATION_UPLOAD_DIR is None:
+        # 获取项目根目录（假设当前文件在 app/api/ 目录下）
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        app_dir = os.path.dirname(current_dir)
+        project_dir = os.path.dirname(app_dir)
+        INNOVATION_UPLOAD_DIR = os.path.join(project_dir, "data", "innovation_files")
+        os.makedirs(INNOVATION_UPLOAD_DIR, exist_ok=True)
+    return INNOVATION_UPLOAD_DIR
 
 # MySQL数据库配置
 MYSQL_HOST = "localhost"
@@ -31,6 +49,8 @@ class AlignmentAnalyzeRequest(BaseModel):
     """人岗适配分析请求"""
     employee_name: str
     position_name: Optional[str] = None
+    innovation_audio_file: Optional[str] = None  # 创新能力评估录音文件路径（wav/mp3）
+    innovation_questions_file: Optional[str] = None  # 创新能力评估提问问题Excel文件路径
 
 
 class DimensionScore(BaseModel):
@@ -951,34 +971,346 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
     return score, job_requirement, employee_reason, job_reason
 
 
-def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
+# 全局Whisper模型缓存
+_whisper_model = None
+
+def get_whisper_model():
+    """获取或初始化Whisper模型"""
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            import whisper
+            logger.info("[Innovation] 正在加载Whisper模型...")
+            _whisper_model = whisper.load_model("base")
+            logger.info("[Innovation] Whisper模型加载完成")
+        except Exception as e:
+            logger.error(f"[Innovation] 加载Whisper模型失败: {e}")
+            return None
+    return _whisper_model
+
+
+def transcribe_audio_file(audio_file_path: str) -> str:
+    """
+    使用本地Whisper模型将录音文件转为文字
+    
+    Args:
+        audio_file_path: 录音文件路径
+    
+    Returns:
+        转录后的文字内容
+    """
+    try:
+        model = get_whisper_model()
+        if model is None:
+            return "[语音识别模型加载失败]"
+        
+        logger.info(f"[Innovation] 开始转录音频文件: {audio_file_path}")
+        
+        # 执行转录
+        result = model.transcribe(
+            audio_file_path,
+            language="zh",  # 指定中文
+            task="transcribe",
+            verbose=False
+        )
+        
+        transcription_text = result["text"]
+        logger.info(f"[Innovation] 音频转录完成，文本长度: {len(transcription_text)} 字符")
+        
+        return transcription_text
+        
+    except Exception as e:
+        logger.error(f"[Innovation] 音频转录失败: {e}")
+        return f"[音频转录失败: {str(e)}]"
+
+
+async def calculate_innovation_score_from_interview(
+    emp_info: dict, 
+    job_desc: dict, 
+    db, 
+    audio_file_path: Optional[str] = None,
+    questions_file_path: Optional[str] = None
+) -> tuple:
     """
     计算创新能力维度得分（权重10%）
-    基于：专利、创新项目、技术突破等
+    基于：面试录音（先本地转文字）和提问回答，通过大模型评估
     
     计分规则：
-    - 基础分60分
-    - 有专利或创新成果：+20分
-    - 参与创新项目：+10分
-    - 提出创新性建议并被采纳：+10分
     - 满分100分
+    - 根据谈话录音转文字后的内容，结合岗位说明书的要求，进行综合打分
+    - 岗位侧要求根据岗位说明书通过大模型生成
     """
-    emp_code = emp_info.get('emp_code')
+    import aiohttp
+    import pandas as pd
     
-    # 基础分
-    score = 60.0
-    reasons = ["基础分60分"]
+    # 默认分数和理由
+    default_score = 70.0
+    default_job_requirement = 70.0
+    default_reason = "暂无录音和提问数据，按默认分70分计算"
+    default_job_reason = "岗位要求员工具备一定的创新思维和能力，能够提出改进建议，标准分70分"
     
-    # 这里可以从数据库查询员工的创新成果
-    # 暂时使用默认分数，后续可以扩展查询专利、项目等数据
+    # 获取岗位信息
+    position_name = job_desc.get('position_name', emp_info.get('position', '未知岗位')) if job_desc else emp_info.get('position', '未知岗位')
     
-    # 岗位创新能力要求（默认70分）
-    job_requirement = 70.0
-    job_reason = "岗位要求员工具备一定的创新思维和能力，能够提出改进建议"
+    # 构建岗位说明书内容
+    job_description_content = ""
+    if job_desc:
+        job_parts = []
+        if job_desc.get('position_purpose'):
+            job_parts.append(f"岗位目的：{job_desc['position_purpose']}")
+        if job_desc.get('duties'):
+            job_parts.append(f"岗位职责：{job_desc['duties']}")
+        if job_desc.get('qualifications_skills'):
+            job_parts.append(f"技能要求：{job_desc['qualifications_skills']}")
+        if job_desc.get('qualifications_others'):
+            job_parts.append(f"其他要求：{job_desc['qualifications_others']}")
+        if job_desc.get('kpis'):
+            job_parts.append(f"KPI指标：{job_desc['kpis']}")
+        job_description_content = "\n".join(job_parts) if job_parts else "暂无详细岗位说明书"
+    else:
+        job_description_content = "暂无岗位说明书"
     
-    employee_reason = "；".join(reasons) if reasons else "暂无创新成果记录，基础分60分"
+    # 如果没有提供文件，返回默认分数，但岗位侧仍需调用大模型生成要求
+    if not audio_file_path and not questions_file_path:
+        # 调用大模型生成岗位要求
+        job_requirement, job_reason = await _calculate_job_innovation_requirement(
+            position_name, job_description_content
+        )
+        return default_score, job_requirement, default_reason, job_reason
     
-    return score, job_requirement, employee_reason, job_reason
+    try:
+        # 转录音频文件（如果有）
+        transcription_text = ""
+        if audio_file_path and os.path.exists(audio_file_path):
+            logger.info(f"[Innovation] 开始处理音频文件: {audio_file_path}")
+            transcription_text = transcribe_audio_file(audio_file_path)
+        
+        # 读取提问问题文件（如果有）
+        questions_content = ""
+        if questions_file_path and os.path.exists(questions_file_path):
+            if questions_file_path.endswith('.xlsx') or questions_file_path.endswith('.xls'):
+                df = pd.read_excel(questions_file_path)
+                questions_content = df.to_string()
+            elif questions_file_path.endswith('.csv'):
+                df = pd.read_csv(questions_file_path)
+                questions_content = df.to_string()
+            else:
+                with open(questions_file_path, 'r', encoding='utf-8') as f:
+                    questions_content = f.read()
+        
+        # 并行调用两个大模型请求：员工评分 + 岗位要求
+        employee_task = _evaluate_employee_innovation(
+            emp_info.get('emp_name', '未知'),
+            position_name,
+            job_description_content,
+            transcription_text,
+            questions_content
+        )
+        job_task = _calculate_job_innovation_requirement(
+            position_name,
+            job_description_content
+        )
+        
+        # 等待两个任务完成
+        employee_result, job_result = await asyncio.gather(employee_task, job_task)
+        
+        score, employee_reason = employee_result
+        job_requirement, job_reason = job_result
+        
+        return score, job_requirement, employee_reason, job_reason
+                    
+    except Exception as e:
+        logger.error(f"评估创新能力时出错: {e}")
+        # 即使出错，也尝试获取岗位要求
+        try:
+            job_requirement, job_reason = await _calculate_job_innovation_requirement(
+                position_name, job_description_content
+            )
+        except:
+            job_requirement, job_reason = default_job_requirement, default_job_reason
+        return default_score, job_requirement, default_reason, job_reason
+
+
+async def _evaluate_employee_innovation(
+    emp_name: str,
+    position_name: str,
+    job_description: str,
+    transcription_text: str,
+    questions_content: str
+) -> tuple:
+    """评估员工创新能力，返回(分数, 精简理由)"""
+    import aiohttp
+    
+    default_score = 70.0
+    
+    # 构建提示词 - 要求精简理由
+    prompt = f"""请根据以下信息评估该员工的创新能力。
+
+员工：{emp_name}
+岗位：{position_name}
+
+岗位说明书：
+{job_description[:1500]}
+
+{f'面试录音转录：{transcription_text[:2000]}' if transcription_text and not transcription_text.startswith('[') else ''}
+
+{f'提问回答：{questions_content[:1500]}' if questions_content else ''}
+
+评估要求：
+1. 满分100分，重点关注：创新思维、问题解决能力、提出改进建议的能力
+2. 理由必须精简，控制在50字以内，只说核心评价点
+
+请按以下JSON格式返回：
+{{
+    "score": 0-100的整数,
+    "reason": "精简理由（50字以内）"
+}}
+"""
+    
+    async with aiohttp.ClientSession() as session:
+        payload = {
+            "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+            "messages": [
+                {"role": "system", "content": "你是人力资源专家，评估员工创新能力。理由必须精简，控制在50字以内。"},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 500
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+        }
+        
+        async with session.post(
+            "http://180.97.200.118:30071/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=aiohttp.ClientTimeout(total=60)
+        ) as response:
+            if response.status == 200:
+                result = await response.json()
+                content = result['choices'][0]['message']['content']
+                
+                try:
+                    import json
+                    json_start = content.find('{')
+                    json_end = content.rfind('}') + 1
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = content[json_start:json_end]
+                        evaluation = json.loads(json_str)
+                        score = float(evaluation.get('score', default_score))
+                        reason = evaluation.get('reason', '评估完成')
+                    else:
+                        score = default_score
+                        reason = content[:50] if content else '评估完成'
+                    
+                    score = max(0, min(100, score))
+                    # 确保理由精简
+                    if len(reason) > 60:
+                        reason = reason[:57] + "..."
+                    
+                    employee_reason = f"{reason}，得分{score:.1f}分"
+                    return score, employee_reason
+                except Exception as e:
+                    logger.error(f"解析员工创新能力评估结果失败: {e}")
+                    return default_score, f"评估完成，得分{default_score:.1f}分"
+            else:
+                logger.error(f"调用大模型评估员工创新能力失败，状态码: {response.status}")
+                return default_score, f"评估完成，得分{default_score:.1f}分"
+
+
+async def _calculate_job_innovation_requirement(
+    position_name: str,
+    job_description: str
+) -> tuple:
+    """根据岗位说明书计算岗位创新能力要求，返回(要求分数, 理由)"""
+    import aiohttp
+    
+    default_requirement = 70.0
+    default_reason = "岗位要求员工具备一定的创新思维和能力，标准分70分"
+    
+    # 如果没有岗位说明书，返回默认值
+    if not job_description or job_description == "暂无岗位说明书":
+        return default_requirement, default_reason
+    
+    try:
+        prompt = f"""请根据以下岗位说明书，分析该岗位对创新能力的具体要求，并给出标准分数。
+
+岗位名称：{position_name}
+
+岗位说明书：
+{job_description[:2000]}
+
+分析要求：
+1. 根据岗位职责的复杂程度、是否需要持续改进、是否要求创新思维等因素，确定创新能力要求分数
+2. 满分100分，一般岗位60-75分，需要较强创新能力的岗位75-90分
+3. 理由控制在50字以内，说明为什么这个岗位需要这个分数
+
+请按以下JSON格式返回：
+{{
+    "requirement_score": 60-100的整数,
+    "reason": "精简理由（50字以内）"
+}}
+"""
+        
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                "messages": [
+                    {"role": "system", "content": "你是人力资源专家，分析岗位对创新能力的要求。理由必须精简，控制在50字以内。"},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 500
+            }
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+            }
+            
+            async with session.post(
+                "http://180.97.200.118:30071/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=60)
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    content = result['choices'][0]['message']['content']
+                    
+                    try:
+                        import json
+                        json_start = content.find('{')
+                        json_end = content.rfind('}') + 1
+                        if json_start >= 0 and json_end > json_start:
+                            json_str = content[json_start:json_end]
+                            evaluation = json.loads(json_str)
+                            requirement_score = float(evaluation.get('requirement_score', default_requirement))
+                            reason = evaluation.get('reason', '基于岗位分析')
+                        else:
+                            requirement_score = default_requirement
+                            reason = '基于岗位分析'
+                        
+                        requirement_score = max(50, min(100, requirement_score))
+                        # 确保理由精简
+                        if len(reason) > 60:
+                            reason = reason[:57] + "..."
+                        
+                        job_reason = f"{reason}，标准分{requirement_score:.1f}分"
+                        return requirement_score, job_reason
+                    except Exception as e:
+                        logger.error(f"解析岗位创新能力要求结果失败: {e}")
+                        return default_requirement, default_reason
+                else:
+                    logger.error(f"调用大模型分析岗位要求失败，状态码: {response.status}")
+                    return default_requirement, default_reason
+                    
+    except Exception as e:
+        logger.error(f"计算岗位创新能力要求时出错: {e}")
+        return default_requirement, default_reason
 
 
 def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
@@ -1639,16 +1971,18 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
             job_reason=exp_job_reason
         ))
         
-        # 维度3: 战略匹配（权重10%）- 新增维度
-        strategic_score, strategic_req, strategic_emp_reason, strategic_job_reason = calculate_strategic_alignment_score(emp_info, job_desc or {}, db)
+        # 维度3: 创新能力（权重10%）- 基于录音和提问评估
+        innovation_score, innovation_req, innovation_emp_reason, innovation_job_reason = await calculate_innovation_score_from_interview(
+            emp_info, job_desc or {}, db, request.innovation_audio_file, request.innovation_questions_file
+        )
         dimensions.append(DimensionScore(
-            name="战略匹配",
-            score=strategic_score,
+            name="创新能力",
+            score=innovation_score,
             weight=10,
-            job_requirement=strategic_req,
-            description="基于战略匹配评分",
-            employee_reason=strategic_emp_reason,
-            job_reason=strategic_job_reason
+            job_requirement=innovation_req,
+            description="基于面试录音和提问回答评估创新能力",
+            employee_reason=innovation_emp_reason,
+            job_reason=innovation_job_reason
         ))
         
         # 维度4: 学习能力（权重20%）
@@ -1768,14 +2102,14 @@ async def get_alignment_dimensions():
                 ]
             },
             {
-                "name": "战略匹配",
-                "weight": 15,
-                "description": "基于战略匹配评分",
+                "name": "创新能力",
+                "weight": 10,
+                "description": "基于面试录音和提问回答评估",
                 "criteria": [
-                    "紧密关联：≥90分",
-                    "一般关联：80分≤关联度≤90分",
-                    "较差关联：<80分",
-                    "由部门负责人综合评定"
+                    "满分100分",
+                    "根据谈话录音，结合岗位说明书的要求，进行综合打分",
+                    "重点关注：创新思维、问题解决能力、提出改进建议的能力、学习新知识的意愿",
+                    "可选上传：面试录音文件（wav/mp3）、提问问题Excel"
                 ]
             },
             {
@@ -1816,3 +2150,182 @@ async def get_alignment_dimensions():
             }
         ]
     }
+
+
+# 文件大小限制（50MB）
+MAX_FILE_SIZE = 50 * 1024 * 1024
+
+class InnovationFileUploadRequest(BaseModel):
+    """创新能力文件上传请求（Base64编码方式）"""
+    filename: str
+    file_type: str  # innovation_audio 或 innovation_questions
+    file_content_base64: str  # Base64编码的文件内容
+
+
+@router.post("/upload/innovation-file")
+async def upload_innovation_file(
+    file: UploadFile = File(...),
+    file_type: str = Form(...)
+):
+    """
+    上传创新能力评估文件（录音或提问问题）- 传统multipart方式
+    
+    Args:
+        file: 上传的文件
+        file_type: 文件类型，可选值：innovation_audio, innovation_questions
+    
+    Returns:
+        文件路径信息
+    """
+    try:
+        logger.info(f"[InnovationUpload] 开始处理文件上传: {file.filename}, 类型: {file_type}")
+        
+        # 验证文件类型
+        allowed_audio_types = ['.wav', '.mp3', '.m4a', '.mp4']
+        allowed_doc_types = ['.xlsx', '.xls', '.csv', '.txt']
+        
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        
+        if file_type == 'innovation_audio':
+            if file_ext not in allowed_audio_types:
+                return {
+                    "success": False,
+                    "message": f"不支持的音频格式，请上传 {', '.join(allowed_audio_types)} 格式的文件"
+                }
+        elif file_type == 'innovation_questions':
+            if file_ext not in allowed_doc_types:
+                return {
+                    "success": False,
+                    "message": f"不支持的文档格式，请上传 {', '.join(allowed_doc_types)} 格式的文件"
+                }
+        else:
+            return {
+                "success": False,
+                "message": "无效的文件类型"
+            }
+        
+        # 获取上传目录
+        upload_dir = get_innovation_upload_dir()
+        
+        # 生成唯一文件名
+        unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # 流式保存文件，避免内存溢出
+        logger.info(f"[InnovationUpload] 开始保存文件: {file.filename}")
+        total_size = 0
+        with open(file_path, "wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 每次读取1MB
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if total_size > MAX_FILE_SIZE:
+                    os.remove(file_path)
+                    return {
+                        "success": False,
+                        "message": f"文件大小超过限制（最大{MAX_FILE_SIZE // (1024*1024)}MB）"
+                    }
+                f.write(chunk)
+        
+        logger.info(f"[InnovationUpload] 文件上传成功: {file.filename} -> {file_path}, 大小: {total_size} bytes")
+        
+        return {
+            "success": True,
+            "message": "文件上传成功",
+            "file_path": file_path,
+            "original_name": file.filename,
+            "file_type": file_type
+        }
+        
+    except Exception as e:
+        logger.error(f"[InnovationUpload] 文件上传失败: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"文件上传失败: {str(e)}"
+        }
+
+
+@router.post("/upload/innovation-file-base64")
+async def upload_innovation_file_base64(request: InnovationFileUploadRequest):
+    """
+    上传创新能力评估文件（Base64编码方式）- 用于绕过multipart/form-data限制
+    
+    Args:
+        request: 包含文件名、文件类型和Base64编码内容的请求
+    
+    Returns:
+        文件路径信息
+    """
+    try:
+        logger.info(f"[InnovationUpload-Base64] 开始处理文件上传: {request.filename}, 类型: {request.file_type}")
+        
+        # 验证文件类型
+        allowed_audio_types = ['.wav', '.mp3', '.m4a', '.mp4']
+        allowed_doc_types = ['.xlsx', '.xls', '.csv', '.txt']
+        
+        file_ext = os.path.splitext(request.filename)[1].lower()
+        
+        if request.file_type == 'innovation_audio':
+            if file_ext not in allowed_audio_types:
+                return {
+                    "success": False,
+                    "message": f"不支持的音频格式，请上传 {', '.join(allowed_audio_types)} 格式的文件"
+                }
+        elif request.file_type == 'innovation_questions':
+            if file_ext not in allowed_doc_types:
+                return {
+                    "success": False,
+                    "message": f"不支持的文档格式，请上传 {', '.join(allowed_doc_types)} 格式的文件"
+                }
+        else:
+            return {
+                "success": False,
+                "message": "无效的文件类型"
+            }
+        
+        # 解码Base64内容
+        import base64
+        try:
+            file_content = base64.b64decode(request.file_content_base64)
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Base64解码失败: {str(e)}"
+            }
+        
+        total_size = len(file_content)
+        if total_size > MAX_FILE_SIZE:
+            return {
+                "success": False,
+                "message": f"文件大小超过限制（最大{MAX_FILE_SIZE // (1024*1024)}MB）"
+            }
+        
+        # 获取上传目录
+        upload_dir = get_innovation_upload_dir()
+        
+        # 生成唯一文件名
+        unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # 保存文件
+        logger.info(f"[InnovationUpload-Base64] 开始保存文件: {request.filename}, 大小: {total_size} bytes")
+        with open(file_path, "wb") as f:
+            f.write(file_content)
+        
+        logger.info(f"[InnovationUpload-Base64] 文件上传成功: {request.filename} -> {file_path}")
+        
+        return {
+            "success": True,
+            "message": "文件上传成功",
+            "file_path": file_path,
+            "original_name": request.filename,
+            "file_type": request.file_type
+        }
+        
+    except Exception as e:
+        logger.error(f"[InnovationUpload-Base64] 文件上传失败: {e}", exc_info=True)
+        return {
+            "success": False,
+            "message": f"文件上传失败: {str(e)}"
+        }
