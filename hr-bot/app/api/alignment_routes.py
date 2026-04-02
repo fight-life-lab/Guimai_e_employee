@@ -1127,17 +1127,154 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     return score, job_requirement, employee_reason, job_reason
 
 
-def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
+def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = None) -> tuple:
     """
     计算工作态度维度得分（权重20%）
     基于：考勤数据（迟到、早退、加班）
+    
+    计分规则：
+    【非试用期员工】
+    - 基础分70分，上限100分
+    - 迟到/早退：每月大于3次，3次以上每次扣1分，最多扣10分
+    - 加班加分：月度加班时间达到36小时及以上，加20分
+    
+    【试用期员工（入职≤6个月）】
+    - 基础分70分，上限100分
+    - 扣分项（自然年）：
+      - 迟到/早退：豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分
+      - 旷工：每旷工1次，扣10分，年度旷工超过3次以上，本大项目直接0分
+    - 加分项（累计得分）：
+      - 工作日按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加3分，20点30分及以后的，加6分，最多加30分
+      - 月度加班时间达到36小时及以上的，加30分
+      - 以上条件二选一
+    - 政治面貌：中共党员加5分
+    - 党工团兼职：党10、团7、工4，最高10分
     """
+    from datetime import datetime, date
+    
+    # 判断是否为试用期员工（入职≤6个月）
+    is_probation = False
+    months_since_entry = 0
+    if emp_info:
+        entry_date = emp_info.get('entry_date')
+        if entry_date:
+            if isinstance(entry_date, str):
+                try:
+                    entry_date = datetime.strptime(entry_date, '%Y-%m-%d').date()
+                except:
+                    try:
+                        entry_date = datetime.strptime(entry_date, '%Y-%m-%d %H:%M:%S').date()
+                    except:
+                        entry_date = None
+            
+            if isinstance(entry_date, date):
+                today = date.today()
+                months_since_entry = (today.year - entry_date.year) * 12 + (today.month - entry_date.month)
+                # 如果入职日期还没到，减去1个月
+                if today.day < entry_date.day:
+                    months_since_entry -= 1
+                is_probation = months_since_entry <= 6
+    
     if not attendance:
-        score = 70
-        employee_reason = "基础分70分，暂无考勤数据"
-    else:
+        if is_probation:
+            score = 70
+            employee_reason = f"试用期员工（入职{months_since_entry}个月），基础分70分，暂无考勤数据"
+            job_requirement = 70
+            job_reason = f"试用期员工（入职{months_since_entry}个月）要求：遵守考勤纪律，积极主动，标准分70分"
+        else:
+            score = 70
+            employee_reason = "正式员工，基础分70分，暂无考勤数据"
+            job_requirement = 70
+            job_reason = "正式员工要求：遵守考勤纪律，积极主动，标准分70分"
+        return score, job_requirement, employee_reason, job_reason
+    
+    if is_probation:
+        # 【试用期员工计分规则】
         score = 70  # 基础分70分
-        reasons = ["基础分70分"]
+        reasons = [f"试用期员工（入职{months_since_entry}个月），基础分70分"]
+        
+        # 扣分项（自然年）
+        late_count = attendance.get('late_count', 0)
+        early_leave_count = attendance.get('early_leave_count', 0)
+        absenteeism_count = attendance.get('absenteeism_count', 0)  # 旷工次数
+        
+        # 迟到/早退：豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分
+        if late_count > 0:
+            if late_count > 3:
+                late_deduction = min(int((late_count - 3)), 10)
+                score -= late_deduction
+                reasons.append(f"月平均迟到{late_count}次（豁免3次），扣{late_deduction}分")
+            else:
+                reasons.append(f"月平均迟到{late_count}次（3次以内不扣分）")
+        
+        if early_leave_count > 0:
+            if early_leave_count > 3:
+                early_deduction = min(int((early_leave_count - 3)), 10)
+                score -= early_deduction
+                reasons.append(f"月平均早退{early_leave_count}次（豁免3次），扣{early_deduction}分")
+            else:
+                reasons.append(f"月平均早退{early_leave_count}次（3次以内不扣分）")
+        
+        # 旷工：每旷工1次，扣10分，年度旷工超过3次以上，本大项目直接0分
+        if absenteeism_count > 0:
+            if absenteeism_count > 3:
+                score = 0
+                reasons.append(f"年度旷工{absenteeism_count}次（超过3次），工作态度直接0分")
+            else:
+                absenteeism_deduction = int(absenteeism_count) * 10
+                score -= absenteeism_deduction
+                reasons.append(f"旷工{absenteeism_count}次，扣{absenteeism_deduction}分")
+        
+        # 加分项（累计得分）- 二选一
+        overtime_hours = attendance.get('overtime_hours', 0)
+        
+        # 条件1：月度加班时间达到36小时及以上的，加30分
+        if overtime_hours >= 36:
+            score += 30
+            reasons.append(f"月平均加班{overtime_hours:.1f}小时（≥36小时），+30分")
+        else:
+            # 条件2：工作日按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加3分，20点30分及以后的，加6分，最多加30分
+            overtime_count = attendance.get('overtime_count', 0)  # 18:30后打卡次数
+            very_late_checkout_count = attendance.get('very_late_checkout_count', 0)  # 20:30后打卡次数
+            
+            if very_late_checkout_count > 0:
+                bonus = min(int(very_late_checkout_count) * 6, 30)
+                score += bonus
+                reasons.append(f"20:30后打卡{very_late_checkout_count}次，+{bonus}分")
+            elif overtime_count > 0:
+                bonus = min(int(overtime_count) * 3, 30)
+                score += bonus
+                reasons.append(f"18:30后打卡{overtime_count}次，+{bonus}分")
+        
+        # 政治面貌：中共党员加5分
+        political_status = emp_info.get('political_status', '') if emp_info else ''
+        if political_status and '党员' in political_status:
+            score += 5
+            reasons.append("中共党员，+5分")
+        
+        # 党工团兼职：党10、团7、工4，最高10分
+        party_union_role = emp_info.get('party_union_role', '') if emp_info else ''
+        if party_union_role:
+            if '党' in party_union_role:
+                score += 10
+                reasons.append("党工团兼职（党），+10分")
+            elif '团' in party_union_role:
+                score += 7
+                reasons.append("党工团兼职（团），+7分")
+            elif '工' in party_union_role:
+                score += 4
+                reasons.append("党工团兼职（工），+4分")
+        
+        score = max(0, min(score, 100))
+        employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
+        
+        # 试用期员工岗位要求
+        job_requirement = 70
+        job_reason = f"试用期员工（入职{months_since_entry}个月）要求：基础分70分，迟到/早退豁免3次/月，旷工每次扣10分（超过3次直接0分），加班或晚打卡可加分，中共党员+5分，党工团兼职最高+10分"
+    else:
+        # 【非试用期员工计分规则】
+        score = 70  # 基础分70分
+        reasons = ["正式员工，基础分70分"]
         
         # 扣分项
         late_count = attendance.get('late_count', 0)
@@ -1175,10 +1312,10 @@ def calculate_attitude_score(attendance: dict, job_desc: dict) -> tuple:
         
         score = max(0, min(score, 100))
         employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
-    
-    # 工作态度要求相对固定，基于通用职业规范
-    job_requirement = 70
-    job_reason = "要求：遵守考勤纪律，积极主动，标准分70分"
+        
+        # 非试用期员工岗位要求
+        job_requirement = 70
+        job_reason = "正式员工要求：遵守考勤纪律，积极主动，标准分70分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -1527,7 +1664,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 维度5: 工作态度（权重20%）
-        attitude_score, attitude_req, attitude_emp_reason, attitude_job_reason = calculate_attitude_score(attendance, job_desc or {})
+        attitude_score, attitude_req, attitude_emp_reason, attitude_job_reason = calculate_attitude_score(attendance, job_desc or {}, emp_info)
         dimensions.append(DimensionScore(
             name="工作态度",
             score=attitude_score,
