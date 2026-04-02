@@ -1523,6 +1523,7 @@
                             <option value="attendance_summary">📊 考勤汇总数据</option>
                             <option value="professional_ability">💼 员工专业能力</option>
                             <option value="value_contribution">💰 价值贡献</option>
+                            <option value="strategic_alignment">🎯 战略匹配评分</option>
                             <option value="work_experience_pdf">📋 PDF履历-工作经历</option>
                         </select>
                     </div>
@@ -2835,6 +2836,7 @@
             'attendance_summary': '📊 考勤汇总数据：导入员工月度考勤统计数据。',
             'professional_ability': '💼 员工专业能力：导入员工试用期分数、绩效、专家等级、职称、职业技能等信息。',
             'value_contribution': '💰 价值贡献：导入员工绩效酬金标准、实际发放绩效等信息，计算价值贡献分数。',
+            'strategic_alignment': '🎯 战略匹配评分：导入员工战略匹配评分数据（工号、姓名、分数）。评分标准：紧密关联≥90分，一般关联80-90分，较差关联<80分。同一人重复导入将覆盖原有记录。',
             'work_experience_pdf': '📋 PDF履历-工作经历：上传员工PDF履历文件，自动提取工作经历信息（开始日期、结束日期、工作单位、部门、职务）。需要填写员工编号和姓名。'
         };
 
@@ -2987,6 +2989,9 @@
                         break;
                     case 'value_contribution':
                         apiUrl = `${API_BASE}/api/v1/value-contribution/import`;
+                        break;
+                    case 'strategic_alignment':
+                        apiUrl = `${API_BASE}/api/v1/strategic-alignment/import`;
                         break;
                     case 'work_experience_pdf':
                         apiUrl = `${API_BASE}/api/v1/work-experience/extract-from-pdf`;

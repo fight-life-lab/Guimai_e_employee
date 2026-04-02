@@ -767,39 +767,54 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
 
 def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
-    计算战略匹配维度得分（权重15%）
-    基于：员工战略匹配评分
+    计算战略匹配维度得分（权重10%）
+    基于：员工战略匹配评分表
     
     评分标准：
     - 紧密关联：≥90分
-    - 一般关联：80分≤关联度≤90分
+    - 一般关联：80分≤关联度<90分
     - 较差关联：<80分
+    
+    规则：
+    - 如果数据库中有该员工的战略匹配评分数据，直接使用该分数
+    - 如果没有数据，员工默认95分，岗位默认95分
     """
     from app.models.strategic_alignment import StrategicAlignmentScore
     from datetime import datetime
     
     emp_code = emp_info.get('emp_code')
     
-    # 从数据库获取员工战略匹配分数
-    score_record = None
+    # 从数据库获取员工战略匹配评分数据
+    score = None
+    
     if db and emp_code:
-        current_year = datetime.now().year
+        # 查询该员工最新的战略匹配评分记录（按年份降序）
         score_record = db.query(StrategicAlignmentScore).filter(
-            StrategicAlignmentScore.emp_code == emp_code,
-            StrategicAlignmentScore.evaluation_year == current_year
-        ).first()
+            StrategicAlignmentScore.emp_code == emp_code
+        ).order_by(StrategicAlignmentScore.evaluation_year.desc()).first()
+        
+        if score_record:
+            score = score_record.score
     
-    if score_record:
-        score = score_record.score
-        employee_reason = f"战略匹配评分{score}分，由{score_record.evaluator or '部门负责人'}评定"
+    # 根据是否有数据生成评分理由
+    if score is not None:
+        # 有数据，根据分数判断关联等级
+        if score >= 90:
+            level = "紧密关联"
+        elif score >= 80:
+            level = "一般关联"
+        else:
+            level = "较差关联"
+        
+        employee_reason = f"战略匹配评分为{score}分（{level}），根据部门负责人综合评定"
     else:
-        # 如果没有找到记录，使用默认分数
-        score = 70.0
-        employee_reason = "暂无战略匹配评分数据，默认70分"
+        # 无数据，默认95分
+        score = 95.0
+        employee_reason = "暂无战略匹配评分数据，按默认分95分计算"
     
-    # 岗位战略匹配要求（默认80分）
-    job_requirement = 80.0
-    job_reason = "岗位要求员工工作内容与公司战略及部门年度重点工作直接相关，或参与所在部门年度专项任务并承担明确职责"
+    # 岗位战略匹配要求（默认95分）
+    job_requirement = 95.0
+    job_reason = "岗位要求员工工作内容与公司战略及部门年度重点工作直接相关（紧密关联≥90分，一般关联80-90分，较差关联<80分），默认标准分95分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -811,7 +826,7 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
     
     计分规则：
     - 基础分70分，满分上限100分
-    - 偏离度为100%时，不加分、不扣分
+    - 偏离度为100%时，不加分、不扣分（保持基础分70分）
     - 偏离度较100%，每高出0.5个百分点，加3分
     - 偏离度较100%，每低出0.5个百分点，扣3分
     """
@@ -820,27 +835,84 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
     
     emp_code = emp_info.get('emp_code')
     
-    # 从数据库获取员工价值贡献分数
-    score_record = None
+    # 从数据库获取员工绩效数据（偏离度）
+    deviation_rate = None
+    performance_standard = None
+    actual_performance = None
+    
     if db and emp_code:
-        current_year = datetime.now().year
+        # 查询该员工最新的价值贡献记录（按年份降序）
         score_record = db.query(ValueContributionScore).filter(
-            ValueContributionScore.emp_code == emp_code,
-            ValueContributionScore.evaluation_year == current_year
-        ).first()
+            ValueContributionScore.emp_code == emp_code
+        ).order_by(ValueContributionScore.evaluation_year.desc()).first()
+        
+        if score_record:
+            deviation_rate = score_record.deviation_rate
+            performance_standard = score_record.performance_standard
+            actual_performance = score_record.actual_performance
     
-    if score_record:
-        score = score_record.score
-        deviation_rate = score_record.deviation_rate or 100
-        employee_reason = f"绩效酬金偏离度{deviation_rate}%，价值贡献评分{score}分"
+    # 根据偏离度计算价值贡献分数
+    if deviation_rate is not None:
+        # 基础分70分
+        base_score = 70.0
+        
+        # 计算与100%的偏差
+        diff = deviation_rate - 100.0
+        
+        # 每0.5个百分点变化3分
+        score_change = (diff / 0.5) * 3
+        
+        # 计算最终分数
+        score = base_score + score_change
+        
+        # 限制在0-100范围内
+        score = max(0.0, min(100.0, score))
+        
+        # 生成评分理由
+        if diff > 0:
+            employee_reason = f"绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出0.5个百分点加3分，价值贡献得分{score:.1f}分"
+        elif diff < 0:
+            employee_reason = f"绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣3分，价值贡献得分{score:.1f}分"
+        else:
+            employee_reason = f"绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
     else:
-        # 如果没有找到记录，使用默认分数
+        # 如果没有找到记录，使用默认分数70分
         score = 70.0
-        employee_reason = "暂无价值贡献评分数据，默认70分"
+        employee_reason = "暂无价值贡献数据，按基础分70分计算"
     
-    # 岗位价值贡献要求（默认80分）
-    job_requirement = 80.0
-    job_reason = "岗位要求员工绩效酬金偏离度达到100%，即实际发放绩效与标准绩效一致"
+    # 岗位价值贡献要求（默认70分，与基础线对齐）
+    job_requirement = 70.0
+    job_reason = "岗位要求员工绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），基础分70分"
+    
+    return score, job_requirement, employee_reason, job_reason
+
+
+def calculate_innovation_score(emp_info: dict, job_desc: dict, db) -> tuple:
+    """
+    计算创新能力维度得分（权重10%）
+    基于：专利、创新项目、技术突破等
+    
+    计分规则：
+    - 基础分60分
+    - 有专利或创新成果：+20分
+    - 参与创新项目：+10分
+    - 提出创新性建议并被采纳：+10分
+    - 满分100分
+    """
+    emp_code = emp_info.get('emp_code')
+    
+    # 基础分
+    score = 60.0
+    reasons = ["基础分60分"]
+    
+    # 这里可以从数据库查询员工的创新成果
+    # 暂时使用默认分数，后续可以扩展查询专利、项目等数据
+    
+    # 岗位创新能力要求（默认70分）
+    job_requirement = 70.0
+    job_reason = "岗位要求员工具备一定的创新思维和能力，能够提出改进建议"
+    
+    employee_reason = "；".join(reasons) if reasons else "暂无创新成果记录，基础分60分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -1318,7 +1390,7 @@ def generate_gap_analysis(dimensions: List[DimensionScore]) -> List[Dict]:
 async def analyze_alignment(request: AlignmentAnalyzeRequest):
     """
     人岗适配分析
-    基于6维度模型：专业能力、经验、战略匹配、学习能力、工作态度、创新能力
+    基于6维度模型：专业能力(30%)、经验(10%)、战略匹配(10%)、学习能力(20%)、工作态度(20%)、价值贡献(10%)
     """
     logger.info(f"[Alignment] 开始人岗适配分析，员工: {request.employee_name}")
     
@@ -1342,12 +1414,12 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         # 4. 计算6维度得分
         dimensions = []
         
-        # 维度1: 专业能力（权重25%）
+        # 维度1: 专业能力（权重30%）
         prof_score, prof_req, prof_emp_reason, prof_job_reason = calculate_professional_ability_score(emp_info, job_desc or {}, db)
         dimensions.append(DimensionScore(
             name="专业能力",
             score=prof_score,
-            weight=25,
+            weight=30,
             job_requirement=prof_req,
             description="基于绩效、专家聘任、职称证书、职业技能",
             employee_reason=prof_emp_reason,
@@ -1366,12 +1438,12 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
             job_reason=exp_job_reason
         ))
         
-        # 维度3: 战略匹配（权重15%）- 新增维度
+        # 维度3: 战略匹配（权重10%）- 新增维度
         strategic_score, strategic_req, strategic_emp_reason, strategic_job_reason = calculate_strategic_alignment_score(emp_info, job_desc or {}, db)
         dimensions.append(DimensionScore(
             name="战略匹配",
             score=strategic_score,
-            weight=15,
+            weight=10,
             job_requirement=strategic_req,
             description="基于战略匹配评分",
             employee_reason=strategic_emp_reason,

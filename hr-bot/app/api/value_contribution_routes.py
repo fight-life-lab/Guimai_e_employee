@@ -14,7 +14,6 @@ import logging
 from datetime import datetime
 
 from app.models.value_contribution import ValueContributionScore
-from app.database import get_db
 
 router = APIRouter(prefix="/api/v1/value-contribution", tags=["价值贡献分数管理"])
 
@@ -124,33 +123,34 @@ async def import_value_contribution_scores(
             )
         
         # 读取Excel文件
-        df = pd.read_excel(file.file)
+        # 读取文件内容到BytesIO，解决SpooledTemporaryFile没有seekable方法的问题
+        from io import BytesIO
+        file_content = await file.read()
+        df = pd.read_excel(BytesIO(file_content))
         
-        # 标准化列名
-        column_mapping = {
-            'MSS人员编码': 'emp_code',
-            '工号': 'emp_code',
-            '员工编号': 'emp_code',
-            '员工号': 'emp_code',
-            '编号': 'emp_code',
-            '姓名': 'emp_name',
-            '员工姓名': 'emp_name',
-            '名字': 'emp_name',
-            '绩效酬金标准': 'performance_standard',
-            '标准': 'performance_standard',
-            '实际发放绩效': 'actual_performance',
-            '实际发放': 'actual_performance',
-            '实际绩效': 'actual_performance',
-            '偏离度': 'deviation_rate',
-            '偏离': 'deviation_rate',
-            '扣分': 'score_adjustment',
-            '加分': 'score_adjustment',
-            '调整分': 'score_adjustment',
-            '备注': 'remark'
-        }
+        # 标准化列名（处理可能包含换行符的列名）
+        column_mapping = {}
+        for col in df.columns:
+            col_clean = str(col).strip().replace('\n', '').replace(' ', '')
+            if 'MSS' in col_clean or '人员编码' in col_clean or col_clean in ['工号', '员工编号', '员工号', '编号']:
+                column_mapping[col] = 'emp_code'
+            elif col_clean in ['姓名', '员工姓名', '名字']:
+                column_mapping[col] = 'emp_name'
+            elif '绩效酬金标准' in col_clean or col_clean == '标准':
+                column_mapping[col] = 'performance_standard'
+            elif col_clean in ['实际发放绩效', '实际发放', '实际绩效']:
+                column_mapping[col] = 'actual_performance'
+            elif col_clean in ['偏离度', '偏离']:
+                column_mapping[col] = 'deviation_rate'
+            elif col_clean in ['贡献度分数', '贡献度', '分数', '得分']:
+                column_mapping[col] = 'score_adjustment'
+            elif col_clean in ['考核年度', '年度', '年份']:
+                column_mapping[col] = 'evaluation_year'
+            elif col_clean in ['备注', '说明']:
+                column_mapping[col] = 'remark'
         
         # 重命名列
-        df.rename(columns=lambda x: column_mapping.get(str(x).strip(), x), inplace=True)
+        df.rename(columns=column_mapping, inplace=True)
         
         # 检查必需列
         required_columns = ['emp_code', 'emp_name']
@@ -162,12 +162,10 @@ async def import_value_contribution_scores(
                 errors=[f"缺少列: {missing_columns}"]
             )
         
-        # 设置默认考核年度
-        if evaluation_year is None:
-            evaluation_year = datetime.now().year
-        
         # 处理数据
         success_count = 0
+        insert_count = 0  # 新增记录数
+        update_count = 0  # 更新记录数
         error_list = []
         imported_data = []
         
@@ -176,34 +174,48 @@ async def import_value_contribution_scores(
                 emp_code = str(row['emp_code']).strip()
                 emp_name = str(row['emp_name']).strip()
                 
+                # 获取考核年度（优先从Excel读取，否则使用传入的参数或当前年份）
+                row_evaluation_year = evaluation_year
+                if 'evaluation_year' in df.columns and pd.notna(row['evaluation_year']):
+                    row_evaluation_year = int(row['evaluation_year'])
+                elif row_evaluation_year is None:
+                    row_evaluation_year = datetime.now().year
+                
                 # 获取绩效数据
                 performance_standard = None
                 actual_performance = None
                 deviation_rate = None
                 
                 if 'performance_standard' in df.columns and pd.notna(row['performance_standard']):
-                    performance_standard = float(row['performance_standard'])
+                    # 保持原始值，避免精度丢失
+                    performance_standard = row['performance_standard']
+                    if isinstance(performance_standard, str):
+                        performance_standard = float(performance_standard.replace(',', ''))
                 
                 if 'actual_performance' in df.columns and pd.notna(row['actual_performance']):
-                    actual_performance = float(row['actual_performance'])
+                    # 保持原始值，避免精度丢失
+                    actual_performance = row['actual_performance']
+                    if isinstance(actual_performance, str):
+                        actual_performance = float(actual_performance.replace(',', ''))
                 
                 if 'deviation_rate' in df.columns and pd.notna(row['deviation_rate']):
-                    # 处理百分比格式（如"98.6%"）
-                    deviation_str = str(row['deviation_rate']).replace('%', '').strip()
-                    deviation_rate = float(deviation_str)
+                    # 处理偏离度格式（可能是小数0.986或百分比98.6%）
+                    deviation_val = row['deviation_rate']
+                    if isinstance(deviation_val, str):
+                        deviation_str = deviation_val.replace('%', '').strip()
+                        deviation_rate = float(deviation_str)
+                    else:
+                        deviation_rate = float(deviation_val)
+                    # 如果偏离度是小数格式（如0.986），转换为百分比（98.6）
+                    if deviation_rate < 1.5:  # 假设小于1.5的是小数格式
+                        deviation_rate = deviation_rate * 100
                 elif performance_standard and actual_performance and performance_standard > 0:
                     # 根据绩效酬金标准和实际发放绩效计算偏离度
                     deviation_rate = (actual_performance / performance_standard) * 100
                 
-                # 计算价值贡献分数
+                # 计算价值贡献分数（仅根据偏离度计算，不使用Excel中的贡献度分数）
                 if deviation_rate is not None:
                     score = calculate_value_contribution_score(deviation_rate)
-                elif 'score_adjustment' in df.columns and pd.notna(row['score_adjustment']):
-                    # 如果有直接的分数调整，使用基础分70分加上调整分
-                    adjustment = float(row['score_adjustment'])
-                    score = 70 + adjustment
-                    score = max(0, min(100, score))
-                    deviation_rate = 100 + (adjustment / 3) * 0.5
                 else:
                     error_list.append(f"第{index + 2}行: 缺少偏离度或绩效数据，无法计算分数")
                     continue
@@ -221,12 +233,13 @@ async def import_value_contribution_scores(
                 # 检查是否已存在记录
                 existing = db.query(ValueContributionScore).filter(
                     ValueContributionScore.emp_code == emp_code,
-                    ValueContributionScore.evaluation_year == evaluation_year
+                    ValueContributionScore.evaluation_year == row_evaluation_year
                 ).first()
                 
                 if existing:
-                    # 更新现有记录
-                    existing.score = score
+                    # 更新现有记录（考核年度和员工ID一致时覆盖）
+                    # 不更新score字段，保持原有值或设为None
+                    existing.score = None
                     existing.emp_name = emp_name
                     existing.performance_standard = performance_standard
                     existing.actual_performance = actual_performance
@@ -234,21 +247,23 @@ async def import_value_contribution_scores(
                     existing.evaluator = evaluator
                     existing.evaluation_basis = f"批量导入于{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                     existing.remark = remark
+                    update_count += 1
                 else:
-                    # 创建新记录
+                    # 创建新记录（不存储score）
                     new_score = ValueContributionScore(
                         emp_code=emp_code,
                         emp_name=emp_name,
                         performance_standard=performance_standard,
                         actual_performance=actual_performance,
                         deviation_rate=deviation_rate,
-                        score=score,
-                        evaluation_year=evaluation_year,
+                        score=None,  # 不存储分数
+                        evaluation_year=row_evaluation_year,
                         evaluator=evaluator,
                         evaluation_basis=f"批量导入于{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                         remark=remark
                     )
                     db.add(new_score)
+                    insert_count += 1
                 
                 success_count += 1
                 imported_data.append(ValueContributionScoreItem(
@@ -258,7 +273,7 @@ async def import_value_contribution_scores(
                     actual_performance=actual_performance,
                     deviation_rate=deviation_rate,
                     score=score,
-                    evaluation_year=evaluation_year,
+                    evaluation_year=row_evaluation_year,
                     evaluator=evaluator,
                     remark=remark
                 ))
@@ -272,7 +287,7 @@ async def import_value_contribution_scores(
         
         return ValueContributionScoreResponse(
             success=True,
-            message=f"成功导入{success_count}条记录",
+            message=f"成功导入{success_count}条记录（新增{insert_count}条，更新{update_count}条）",
             data=imported_data,
             errors=error_list if error_list else None
         )

@@ -19,7 +19,7 @@ class ValueContributionScore(Base):
     performance_standard = Column(Float, nullable=True, comment='绩效酬金标准')
     actual_performance = Column(Float, nullable=True, comment='实际发放绩效')
     deviation_rate = Column(Float, nullable=True, comment='偏离度(%)')
-    score = Column(Float, nullable=False, comment='价值贡献分数(0-100)')
+    score = Column(Float, nullable=True, comment='价值贡献分数(0-100)，当前不存储')
     evaluation_year = Column(Integer, nullable=True, comment='考核年度')
     evaluator = Column(String(100), nullable=True, comment='评定人')
     evaluation_basis = Column(Text, nullable=True, comment='评定依据')
