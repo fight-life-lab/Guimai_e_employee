@@ -88,7 +88,7 @@ def get_employee_info(db, emp_name: str):
     sql = text("""
         SELECT emp_code, emp_name, dept_level1, dept_level2, position_name,
                highest_education, highest_degree, highest_degree_school, highest_degree_school_type,
-               entry_date, job_level, work_years, company_years
+               entry_date, job_level, work_years, company_years, contract_end_date
         FROM emp_roster
         WHERE emp_name LIKE :emp_name
         LIMIT 1
@@ -108,7 +108,8 @@ def get_employee_info(db, emp_name: str):
             'entry_date': row.entry_date,
             'job_level': row.job_level,
             'work_years': row.work_years,
-            'company_years': row.company_years
+            'company_years': row.company_years,
+            'contract_end_date': row.contract_end_date
         }
     return None
 
@@ -214,20 +215,52 @@ def get_attendance_summary(db, emp_code: str):
 def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
     计算专业能力维度得分（权重30%）
-    基于：试用期分数、绩效、专家聘任、职称证书、职业技能
-    规则：
-    - 基础分70分
-    - 绩效（二选一）：试用期>=80加10分，<80减5分；或3年内年度绩效一次优秀+15分，一次基本称职-15分
-    - 专家聘任：公司专家+10分，高级专家+15分，首席专家+20分
-    - 职称证书：A级+10分，B级+7分，C级+5分，多项取高
-    - 职业技能：A级+7分，B级+5分，C级+3分，累计不超过14分
+    区分三种员工类型：
+    1. 试用期员工（入职≤6个月）：按试用期规则
+    2. 合同到期员工（即将合同到期）：按合同到期规则
+    3. 普通正式员工：按普通规则
     """
     from app.models.emp_professional_ability import EmpProfessionalAbility
-    
-    score = 70  # 基础分70分
-    reasons = ["基础分70分"]
+    from datetime import datetime, date
     
     emp_code = emp_info.get('emp_code')
+    entry_date = emp_info.get('entry_date')
+    contract_end_date = emp_info.get('contract_end_date')
+    
+    # 判断员工类型
+    is_probation = False
+    is_contract_expiring = False
+    today = date.today()
+    
+    # 判断是否为试用期员工（入职≤6个月）
+    if entry_date:
+        if isinstance(entry_date, str):
+            try:
+                entry_date = datetime.strptime(entry_date, '%Y-%m-%d').date()
+            except:
+                try:
+                    entry_date = datetime.strptime(entry_date, '%Y-%m-%d %H:%M:%S').date()
+                except:
+                    entry_date = None
+        if isinstance(entry_date, date):
+            months_since_entry = (today.year - entry_date.year) * 12 + (today.month - entry_date.month)
+            if today.day < entry_date.day:
+                months_since_entry -= 1
+            is_probation = months_since_entry <= 6
+    
+    # 判断是否为合同到期员工（合同终止日期在3个月内）
+    if contract_end_date:
+        if isinstance(contract_end_date, str):
+            try:
+                contract_end_date = datetime.strptime(contract_end_date, '%Y-%m-%d').date()
+            except:
+                try:
+                    contract_end_date = datetime.strptime(contract_end_date, '%Y-%m-%d %H:%M:%S').date()
+                except:
+                    contract_end_date = None
+        if isinstance(contract_end_date, date):
+            days_to_end = (contract_end_date - today).days
+            is_contract_expiring = 0 <= days_to_end <= 90  # 3个月内到期
     
     # 从数据库获取员工专业能力数据
     prof_ability = None
@@ -235,6 +268,275 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         prof_ability = db.query(EmpProfessionalAbility).filter(
             EmpProfessionalAbility.emp_code == emp_code
         ).first()
+    
+    # 根据员工类型选择计算逻辑
+    if is_probation:
+        # 试用期员工逻辑
+        return _calculate_professional_ability_probation(emp_info, prof_ability, job_desc)
+    elif is_contract_expiring:
+        # 合同到期员工逻辑
+        return _calculate_professional_ability_contract_expiring(emp_info, prof_ability, job_desc)
+    else:
+        # 普通正式员工逻辑
+        return _calculate_professional_ability_regular(emp_info, prof_ability, job_desc)
+
+
+def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+    """
+    试用期员工（入职≤6个月）专业能力计算
+    规则（第二个图片）：
+    - 基础分70分
+    - 绩效：试用期考核分数，90≤得分+15分，80≤得分<90+10分，60≤得分<80+0分，得分<60不予录用
+    - 职称证书：A:10分、B:7分、C:5分，多项取高
+    - 职业技能：A:7分、B:5分、C:3分，累计不超过14分
+    """
+    score = 70  # 基础分70分
+    reasons = ["基础分70分"]
+    
+    if prof_ability:
+        # 1. 试用期绩效
+        performance_bonus = 0
+        performance_reason = ""
+        
+        if prof_ability.probation_score is not None:
+            probation_score = float(prof_ability.probation_score)
+            if probation_score >= 90:
+                performance_bonus = 15
+                performance_reason = f"试用期考核{probation_score}分≥90分，+15分"
+            elif probation_score >= 80:
+                performance_bonus = 10
+                performance_reason = f"试用期考核{probation_score}分≥80分，+10分"
+            elif probation_score >= 60:
+                performance_bonus = 0
+                performance_reason = f"试用期考核{probation_score}分≥60分，+0分"
+            else:
+                performance_bonus = -100  # 不予录用，直接0分
+                performance_reason = f"试用期考核{probation_score}分<60分，不予录用"
+        else:
+            performance_reason = "暂无试用期考核分数"
+        
+        if performance_bonus != 0:
+            score += performance_bonus
+            reasons.append(performance_reason)
+        else:
+            reasons.append(performance_reason)
+        
+        # 2. 职称证书（多项取高）
+        title_bonus = 0
+        title_str = ''
+        title_count = 0
+        if prof_ability.professional_titles:
+            titles = prof_ability.professional_titles
+            if isinstance(titles, list):
+                for title in titles:
+                    level = str(title.get('company_level', '')).upper()
+                    skill_name = str(title.get('title_name', ''))
+                    title_str += skill_name
+                    title_count += 1
+                    if level == 'A':
+                        title_bonus = max(title_bonus, 10)
+                    elif level == 'B':
+                        title_bonus = max(title_bonus, 7)
+                    elif level == 'C':
+                        title_bonus = max(title_bonus, 5)
+        
+        if title_bonus > 0:
+            score += title_bonus
+            if title_count > 1:
+                reasons.append(f"获得{title_count}项职称，取高+{title_bonus}分")
+            else:
+                reasons.append(f"获得{title_str}职称，+{title_bonus}分")
+        
+        # 3. 职业技能（累计不超过14分）
+        skill_bonus = 0
+        skill_str = ''
+        skill_count = 0
+        
+        if prof_ability.professional_skills:
+            skills = prof_ability.professional_skills
+            if isinstance(skills, list):
+                for skill in skills:
+                    level = str(skill.get('company_level', '')).upper()
+                    skill_name = str(skill.get('skill_name', ''))
+                    skill_str += skill_name
+                    skill_count += 1
+                    if level == 'A':
+                        skill_bonus += 7
+                    elif level == 'B':
+                        skill_bonus += 5
+                    elif level == 'C':
+                        skill_bonus += 3
+        
+        skill_bonus = min(skill_bonus, 14)  # 不超过14分
+        if skill_bonus > 0:
+            score += skill_bonus
+            if skill_count > 1:
+                reasons.append(f"获得{skill_count}项职业技能，累计+{skill_bonus}分（上限14分）")
+            else:
+                reasons.append(f"获得{skill_name}职业技能，+{skill_bonus}分")
+    else:
+        reasons.append("暂无专业能力数据")
+    
+    # 试用期员工不予录用则直接0分
+    if score <= 0:
+        score = 0
+        employee_reason = "试用期考核不合格，不予录用"
+    else:
+        score = min(score, 100)
+        employee_reason = "；".join(reasons) + f"，最终得分{score}分"
+    
+    # 岗位侧要求
+    job_requirement = 75
+    job_reason = "要求：具备岗位所需专业技能，标准分75分"
+    
+    return score, job_requirement, employee_reason, job_reason
+
+
+def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+    """
+    合同到期员工（即将合同到期）专业能力计算
+    规则（第一个图片）：
+    - 基础分70分
+    - 绩效：近3年内年度绩效，一次"优秀"+15分，一次"基本称职"-15分，连续3年"称职"的-5分
+    - 职称证书：A:10分、B:7分、C:5分，多项取高
+    - 职业技能：A:7分、B:5分、C:3分，累计不超过14分
+    """
+    score = 70  # 基础分70分
+    reasons = ["基础分70分"]
+    
+    if prof_ability:
+        # 1. 绩效计算（近3年年度绩效）
+        performance_bonus = 0
+        performance_reason = ""
+        
+        if prof_ability.performance_history:
+            perf_history = prof_ability.performance_history
+            if isinstance(perf_history, list):
+                excellent_count = 0
+                basic_count = 0
+                # 收集近3年的绩效记录，按年份排序
+                valid_years = ['2022', '2023', '2024', '2025']
+                year_performance = {}  # 存储每年的绩效等级
+                
+                for perf in perf_history:
+                    year = str(perf.get('year', ''))
+                    if year in valid_years:
+                        level = str(perf.get('level', '')).lower()
+                        # 标准化绩效等级
+                        if '优秀' in level or 'a' in level or 'p1' in level:
+                            year_performance[year] = 'excellent'
+                            excellent_count += 1
+                        elif '基本称职' in level or 'c' in level:
+                            year_performance[year] = 'basic'
+                            basic_count += 1
+                        elif '称职' in level or 'b' in level or 'p2' in level:
+                            year_performance[year] = 'competent'
+                
+                # 计算绩效加分/扣分
+                if excellent_count > 0:
+                    performance_bonus += 15 * excellent_count
+                    performance_reason += f"{excellent_count}次年度绩效优秀+{15 * excellent_count}分；"
+                
+                if basic_count > 0:
+                    performance_bonus -= 15 * basic_count
+                    performance_reason += f"{basic_count}次年度绩效基本称职-{15 * basic_count}分；"
+                
+                # 判断是否有连续3年称职（需要检查2022、2023、2024或2023、2024、2025）
+                # 连续3年称职指的是连续的三个年份都是称职
+                consecutive_competent = False
+                # 检查 2022-2023-2024
+                if (year_performance.get('2022') == 'competent' and 
+                    year_performance.get('2023') == 'competent' and 
+                    year_performance.get('2024') == 'competent'):
+                    consecutive_competent = True
+                # 检查 2023-2024-2025
+                elif (year_performance.get('2023') == 'competent' and 
+                      year_performance.get('2024') == 'competent' and 
+                      year_performance.get('2025') == 'competent'):
+                    consecutive_competent = True
+                
+                if consecutive_competent:
+                    performance_bonus -= 5
+                    performance_reason += "连续3年称职-5分；"
+        
+        if performance_bonus != 0:
+            score += performance_bonus
+            reasons.append(performance_reason.rstrip('；'))
+        
+        # 2. 职称证书（多项取高）
+        title_bonus = 0
+        title_str = ''
+        title_count = 0
+        if prof_ability.professional_titles:
+            titles = prof_ability.professional_titles
+            if isinstance(titles, list):
+                for title in titles:
+                    level = str(title.get('company_level', '')).upper()
+                    skill_name = str(title.get('title_name', ''))
+                    title_str += skill_name
+                    title_count += 1
+                    if level == 'A':
+                        title_bonus = max(title_bonus, 10)
+                    elif level == 'B':
+                        title_bonus = max(title_bonus, 7)
+                    elif level == 'C':
+                        title_bonus = max(title_bonus, 5)
+        
+        if title_bonus > 0:
+            score += title_bonus
+            if title_count > 1:
+                reasons.append(f"获得{title_count}项职称，取高+{title_bonus}分")
+            else:
+                reasons.append(f"获得{title_str}职称，+{title_bonus}分")
+        
+        # 3. 职业技能（累计不超过14分）
+        skill_bonus = 0
+        skill_str = ''
+        skill_count = 0
+        
+        if prof_ability.professional_skills:
+            skills = prof_ability.professional_skills
+            if isinstance(skills, list):
+                for skill in skills:
+                    level = str(skill.get('company_level', '')).upper()
+                    skill_name = str(skill.get('skill_name', ''))
+                    skill_str += skill_name
+                    skill_count += 1
+                    if level == 'A':
+                        skill_bonus += 7
+                    elif level == 'B':
+                        skill_bonus += 5
+                    elif level == 'C':
+                        skill_bonus += 3
+        
+        skill_bonus = min(skill_bonus, 14)  # 不超过14分
+        if skill_bonus > 0:
+            score += skill_bonus
+            if skill_count > 1:
+                reasons.append(f"获得{skill_count}项职业技能，累计+{skill_bonus}分（上限14分）")
+            else:
+                reasons.append(f"获得{skill_name}职业技能，+{skill_bonus}分")
+    else:
+        reasons.append("暂无专业能力数据")
+    
+    score = min(score, 100)
+    employee_reason = "；".join(reasons) + f"，最终得分{score}分"
+    
+    # 岗位侧要求
+    job_requirement = 75
+    job_reason = "要求：具备岗位所需专业技能，标准分75分"
+    
+    return score, job_requirement, employee_reason, job_reason
+
+
+def _calculate_professional_ability_regular(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+    """
+    普通正式员工专业能力计算（原有逻辑）
+    """
+    from app.models.emp_professional_ability import EmpProfessionalAbility
+    
+    score = 70  # 基础分70分
+    reasons = ["基础分70分"]
     
     if prof_ability:
         # 1. 绩效计算（二选一）
@@ -325,7 +627,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         skill_bonus = 0
         skill_str = ''
         skill_count = 0
-
+        
         if prof_ability.professional_skills:
             skills = prof_ability.professional_skills
             if isinstance(skills, list):
@@ -352,8 +654,8 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         reasons.append("暂无专业能力数据")
     
     score = min(score, 100)
-
-    if len(reasons) ==1:
+    
+    if len(reasons) == 1:
         employee_reason = ";".join(reasons) + f"近3年绩效都是称职，无任何加分项,最终得分{score}分"
     else:
         employee_reason = "；".join(reasons) + f",最终得分{score}分"
@@ -1278,10 +1580,13 @@ async def _calculate_job_innovation_requirement(
         return default_requirement, default_reason
 
 
-def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
+async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audio_file_path: str = None, questions_file_path: str = None) -> tuple:
     """
     计算学习能力维度得分（权重20%）
-    基于：学历、持续学习
+    基于附件要求：
+    一、基础学习能力（占比70%）：学历+学校类型+专业对口
+    二、持续学习能力-学位提升（占比10%）：在职教育提升
+    三、持续学习能力-综合评价（占比20%）：谈话录音评价（调用大模型，温度系数0.3）
     """
     import json
     education = emp_info.get('education') or ''
@@ -1289,54 +1594,77 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
     school_type = emp_info.get('school_type') or ''
     highest_degree = emp_info.get('highest_degree') or ''
     major = emp_info.get('highest_degree_major') or ''
+    emp_code = emp_info.get('emp_code')
+    emp_name = emp_info.get('emp_name', '未知')
     reasons = []
-
-
-    if  "学士" in highest_degree:
-        base_score  = 60
-        reasons.append(f"本科学历,基础分为{base_score}")
-    elif "硕士" in highest_degree:
-        base_score = 70
-        reasons.append(f"硕士学历,基础分为{base_score}")
-    elif '博士' in highest_degree:
-        base_score = 80
-        reasons.append(f"博士学历,基础分为{base_score}")
-    elif '本科' in education and '无学位' in highest_degree:
-        base_score = 55
-        reasons.append(f"本科毕业，但无学位,基础分为{base_score}")
-    elif '专科' in education:
-        base_score = 55
-        reasons.append(f"专科学校，基础分为{base_score}")
-    else:
-        base_score = 50
-        reasons.append(f"专科以下，基础分为{base_score}")
-    # 学历基础分
-    add_score = 0
-    if '985' in school_type or 'QS前50' in school_type:
-        add_score = 20
-        reasons.append(f"毕业学校为{education},为{school_type},加分{add_score}")
-    elif '211' in school_type or 'QS前100' in school_type:
-        add_score = 10
-        reasons.append(f"毕业学校为{education},为{school_type},加分{add_score}")
     
-    # 专业匹配加分
+    # ========== 一、基础学习能力（占比70%）==========
+    # 根据学位和学校类型确定基础分
+    base_score = 0
+    
+    # 判断学校类型
+    is_985 = '985' in school_type or 'QS前50' in school_type
+    is_211 = '211' in school_type or 'QS50-100' in school_type or 'QS前100' in school_type
+    is_normal = not is_985 and not is_211
+    
+    # 学士阶段
+    if "学士" in highest_degree or ("本科" in education and "无学位" not in highest_degree):
+        if is_985:
+            base_score = 80
+            reasons.append(f"本科学历+985/QS前50院校，基础分80分")
+        elif is_211:
+            base_score = 70
+            reasons.append(f"本科学历+211/QS50-100院校，基础分70分")
+        else:
+            base_score = 60
+            reasons.append(f"本科学历+普通院校，基础分60分")
+    # 硕士阶段
+    elif "硕士" in highest_degree or "研究生" in highest_degree:
+        if is_985:
+            base_score = 90
+            reasons.append(f"硕士学历+985/QS前50院校，基础分90分")
+        elif is_211:
+            base_score = 80
+            reasons.append(f"硕士学历+211/QS50-100院校，基础分80分")
+        else:
+            base_score = 70
+            reasons.append(f"硕士学历+普通院校，基础分70分")
+    # 博士阶段
+    elif "博士" in highest_degree:
+        if is_985:
+            base_score = 100
+            reasons.append(f"博士学历+985/QS前50院校，基础分100分")
+        elif is_211:
+            base_score = 90
+            reasons.append(f"博士学历+211/QS50-100院校，基础分90分")
+        else:
+            base_score = 80
+            reasons.append(f"博士学历+普通院校，基础分80分")
+    # 专科阶段（扣分）
+    elif "专科" in education or "大专" in education:
+        base_score = 55  # 60 - 5 = 55
+        reasons.append(f"专科学历，基础分60分-5分=55分")
+    # 专科以下（扣分）
+    else:
+        base_score = 50  # 60 - 10 = 50
+        reasons.append(f"专科以下学历，基础分60分-10分=50分")
+    
+    # 专业对口加分（+5分）
+    major_bonus = 0
     if major and job_desc:
         qual_major = job_desc.get('qualifications_major')
         if qual_major:
-            # 提取岗位要求的专业
-            import json
             try:
                 if isinstance(qual_major, str):
                     qual_major = json.loads(qual_major)
                 job_major = qual_major.get('requirement', '')
-                if job_major:
+                if job_major and '不限' not in job_major:
                     # 使用大模型判断专业匹配度
                     import requests
                     from app.config import get_settings
                     
                     settings = get_settings()
                     
-                    # 构建提示词
                     prompt = f"""请判断以下员工的专业是否与岗位要求的专业匹配。
 
 员工专业：{major}
@@ -1351,7 +1679,6 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
 
 只返回"匹配"或"不匹配"，不要返回其他内容。"""
                     
-                    # 调用大模型 API
                     try:
                         response = requests.post(
                             settings.LLM_URL,
@@ -1374,35 +1701,223 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
                         if response.status_code == 200:
                             result = response.json()
                             content = result.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                            if  '匹配' in content:
-                                add_score += 5
-                                reasons.append(f"员工是{major}，与岗位要求专业{job_major}匹配，加分5分")
+                            if '匹配' in content:
+                                major_bonus = 5
+                                reasons.append(f"专业{major}与岗位要求匹配，+5分")
                     except Exception as e:
-                        # 如果大模型调用失败，跳过专业匹配加分
                         pass
             except Exception as e:
-                # 如果解析失败，跳过专业匹配加分
                 pass
     
-    score = base_score + add_score
+    # 基础学习能力总分（最高100分）
+    basic_learning_score = min(base_score + major_bonus, 100)
+    
+    # ========== 二、持续学习能力-学位提升（占比10%）==========
+    degree_upgrade_score = 0
+    degree_upgrade_reason = ""
+    
+    # 从数据库查询在职教育提升记录
+    if db and emp_code:
+        try:
+            from app.models.emp_learning import EmpLearning
+            learning_records = db.query(EmpLearning).filter(
+                EmpLearning.emp_code == emp_code,
+                EmpLearning.learning_type == 'degree_upgrade'
+            ).all()
+            
+            if learning_records:
+                for record in learning_records:
+                    degree_type = record.degree_type or ''
+                    school_type_upgrade = record.school_type or ''
+                    
+                    # 学士阶段（专升本）
+                    if '学士' in degree_type or '本科' in degree_type:
+                        if '985' in school_type_upgrade:
+                            score = 50
+                        elif '211' in school_type_upgrade:
+                            score = 40
+                        else:
+                            score = 30
+                    # 硕士阶段
+                    elif '硕士' in degree_type:
+                        if '985' in school_type_upgrade:
+                            score = 60
+                        elif '211' in school_type_upgrade:
+                            score = 50
+                        else:
+                            score = 40
+                    # 博士阶段
+                    elif '博士' in degree_type:
+                        if '985' in school_type_upgrade:
+                            score = 70
+                        elif '211' in school_type_upgrade:
+                            score = 60
+                        else:
+                            score = 50
+                    else:
+                        score = 30
+                    
+                    if score > degree_upgrade_score:
+                        degree_upgrade_score = score
+                        degree_upgrade_reason = f"在职提升{degree_type}({school_type_upgrade})"
+            
+            if degree_upgrade_score > 0:
+                reasons.append(f"{degree_upgrade_reason}，学位提升得分{degree_upgrade_score}分")
+            else:
+                reasons.append("无在职学位提升记录，学位提升得分0分")
+        except Exception as e:
+            reasons.append("无在职学位提升记录，学位提升得分0分")
+    else:
+        reasons.append("无在职学位提升记录，学位提升得分0分")
+    
+    # ========== 三、持续学习能力-综合评价（占比20%）==========
+    # 根据谈话录音和问题对调用大模型进行评估
+    comprehensive_score = 70  # 默认中等水平
+    comprehensive_reason = "默认综合评价得分70分"
+    
+    if audio_file_path or questions_file_path:
+        try:
+            # 转录音频文件（如果有）
+            transcription_text = ""
+            if audio_file_path and os.path.exists(audio_file_path):
+                logger.info(f"[Learning] 开始处理学习能力音频文件: {audio_file_path}")
+                transcription_text = transcribe_audio_file(audio_file_path)
+            
+            # 读取提问问题文件（如果有）
+            questions_content = ""
+            if questions_file_path and os.path.exists(questions_file_path):
+                import pandas as pd
+                if questions_file_path.endswith('.xlsx') or questions_file_path.endswith('.xls'):
+                    df = pd.read_excel(questions_file_path)
+                    questions_content = df.to_string()
+                elif questions_file_path.endswith('.csv'):
+                    df = pd.read_csv(questions_file_path)
+                    questions_content = df.to_string()
+                else:
+                    with open(questions_file_path, 'r', encoding='utf-8') as f:
+                        questions_content = f.read()
+            
+            # 获取岗位信息
+            position_name = job_desc.get('position_name', emp_info.get('position', '未知岗位')) if job_desc else emp_info.get('position', '未知岗位')
+            
+            # 构建提示词
+            prompt = f"""请根据以下信息评估该员工的学习能力，并给出分数和评价。
 
+员工信息：
+- 姓名：{emp_name}
+- 岗位：{position_name}
+- 学历：{highest_degree}
+- 毕业院校：{school} ({school_type})
+
+评估要求：
+1. 满分100分，根据面试录音转录的文字内容和提问回答，评估员工的学习能力
+2. 重点关注：
+   - 学习态度和学习意愿
+   - 知识更新和能力提升的意识
+   - 对新知识、新技能的接受能力
+   - 自我学习和持续成长的表现
+3. 给出分数和简要评价理由（控制在50字以内）
+
+{f'面试录音转录内容：{transcription_text[:2000]}' if transcription_text and not transcription_text.startswith('[') else ''}
+
+{f'提问回答：{questions_content[:1500]}' if questions_content else ''}
+
+请按以下JSON格式返回结果：
+{{
+    "score": 0-100的整数,
+    "reason": "简要评价理由（50字以内）"
+}}
+"""
+            
+            # 调用远程大模型（温度系数0.3）
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                payload = {
+                    "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "messages": [
+                        {"role": "system", "content": "你是一个专业的人力资源评估专家，擅长评估员工的学习能力。请根据提供的面试录音转录文字和提问回答，客观、公正地评估员工的学习能力。"},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 500
+                }
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+                }
+                
+                async with session.post(
+                    "http://180.97.200.118:30071/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        content = result['choices'][0]['message']['content']
+                        
+                        # 解析JSON结果
+                        try:
+                            json_start = content.find('{')
+                            json_end = content.rfind('}') + 1
+                            if json_start >= 0 and json_end > json_start:
+                                json_str = content[json_start:json_end]
+                                evaluation = json.loads(json_str)
+                                comprehensive_score = float(evaluation.get('score', 70))
+                                eval_reason = evaluation.get('reason', '评估完成')
+                                # 确保理由精简
+                                if len(eval_reason) > 60:
+                                    eval_reason = eval_reason[:57] + "..."
+                                comprehensive_reason = f"{eval_reason}，综合评价得分{comprehensive_score:.0f}分"
+                            else:
+                                comprehensive_reason = "大模型评估完成，综合评价得分70分"
+                        except Exception as e:
+                            logger.error(f"解析学习能力综合评价结果失败: {e}")
+                            comprehensive_reason = "评估解析失败，使用默认得分70分"
+                    else:
+                        logger.error(f"调用大模型评估学习能力失败，状态码: {response.status}")
+                        comprehensive_reason = "大模型调用失败，使用默认得分70分"
+                        
+        except Exception as e:
+            logger.error(f"评估学习能力综合评价时出错: {e}")
+            comprehensive_reason = "评估过程出错，使用默认得分70分"
     
-    employee_reason = "；".join(reasons) + f"，最终得分{score}分"
+    reasons.append(comprehensive_reason)
     
-    # 基于岗位说明书确定学习要求
+    # ========== 汇总得分 ==========
+    # 判断是否为专科学历，决定权重分配
+    is_specialist = "专科" in education or "大专" in education
+    
+    if is_specialist:
+        # 专科学历：基础学历:学位提升:综合评价 = 7:1:2
+        final_score = (basic_learning_score * 0.7) + (degree_upgrade_score * 0.1) + (comprehensive_score * 0.2)
+        weight_reason = f"专科学历按7:1:2权重计算：基础学历{basic_learning_score:.0f}分×70%={basic_learning_score * 0.7:.1f}分"
+        if degree_upgrade_score > 0:
+            weight_reason += f"，学位提升{degree_upgrade_score:.0f}分×10%={degree_upgrade_score * 0.1:.1f}分"
+        else:
+            weight_reason += "，学位提升0分×10%=0分"
+        weight_reason += f"，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
+    else:
+        # 非专科学历：基础学历:综合评价 = 8:2（不含学位提升）
+        final_score = (basic_learning_score * 0.8) + (comprehensive_score * 0.2)
+        weight_reason = f"非专科学历按8:2权重计算：基础学历{basic_learning_score:.0f}分×80%={basic_learning_score * 0.8:.1f}分，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
+    
+    employee_reason = "；".join(reasons) + f"；{weight_reason}，最终得分{final_score:.1f}分"
+    
+    # ========== 岗位侧要求 ==========
     qual_edu = job_desc.get('qualifications_education') if job_desc else None
     qual_major = job_desc.get('qualifications_major') if job_desc else None
-    print('')
-
+    
     job_reason_parts = []
     
     if qual_edu:
         edu_str = str(qual_edu)
-        if '博士' in edu_str  :
-            job_requirement= 80
+        if '博士' in edu_str:
+            job_requirement = 80
             job_reason_parts.append("博士学历")
         elif '研究生' in edu_str:
-            job_requirement= 70
+            job_requirement = 70
             job_reason_parts.append("硕士及以上学历")
         elif '本科' in edu_str:
             job_requirement = 60
@@ -1412,16 +1927,22 @@ def calculate_learning_score(emp_info: dict, job_desc: dict) -> tuple:
             job_reason_parts.append("大专及以上")
     else:
         job_requirement = 60
-        job_reason_parts.append("未获取信息，默认为本科及以上学历")
-    major  = json.loads(qual_major).get('requirement', '')
-    if major and not '不限专业' in major:
-        job_requirement += 5
-        job_reason_parts.append(f"需要{major}相关专业")
+        job_reason_parts.append("本科及以上学历")
     
-    # 精简岗位理由
+    if qual_major:
+        try:
+            if isinstance(qual_major, str):
+                qual_major = json.loads(qual_major)
+            job_major = qual_major.get('requirement', '')
+            if job_major and '不限' not in job_major:
+                job_requirement += 5
+                job_reason_parts.append(f"需要{job_major}相关专业")
+        except:
+            pass
+    
     job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
     
-    return score, job_requirement, employee_reason, job_reason
+    return final_score, job_requirement, employee_reason, job_reason
 
 
 def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = None) -> tuple:
@@ -1950,14 +2471,16 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
             job_reason=innovation_job_reason
         ))
         
-        # 维度4: 学习能力（权重20%）
-        learn_score, learn_req, learn_emp_reason, learn_job_reason = calculate_learning_score(emp_info, job_desc or {})
+        # 维度4: 学习能力（权重20%）- 复用创新能力的录音和提问文件进行综合评价
+        learn_score, learn_req, learn_emp_reason, learn_job_reason = await calculate_learning_score(
+            emp_info, job_desc or {}, db, request.innovation_audio_file, request.innovation_questions_file
+        )
         dimensions.append(DimensionScore(
             name="学习能力",
             score=learn_score,
             weight=20,
             job_requirement=learn_req,
-            description="基于学历、持续学习",
+            description="基于学历、持续学习、谈话录音综合评价",
             employee_reason=learn_emp_reason,
             job_reason=learn_job_reason
         ))
