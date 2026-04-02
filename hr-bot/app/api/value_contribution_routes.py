@@ -115,18 +115,22 @@ async def import_value_contribution_scores(
     """
     try:
         # 检查文件类型
-        if not file.filename.endswith(('.xlsx', '.xls')):
+        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
             return ValueContributionScoreResponse(
                 success=False,
-                message="只支持Excel文件格式(.xlsx, .xls)",
+                message="只支持Excel文件格式(.xlsx, .xls)和CSV文件(.csv)",
                 errors=["文件格式错误"]
             )
         
-        # 读取Excel文件
         # 读取文件内容到BytesIO，解决SpooledTemporaryFile没有seekable方法的问题
         from io import BytesIO
         file_content = await file.read()
-        df = pd.read_excel(BytesIO(file_content))
+        
+        # 根据文件扩展名选择读取方式
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(BytesIO(file_content))
+        else:
+            df = pd.read_excel(BytesIO(file_content))
         
         # 标准化列名（处理可能包含换行符的列名）
         column_mapping = {}

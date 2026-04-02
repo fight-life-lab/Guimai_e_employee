@@ -2937,13 +2937,16 @@
 
         // 统一数据上传
         async function uploadUnifiedData() {
+            console.log('uploadUnifiedData 被调用');
             const dataType = document.getElementById('uploadDataType').value;
+            console.log('数据类型:', dataType);
             
             if (!dataType) {
                 showUnifiedUploadStatus('请选择数据类型', 'error');
                 return;
             }
             
+            console.log('unifiedSelectedFile:', unifiedSelectedFile);
             if (!unifiedSelectedFile) {
                 showUnifiedUploadStatus('请选择Excel文件', 'error');
                 return;
@@ -3002,12 +3005,22 @@
                         throw new Error('未知的数据类型');
                 }
                 
+                console.log('开始上传，URL:', apiUrl);
+                console.log('文件:', unifiedSelectedFile.name, '大小:', unifiedSelectedFile.size);
+                
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log('响应状态:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const result = await response.json();
+                console.log('响应结果:', result);
                 
                 if (result.success) {
                     let msg = '✓ 上传成功';
@@ -3029,7 +3042,8 @@
                     appendMessage('assistant', '❌ 数据导入失败：' + result.message);
                 }
             } catch (error) {
-                showUnifiedUploadStatus('上传失败：' + error.message, 'error');
+                console.error('上传错误:', error);
+                showUnifiedUploadStatus('上传失败：' + (error.message || '未知错误'), 'error');
             } finally {
                 document.getElementById('unifiedUploadSubmitBtn').disabled = false;
             }

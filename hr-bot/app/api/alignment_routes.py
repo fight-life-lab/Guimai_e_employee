@@ -825,15 +825,43 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
     基于：绩效酬金偏离度
     
     计分规则：
+    【非试用期员工】
     - 基础分70分，满分上限100分
     - 偏离度为100%时，不加分、不扣分（保持基础分70分）
     - 偏离度较100%，每高出0.5个百分点，加3分
     - 偏离度较100%，每低出0.5个百分点，扣3分
+    
+    【试用期员工（入职≤6个月）】
+    - 基础分100分，满分上限100分
+    - 入职以来N个月（剔除入职首月）绩效酬金偏离度≥100%时，不加分、不扣分
+    - 入职以来N个月（剔除入职首月）绩效酬金偏离度较100%，每低出0.5个百分点，扣5分
     """
     from app.models.value_contribution import ValueContributionScore
-    from datetime import datetime
+    from datetime import datetime, date
     
     emp_code = emp_info.get('emp_code')
+    entry_date = emp_info.get('entry_date')
+    
+    # 判断是否为试用期员工（入职≤6个月）
+    is_probation = False
+    months_since_entry = 0
+    if entry_date:
+        if isinstance(entry_date, str):
+            try:
+                entry_date = datetime.strptime(entry_date, '%Y-%m-%d').date()
+            except:
+                try:
+                    entry_date = datetime.strptime(entry_date, '%Y-%m-%d %H:%M:%S').date()
+                except:
+                    entry_date = None
+        
+        if isinstance(entry_date, date):
+            today = date.today()
+            months_since_entry = (today.year - entry_date.year) * 12 + (today.month - entry_date.month)
+            # 如果入职日期还没到，减去1个月
+            if today.day < entry_date.day:
+                months_since_entry -= 1
+            is_probation = months_since_entry <= 6
     
     # 从数据库获取员工绩效数据（偏离度）
     deviation_rate = None
@@ -851,38 +879,74 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
             performance_standard = score_record.performance_standard
             actual_performance = score_record.actual_performance
     
-    # 根据偏离度计算价值贡献分数
+    # 根据员工类型和偏离度计算价值贡献分数
     if deviation_rate is not None:
-        # 基础分70分
-        base_score = 70.0
-        
-        # 计算与100%的偏差
-        diff = deviation_rate - 100.0
-        
-        # 每0.5个百分点变化3分
-        score_change = (diff / 0.5) * 3
-        
-        # 计算最终分数
-        score = base_score + score_change
-        
-        # 限制在0-100范围内
-        score = max(0.0, min(100.0, score))
-        
-        # 生成评分理由
-        if diff > 0:
-            employee_reason = f"绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出0.5个百分点加3分，价值贡献得分{score:.1f}分"
-        elif diff < 0:
-            employee_reason = f"绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣3分，价值贡献得分{score:.1f}分"
+        if is_probation:
+            # 【试用期员工计分规则】
+            # 基础分100分
+            base_score = 100.0
+            
+            # 计算与100%的偏差
+            diff = deviation_rate - 100.0
+            
+            if diff >= 0:
+                # 偏离度≥100%时，不加分、不扣分
+                score = base_score
+                score_change = 0
+                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（≥100%），不加分不扣分，价值贡献得分{score:.1f}分"
+            else:
+                # 偏离度<100%时，每低出0.5个百分点，扣5分
+                score_change = (abs(diff) / 0.5) * 5
+                score = base_score - score_change
+                
+                # 限制在0-100范围内
+                score = max(0.0, min(100.0, score))
+                
+                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣5分，价值贡献得分{score:.1f}分"
+            
+            # 岗位价值贡献要求（试用期）
+            job_requirement = 100.0
+            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，每低出0.5个百分点扣5分，基础分100分"
         else:
-            employee_reason = f"绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
+            # 【非试用期员工计分规则】
+            # 基础分70分
+            base_score = 70.0
+            
+            # 计算与100%的偏差
+            diff = deviation_rate - 100.0
+            
+            # 每0.5个百分点变化3分
+            score_change = (diff / 0.5) * 3
+            
+            # 计算最终分数
+            score = base_score + score_change
+            
+            # 限制在0-100范围内
+            score = max(0.0, min(100.0, score))
+            
+            # 生成评分理由
+            if diff > 0:
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出0.5个百分点加3分，价值贡献得分{score:.1f}分"
+            elif diff < 0:
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣3分，价值贡献得分{score:.1f}分"
+            else:
+                employee_reason = f"正式员工，绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
+            
+            # 岗位价值贡献要求（非试用期）
+            job_requirement = 70.0
+            job_reason = "正式员工岗位要求：绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），基础分70分，每高出0.5个百分点加3分，每低出0.5个百分点扣3分"
     else:
-        # 如果没有找到记录，使用默认分数70分
-        score = 70.0
-        employee_reason = "暂无价值贡献数据，按基础分70分计算"
-    
-    # 岗位价值贡献要求（默认70分，与基础线对齐）
-    job_requirement = 70.0
-    job_reason = "岗位要求员工绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），基础分70分"
+        # 如果没有找到记录，根据员工类型使用默认分数
+        if is_probation:
+            score = 100.0
+            employee_reason = f"试用期员工（入职{months_since_entry}个月），暂无价值贡献数据，按基础分100分计算"
+            job_requirement = 100.0
+            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，基础分100分"
+        else:
+            score = 70.0
+            employee_reason = "正式员工，暂无价值贡献数据，按基础分70分计算"
+            job_requirement = 70.0
+            job_reason = "正式员工岗位要求：绩效酬金偏离度达到100%，基础分70分"
     
     return score, job_requirement, employee_reason, job_reason
 
