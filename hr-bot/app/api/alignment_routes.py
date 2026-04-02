@@ -500,54 +500,73 @@ def check_work_experience_relevance_with_llm(work_experiences: list, job_desc: d
 def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     """
     计算经验维度得分（权重10%）
-    基于：从事本专业或相关专业的工作年限
-    工作年限权重为0.6   荣誉是0.4
+    基于附件要求：
+    1. 工作履历（占比80%）：按照岗位说明书要求的工作年限赋分，满足得满分，不满足按比例折算
+    2. 荣誉奖项（占比20%）：
+       - 国家级荣誉：100分
+       - 省部级荣誉：75分
+       - 集团级荣誉：50分
+       - 公司级荣誉：25分
     
-    评分标准：
-    - 3年：70分
-    - 5年：80分
-    - 8年：90分
-    - 10年以上：100分
-
-    荣誉
-    （1）国家级荣誉：20分
-    （2）省部级荣誉：15分
-    （3）集团级荣誉：10分
-    （4）公司级荣誉：5分
+    岗位侧固定80分，并写明需要几年什么方面的工作经验
     """
-    experience_dict  = {'work_experiences': 0.8,'honer':0.2}
     from datetime import datetime, date
     from app.models.emp_work_experience import EmpWorkExperience
     
     emp_code = emp_info.get('emp_code')
     current_position = emp_info.get('position', '')
     
+    # ========== 1. 解析岗位要求（从岗位说明书）==========
+    # 默认要求5年相关经验
+    required_years = 5
+    required_experience_type = "本专业或相关专业"
+    
+    if job_desc:
+        qual_exp = job_desc.get('qualifications_job_work_experience', '')
+        if qual_exp:
+            import re
+            # 提取年限要求
+            years_match = re.search(r'(\d+)', str(qual_exp))
+            if years_match:
+                required_years = int(years_match.group(1))
+            # 提取经验类型要求
+            if '相关' in str(qual_exp):
+                required_experience_type = "相关专业"
+            elif '本' in str(qual_exp):
+                required_experience_type = "本专业"
+        
+        # 从岗位名称、职责中提取专业方向
+        position_name = job_desc.get('position_name', '')
+        duties = job_desc.get('duties', '')
+        if position_name:
+            required_experience_type = f"{position_name}相关"
+    
+    # 岗位侧固定80分，写明具体要求
+    job_requirement = 80.0
+    job_reason = f"要求{required_years}年{required_experience_type}工作经验，标准分80分"
+    
+    # ========== 2. 计算员工工作履历得分（占比80%）==========
     # 从岗位描述中提取相关关键词
     related_keywords = []
     if job_desc:
-        # 从岗位名称、职责、技能要求中提取关键词
         position_name = job_desc.get('position_name', '')
         duties = job_desc.get('duties', '')
         skills = job_desc.get('qualifications_skills', '')
         
-        # 合并所有文本并提取关键词
         all_text = f"{position_name} {duties} {skills}".lower()
         
-        # 提取技术/专业关键词（可以根据实际需求扩展）
         tech_keywords = [
             'java', 'python', '前端', '后端', '开发', '工程师', '架构', '测试',
             '运维', '产品', '设计', '运营', '销售', '市场', '人力', '财务',
-            'java', 'python', '前端', '后端', '开发', '工程师', '架构', '测试',
-            '运维', '产品', '设计', '运营', '销售', '市场', '人力', '财务',
             'h5', 'web', 'app', '小程序', '大数据', 'ai', '人工智能', '算法',
-            '数据库', '网络', '安全', '云计算', 'devops', '敏捷', '项目管理'
+            '数据库', '网络', '安全', '云计算', 'devops', '敏捷', '项目管理',
+            '经营分析', '数据分析', '财务管理', '人力资源', '运营管理'
         ]
         
         for keyword in tech_keywords:
             if keyword in all_text:
                 related_keywords.append(keyword)
     
-    # 如果没有提取到关键词，使用当前岗位名称作为关键词
     if not related_keywords and current_position:
         related_keywords = [current_position.lower()]
     
@@ -589,11 +608,9 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
             if not exp.start_date:
                 continue
             
-            # 计算这段工作的时长
             start_date = exp.start_date
             end_date = exp.end_date if exp.end_date else today
             
-            # 计算工作时长（年）
             duration_days = (end_date - start_date).days
             duration_years = duration_days / 365.0
             
@@ -606,21 +623,20 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
             if llm_relevant_indices:
                 is_relevant = idx in llm_relevant_indices
             else:
-                # 大模型调用失败，使用备用逻辑（关键词匹配）
+                # 备用逻辑（关键词匹配）
                 position_text = (exp.position or '').lower()
                 company_text = (exp.company_name or '').lower()
                 dept_text = (exp.department or '').lower()
                 
-                # 检查是否包含相关关键词
                 for keyword in related_keywords:
                     if keyword in position_text or keyword in company_text or keyword in dept_text:
                         is_relevant = True
                         break
                 
-                # 如果在天翼视讯/国脉等公司工作，且岗位是技术/开发相关，也算相关
+                # 如果在目标公司工作，且岗位是技术相关，也算相关
                 if not is_relevant:
                     company_keywords = ['天翼', '视讯', '国脉', '电信', '传媒', '科技']
-                    position_keywords = ['开发', '工程师', '技术', '研发', '前端', '后端', '测试', '运维', '架构']
+                    position_keywords = ['开发', '工程师', '技术', '研发', '前端', '后端', '测试', '运维', '架构', '分析']
                     
                     is_target_company = any(kw in company_text for kw in company_keywords)
                     is_tech_position = any(kw in position_text for kw in position_keywords)
@@ -645,67 +661,21 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
             relevant_years = float(work_years)
             total_years = float(work_years)
     
-    # 根据相关专业年限计算分数
-    if relevant_years >= 10:
-        score = 100
-        level = "10年以上"
-    elif relevant_years >= 8:
-        score = 90
-        level = "8-10年"
-    elif relevant_years >= 5:
-        score = 80
-        level = "5-8年"
-    elif relevant_years >= 3:
-        score = 70
-        level = "3-5年"
+    # 计算工作履历得分：按满足岗位要求的程度赋分（满分100，占比80%）
+    # 满足要求得100分，不满足按比例折算
+    if relevant_years >= required_years:
+        work_experience_score = 100.0
+        work_level = "满足要求"
     else:
-        score = 60
-        level = "3年以下"
-    # experience_dict = {'work_experiences': 0.6, 'honer': 0.4}
-    work_score = score * experience_dict['work_experiences']
-    # 构建员工得分理由
-    if relevant_experiences:
-        exp_details = []
-        for exp in relevant_experiences[:3]:  # 只显示前3条
-            exp_details.append(f"{exp['company']}({exp['duration']:.1f}年)")
-        
-        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)},按年限档次得{work_score}分"
-    else:
-        if relevant_years > 0:
-            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}，按年限档次得{work_score}分"
-        else:
-            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历,按年限档次得{work_score}分"
+        # 按比例折算
+        work_experience_score = (relevant_years / required_years) * 100.0 if required_years > 0 else 0
+        work_level = f"{relevant_years:.1f}年/{required_years}年"
     
-    # 基于岗位说明书确定经验要求
-    qual_exp = job_desc.get('qualifications_job_work_experience') if job_desc else None
+    # 工作履历权重80%
+    work_score = work_experience_score * 0.8
     
-    job_requirement = 75  # 默认要求3-5年
-    job_reason_parts = []
-    
-    if qual_exp:
-        exp_str = str(qual_exp)
-        import re
-        years_match = re.search(r'(\d+)', exp_str)
-        if years_match:
-            req_years = int(years_match.group(1))
-            if req_years >= 10:
-                job_requirement = 100
-            elif req_years >= 8:
-                job_requirement = 90
-            elif req_years >= 5:
-                job_requirement = 80
-            elif req_years >= 3:
-                job_requirement = 70
-            else:
-                job_requirement = 60
-            job_reason_parts.append(f"要求{req_years}年以上本专业经验")
-        else:
-            job_reason_parts.append("要求相关专业工作经验")
-    else:
-        job_reason_parts.append("要求3-5年本专业经验")
-    
-    # 2. 计算荣誉奖项得分
-    honor_score = 0
+    # ========== 3. 计算荣誉奖项得分（占比20%）==========
+    honor_raw_score = 0  # 原始分（按标准）
     honor_reasons = []
     
     if db and emp_code:
@@ -717,7 +687,6 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
         
         if prof_ability and prof_ability.honors:
             honors = prof_ability.honors
-            # 如果是字符串，尝试解析成JSON
             if isinstance(honors, str):
                 try:
                     honors = json.loads(honors)
@@ -730,7 +699,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
                         honor_level = honor.get('honor_level', '')
                         honor_name = honor.get('honor_name', '')
                         
-                        # 根据荣誉级别计算得分
+                        # 根据荣誉级别计算原始分
                         if '国家' in honor_level:
                             points = 100
                             level_name = '国家级'
@@ -746,41 +715,37 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
                         else:
                             points = 25
                             level_name = '其他'
-                        points =  experience_dict[honor_level] * points
-                        honor_score += points
-                        honor_reasons.append(f"{honor_name}({level_name}+{points}分)")
+                        
+                        honor_raw_score = max(honor_raw_score, points)  # 取最高荣誉
+                        honor_reasons.append(f"{honor_name}({level_name}{points}分)")
     
-    # 荣誉得分最高不超过10分
-    honor_score = min(honor_score, 40 )
+    # 荣誉奖项权重20%
+    honor_score = honor_raw_score * 0.2
     
-    # 3. 汇总得分（工作年限得分 * 0.4 + 荣誉得分 * 0.6，最高100分）
-    # total_score = min(score * 0.4 + honor_score * 0.6, 100)
+    # ========== 4. 汇总得分 ==========
     total_score = work_score + honor_score
     
-    # 构建员工得分理由
+    # ========== 5. 构建员工得分理由 ==========
+    # 工作履历部分
     if relevant_experiences:
         exp_details = []
-        for exp in relevant_experiences[:3]:  # 只显示前3条
+        for exp in relevant_experiences[:3]:
             exp_details.append(f"{exp['company']}({exp['duration']:.1f}年)")
         
-        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}），其中相关经历：{'；'.join(exp_details)},按照年限得分{work_score}分"
+        employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{work_level}），相关经历：{'；'.join(exp_details)}，工作履历得分{work_score:.1f}分"
     else:
         if relevant_years > 0:
-            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{level}）按照年限得分{work_score}分"
+            employee_reason = f"相关专业工作年限{relevant_years:.1f}年（{work_level}），工作履历得分{work_score:.1f}分"
         else:
-            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历，按照年限得分{work_score}分"
+            employee_reason = f"总工作年限{total_years:.1f}年，未能识别相关专业经历，工作履历得分{work_score:.1f}分"
     
-    # 添加荣誉奖项理由
+    # 荣誉奖项部分
     if honor_reasons:
-        employee_reason += f"；荣誉奖项：{'、'.join(honor_reasons[:3])}，荣誉加分{honor_score}分"
-    
-    # employee_reason += f"。累计得分{honor_score}分"
-    
-    # 精简岗位理由
-    if job_reason_parts:
-        job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
+        employee_reason += f"；荣誉奖项：{'、'.join(honor_reasons[:3])}，荣誉得分{honor_score:.1f}分"
     else:
-        job_reason = f"要求：3-5年本专业工作经验，标准分{job_requirement}分"
+        employee_reason += f"；无荣誉奖项记录，荣誉得分{honor_score:.1f}分"
+    
+    employee_reason += f"，累计得分{total_score:.1f}分"
     
     return total_score, job_requirement, employee_reason, job_reason
 
@@ -1174,15 +1139,15 @@ async def _evaluate_employee_innovation(
                 {"role": "system", "content": "你是人力资源专家，评估员工创新能力。理由必须精简，控制在50字以内。"},
                 {"role": "user", "content": prompt}
             ],
-            "temperature": 0.7,
+            "temperature": 0.3,
             "max_tokens": 500
         }
-        
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
         }
-        
+
         async with session.post(
             "http://180.97.200.118:30071/v1/chat/completions",
             json=payload,
@@ -1192,7 +1157,7 @@ async def _evaluate_employee_innovation(
             if response.status == 200:
                 result = await response.json()
                 content = result['choices'][0]['message']['content']
-                
+
                 try:
                     import json
                     json_start = content.find('{')
@@ -1205,12 +1170,12 @@ async def _evaluate_employee_innovation(
                     else:
                         score = default_score
                         reason = content[:50] if content else '评估完成'
-                    
+
                     score = max(0, min(100, score))
                     # 确保理由精简
                     if len(reason) > 60:
                         reason = reason[:57] + "..."
-                    
+
                     employee_reason = f"{reason}，得分{score:.1f}分"
                     return score, employee_reason
                 except Exception as e:
@@ -1262,15 +1227,15 @@ async def _calculate_job_innovation_requirement(
                     {"role": "system", "content": "你是人力资源专家，分析岗位对创新能力的要求。理由必须精简，控制在50字以内。"},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.7,
+                "temperature": 0.3,
                 "max_tokens": 500
             }
-            
+
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
             }
-            
+
             async with session.post(
                 "http://180.97.200.118:30071/v1/chat/completions",
                 json=payload,
