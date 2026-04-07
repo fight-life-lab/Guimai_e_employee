@@ -1200,6 +1200,75 @@ class DetailedAlignmentAnalyzer:
             elif "本科" in employee.education:
                 scores["learning_score"] = 70
 
+        # 【新增】查询历史年度绩效数据，检查是否连续三年称职
+        # 规则：近3年内年度绩效，一次"优秀"+15分，一次"基本称职"-15分，连续3年"称职"的-5分
+        try:
+            result = await self.db.execute(
+                select(EmployeeHistoricalPerformance)
+                .where(EmployeeHistoricalPerformance.employee_id == employee_id)
+                .order_by(EmployeeHistoricalPerformance.year.desc())
+            )
+            historical_performance = result.scalars().all()
+            
+            if historical_performance:
+                performance_bonus = 0
+                performance_reason = ""
+                
+                excellent_count = 0
+                basic_count = 0
+                valid_years = ['2022', '2023', '2024', '2025']
+                year_performance = {}  # 存储每年的绩效等级
+                
+                for perf in historical_performance:
+                    year = str(perf.year)
+                    if year in valid_years:
+                        level = str(perf.performance_level).lower()
+                        # 标准化绩效等级
+                        if '优秀' in level or 'a' in level:
+                            year_performance[year] = 'excellent'
+                            excellent_count += 1
+                        elif '基本称职' in level or 'c' in level:
+                            year_performance[year] = 'basic'
+                            basic_count += 1
+                        elif '称职' in level or 'b' in level:
+                            year_performance[year] = 'competent'
+                
+                # 计算绩效加分/扣分
+                if excellent_count > 0:
+                    performance_bonus += 15 * excellent_count
+                    performance_reason += f"{excellent_count}次年度绩效优秀+{15 * excellent_count}分；"
+                
+                if basic_count > 0:
+                    performance_bonus -= 15 * basic_count
+                    performance_reason += f"{basic_count}次年度绩效基本称职-{15 * basic_count}分；"
+                
+                # 判断是否有连续3年称职
+                consecutive_competent = False
+                # 检查 2022-2023-2024
+                if (year_performance.get('2022') == 'competent' and 
+                    year_performance.get('2023') == 'competent' and 
+                    year_performance.get('2024') == 'competent'):
+                    consecutive_competent = True
+                # 检查 2023-2024-2025
+                elif (year_performance.get('2023') == 'competent' and 
+                      year_performance.get('2024') == 'competent' and 
+                      year_performance.get('2025') == 'competent'):
+                    consecutive_competent = True
+                
+                if consecutive_competent:
+                    performance_bonus -= 5
+                    performance_reason += "连续3年称职-5分；"
+                
+                # 应用绩效加减分到专业能力
+                if performance_bonus != 0:
+                    scores["professional_score"] += performance_bonus
+                    # 确保分数在合理范围内
+                    scores["professional_score"] = max(50, min(100, scores["professional_score"]))
+                    assessment_info["calculation_method"] += f"\n【历史绩效】{performance_reason.rstrip('；')}"
+                    logger.info(f"[历史绩效] 员工={employee.name}, 绩效加减分={performance_bonus}, 原因={performance_reason}")
+        except Exception as e:
+            logger.error(f"[历史绩效] 查询失败: {e}")
+
         return {
             "radar_data": [
                 scores["professional_score"],

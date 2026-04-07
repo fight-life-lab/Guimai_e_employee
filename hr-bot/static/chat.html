@@ -1265,6 +1265,7 @@
         </div>
 
         <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎消息已隐藏
             <div class="welcome-message">
                 <h2>欢迎使用人力数字员工</h2>
                 <p>我可以帮您查询员工信息、分析人岗适配情况等</p>
@@ -1276,6 +1277,7 @@
                     <span class="example-question" onclick="setInput('分析一下石京京的人岗适配情况')">分析石京京的人岗适配情况</span>
                 </div>
             </div>
+            -->
         </div>
 
         <div class="typing-indicator" id="typingIndicator">
@@ -1288,6 +1290,7 @@
         </div>
 
         <div class="chat-input-container">
+            <!-- 输入框区域已隐藏
             <div class="chat-input-wrapper">
                 <textarea 
                     class="chat-input" 
@@ -1301,7 +1304,8 @@
                     ➤
                 </button>
             </div>
-            
+            -->
+
             <!-- 输入框下方工具栏 -->
             <div class="input-toolbar">
                 <button class="btn-attachment" onclick="toggleUnifiedUploadPanel()">
@@ -3165,11 +3169,71 @@
             
             showUnifiedUploadStatus('正在上传...', 'loading');
             document.getElementById('unifiedUploadSubmitBtn').disabled = true;
-            
+
             try {
+                // value_contribution 使用 Base64 编码上传（绕过WAF限制）
+                if (dataType === 'value_contribution') {
+                    console.log('使用 Base64 编码上传...');
+
+                    // 读取文件为 Base64
+                    const reader = new FileReader();
+                    const base64Content = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result.split(',')[1]); // 去掉 data:... 前缀
+                        reader.onerror = reject;
+                        reader.readAsDataURL(unifiedSelectedFile);
+                    });
+
+                    const apiUrl = `${API_BASE}/api/v1/value-contribution/import-base64`;
+                    console.log('开始上传，URL:', apiUrl);
+                    console.log('文件:', unifiedSelectedFile.name, '大小:', unifiedSelectedFile.size);
+
+                    const requestBody = {
+                        filename: unifiedSelectedFile.name,
+                        file_content_base64: base64Content,
+                        evaluation_year: new Date().getFullYear()
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    console.log('响应状态:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('响应结果:', result);
+
+                    if (result.success) {
+                        let msg = '✓ 上传成功';
+                        let chatMsg = '数据导入成功！';
+                        if (result.data && result.data.length > 0) {
+                            msg = `✓ 导入完成：${result.message}`;
+                            chatMsg = `📊 数据导入完成！\n${result.message}`;
+                        }
+                        showUnifiedUploadStatus(msg, 'success');
+                        appendMessage('assistant', chatMsg);
+                        setTimeout(() => {
+                            toggleUnifiedUploadPanel();
+                        }, 2000);
+                    } else {
+                        showUnifiedUploadStatus('✗ ' + (result.message || '上传失败'), 'error');
+                    }
+
+                    document.getElementById('unifiedUploadSubmitBtn').disabled = false;
+                    return;
+                }
+
+                // 其他数据类型使用 FormData 上传
                 const formData = new FormData();
                 formData.append('file', unifiedSelectedFile);
-                
+
                 let apiUrl = '';
                 switch (dataType) {
                     case 'job_description':
@@ -3189,9 +3253,6 @@
                     case 'professional_ability':
                         apiUrl = `${API_BASE}/api/v1/professional-ability/batch-import`;
                         break;
-                    case 'value_contribution':
-                        apiUrl = `${API_BASE}/api/v1/value-contribution/import`;
-                        break;
                     case 'strategic_alignment':
                         apiUrl = `${API_BASE}/api/v1/strategic-alignment/import`;
                         break;
@@ -3203,14 +3264,31 @@
                     default:
                         throw new Error('未知的数据类型');
                 }
-                
+
                 console.log('开始上传，URL:', apiUrl);
                 console.log('文件:', unifiedSelectedFile.name, '大小:', unifiedSelectedFile.size);
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    body: formData
-                });
+                console.log('API_BASE:', API_BASE);
+
+                // 添加超时处理
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60秒超时
+
+                let response;
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        body: formData,
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    console.error('Fetch错误:', fetchError);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('请求超时，请检查网络连接或稍后重试');
+                    }
+                    throw new Error('网络请求失败: ' + fetchError.message);
+                }
                 
                 console.log('响应状态:', response.status, response.statusText);
                 

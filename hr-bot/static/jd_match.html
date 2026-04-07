@@ -533,13 +533,14 @@
 
         <div class="card">
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('single')">单人匹配</div>
-                <div class="tab" onclick="switchTab('text')">文本匹配</div>
-                <div class="tab" onclick="switchTab('interview')">AI面试评价</div>
+                <!-- 隐藏单人匹配和文本匹配选项卡 -->
+                <!-- <div class="tab active" onclick="switchTab('single')">单人匹配</div> -->
+                <!-- <div class="tab" onclick="switchTab('text')">文本匹配</div> -->
+                <div class="tab active" onclick="switchTab('interview')">AI面试评价</div>
             </div>
 
-            <!-- 单人匹配 -->
-            <div id="single" class="tab-content active">
+            <!-- 单人匹配 (隐藏) -->
+            <div id="single" class="tab-content" style="display:none;">
                 <h2><span class="icon">👤</span>单人JD匹配分析</h2>
                 <div class="form-group">
                     <label>岗位JD内容</label>
@@ -643,8 +644,8 @@
                 </div>
             </div>
 
-            <!-- 文本匹配 -->
-            <div id="text" class="tab-content">
+            <!-- 文本匹配 (隐藏) -->
+            <div id="text" class="tab-content" style="display:none;">
                 <h2><span class="icon">📝</span>文本JD匹配分析</h2>
 
                 <!-- JD输入 -->
@@ -751,24 +752,15 @@
                 </div>
             </div>
 
-            <!-- AI面试评价 -->
-            <div id="interview" class="tab-content">
+            <!-- AI面试评价 (默认显示) -->
+            <div id="interview" class="tab-content active">
                 <h2><span class="icon">🎙️</span>AI面试评价分析</h2>
                 <p style="color: #666; margin-bottom: 20px;">上传面试录音，AI将自动转录并基于JD、简历和结构化面试问题进行深度综合评价</p>
 
                 <!-- JD输入 -->
                 <div class="form-group">
-                    <label>岗位JD</label>
-                    <div class="input-tabs">
-                        <div class="input-tab active" onclick="switchInterviewInputTab('jd', 'text')">文本输入</div>
-                        <div class="input-tab" onclick="switchInterviewInputTab('jd', 'file')">文件上传</div>
-                    </div>
-
-                    <div id="interview-jd-text-input" class="input-content active">
-                        <textarea id="interviewJdContent" placeholder="请粘贴岗位JD内容..."></textarea>
-                    </div>
-
-                    <div id="interview-jd-file-input" class="input-content">
+                    <label>岗位JD <span style="color: #dc3545;">*</span></label>
+                    <div id="interview-jd-file-input" class="input-content active">
                         <div class="file-upload-area" id="interviewJdUpload" onclick="document.getElementById('interviewJdFile').click()">
                             <div class="upload-icon">📄</div>
                             <div class="upload-text">点击或拖拽上传JD文件</div>
@@ -777,21 +769,14 @@
                         <input type="file" id="interviewJdFile" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx" onchange="handleInterviewFileSelect(this, 'interviewJd')">
                         <div class="file-list" id="interviewJdFileList"></div>
                     </div>
+                    <!-- 隐藏的文本输入框，用于代码兼容性 -->
+                    <textarea id="interviewJdContent" style="display:none;"></textarea>
                 </div>
 
                 <!-- 简历输入 -->
                 <div class="form-group">
-                    <label>候选人简历</label>
-                    <div class="input-tabs">
-                        <div class="input-tab active" onclick="switchInterviewInputTab('resume', 'text')">文本输入</div>
-                        <div class="input-tab" onclick="switchInterviewInputTab('resume', 'file')">文件上传</div>
-                    </div>
-
-                    <div id="interview-resume-text-input" class="input-content active">
-                        <textarea id="interviewResumeContent" placeholder="请粘贴简历内容..."></textarea>
-                    </div>
-
-                    <div id="interview-resume-file-input" class="input-content">
+                    <label>候选人简历 <span style="color: #dc3545;">*</span></label>
+                    <div id="interview-resume-file-input" class="input-content active">
                         <div class="file-upload-area" id="interviewResumeUpload" onclick="document.getElementById('interviewResumeFile').click()">
                             <div class="upload-icon">📄</div>
                             <div class="upload-text">点击或拖拽上传简历文件</div>
@@ -800,6 +785,8 @@
                         <input type="file" id="interviewResumeFile" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx" onchange="handleInterviewFileSelect(this, 'interviewResume')">
                         <div class="file-list" id="interviewResumeFileList"></div>
                     </div>
+                    <!-- 隐藏的文本输入框，用于代码兼容性 -->
+                    <textarea id="interviewResumeContent" style="display:none;"></textarea>
                 </div>
 
                 <!-- 面试录音上传 -->
@@ -1865,78 +1852,233 @@
             }
         }
 
-        // AI面试评价分析 - 流式响应版本
+        // 将文件转换为Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    // 移除 data:application/...;base64, 前缀
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 分块上传文件
+        async function uploadFileInChunks(file, fileType, progressCallback) {
+            const chunkSize = 500 * 1024; // 每块500KB
+            const totalChunks = Math.ceil(file.size / chunkSize);
+            const uploadId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            
+            console.log(`[分块上传] ${file.name}: ${totalChunks} 块, 每块 ${chunkSize/1024}KB`);
+            
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, file.size);
+                const chunk = file.slice(start, end);
+                
+                // 将块转换为Base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(chunk);
+                });
+                
+                // 上传块
+                const chunkData = {
+                    upload_id: uploadId,
+                    file_name: file.name,
+                    file_type: fileType,
+                    chunk_index: i,
+                    total_chunks: totalChunks,
+                    chunk_data: base64
+                };
+                
+                console.log(`[分块上传] 发送请求: upload_id=${uploadId}, chunk=${i+1}/${totalChunks}`);
+                const response = await fetch(`${API_BASE}/api/v1/eval/upload-chunk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(chunkData)
+                });
+                console.log(`[分块上传] 收到响应: status=${response.status}`);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(`分块上传失败: ${error.detail || error.message}`);
+                }
+                
+                const result = await response.json();
+                console.log(`[分块上传] 块 ${i+1}/${totalChunks} 上传结果:`, result);
+                
+                // 更新进度
+                if (progressCallback) {
+                    progressCallback((i + 1) / totalChunks * 100);
+                }
+                
+                // 如果是最后一块，返回文件路径
+                if (i === totalChunks - 1) {
+                    console.log(`[分块上传] 最后一块上传完成，file_path:`, result.file_path);
+                    return result.file_path;
+                }
+            }
+        }
+
+        // AI面试评价分析 - 使用分块上传
         async function analyzeInterview() {
+            // 打印整个 files 对象进行调试
+            console.log('[DEBUG] files对象:', {
+                interviewJd: files['interviewJd'] ? { name: files['interviewJd'].name, size: files['interviewJd'].size } : null,
+                interviewResume: files['interviewResume'] ? { name: files['interviewResume'].name, size: files['interviewResume'].size } : null,
+                interviewAudio: files['interviewAudio'] ? { name: files['interviewAudio'].name, size: files['interviewAudio'].size } : null,
+                interviewQuestions: files['interviewQuestions'] ? { name: files['interviewQuestions'].name, size: files['interviewQuestions'].size } : null
+            });
+            console.log('[DEBUG] files.interviewResume:', files['interviewResume']);
+            
+            // 从 files 对象获取上传的文件
+            const jdFile = files['interviewJd'];
+            const resumeFile = files['interviewResume'];
+            const audioFile = files['interviewAudio'];
+            const questionsFile = files['interviewQuestions'];
+            
+            console.log('[DEBUG] 获取到的文件变量:');
+            console.log('  jdFile:', jdFile ? { name: jdFile.name, size: jdFile.size } : null);
+            console.log('  resumeFile:', resumeFile ? { name: resumeFile.name, size: resumeFile.size } : null);
+            console.log('  audioFile:', audioFile ? { name: audioFile.name, size: audioFile.size } : null);
+            console.log('  questionsFile:', questionsFile ? { name: questionsFile.name, size: questionsFile.size } : null);
+            
+            // 获取文本内容
             const jdText = document.getElementById('interviewJdContent').value.trim();
-            const jdFile = files.interviewJd;
             const resumeText = document.getElementById('interviewResumeContent').value.trim();
-            const resumeFile = files.interviewResume;
-            const audioFile = files.interviewAudio;
-            const questionsFile = files.interviewQuestions;
             const candidateNameInput = document.getElementById('interviewCandidateName').value.trim();
 
-            // 验证必填项
-            if (!jdText && !jdFile) {
-                alert('请输入JD内容或上传JD文件');
+            // 验证必填项：JD内容（文件或文本）
+            if (!jdFile && !jdText) {
+                alert('请上传JD文件或输入JD内容');
                 return;
             }
 
-            if (!resumeText && !resumeFile) {
-                alert('请输入简历内容或上传简历文件');
+            // 验证必填项：简历内容（文件或文本）
+            if (!resumeFile && !resumeText) {
+                alert('请上传简历文件或输入简历内容');
                 return;
             }
 
-            // 录音文件或候选人姓名至少填一个
-            if (!audioFile && !candidateNameInput) {
-                alert('请上传面试录音文件或输入候选人姓名使用预存数据');
+            // 验证：必须有候选人姓名或上传录音文件
+            if (!candidateNameInput && !audioFile) {
+                alert('请输入候选人姓名或上传面试录音文件');
                 return;
             }
 
             showLoading(true, '正在初始化AI面试评价...');
             showLoadingProgress(true);
-            updateLoadingProgress(5, '准备数据...');
+            updateLoadingProgress(10, '准备数据...');
 
             try {
-                const formData = new FormData();
-
-                // JD内容
+                // 使用分块上传方式上传文件
+                let jdFilePath = null;
+                let resumeFilePath = null;
+                let audioFilePath = null;
+                let questionsFilePath = null;
+                
+                // 上传JD文件
                 if (jdFile) {
-                    formData.append('jd_file', jdFile);
-                } else {
-                    formData.append('jd_content', jdText);
+                    updateLoadingProgress(15, '正在上传JD文件...');
+                    jdFilePath = await uploadFileInChunks(jdFile, 'jd', (progress) => {
+                        updateLoadingProgress(15 + progress * 0.1, `正在上传JD文件... ${progress.toFixed(0)}%`);
+                    });
+                    console.log('[DEBUG] JD文件上传完成:', jdFilePath);
                 }
-
-                // 简历内容
+                
+                // 上传简历文件
+                console.log('[DEBUG] 检查简历文件:', resumeFile);
+                console.log('[DEBUG] resumeFile类型:', typeof resumeFile);
+                console.log('[DEBUG] resumeFile是否为真:', !!resumeFile);
                 if (resumeFile) {
-                    formData.append('resume_file', resumeFile);
+                    console.log('[DEBUG] 进入if块，准备上传简历');
+                    updateLoadingProgress(25, '正在上传简历文件...');
+                    console.log('[DEBUG] 开始上传简历文件:', resumeFile.name, resumeFile.size, '类型:', typeof resumeFile);
+                    try {
+                        console.log('[DEBUG] 调用uploadFileInChunks...');
+                        const result = await uploadFileInChunks(resumeFile, 'resume', (progress) => {
+                            updateLoadingProgress(25 + progress * 0.1, `正在上传简历文件... ${progress.toFixed(0)}%`);
+                        });
+                        console.log('[DEBUG] uploadFileInChunks返回:', result);
+                        resumeFilePath = result;
+                        console.log('[DEBUG] 简历文件上传完成，返回结果:', result, 'resumeFilePath:', resumeFilePath);
+                    } catch (e) {
+                        console.error('[DEBUG] 简历文件上传失败:', e);
+                        throw e;
+                    }
                 } else {
-                    formData.append('resume_content', resumeText);
+                    console.log('[DEBUG] 没有简历文件需要上传，resumeFile:', resumeFile);
                 }
-
-                // 录音文件（可选，如有预存ASR可不传）
-                if (audioFile) {
-                    formData.append('audio_file', audioFile);
+                
+                // 上传音频文件（如果提供了候选人姓名，优先使用预存ASR数据，不上传录音）
+                if (audioFile && !candidateNameInput) {
+                    updateLoadingProgress(35, '正在上传录音文件...');
+                    audioFilePath = await uploadFileInChunks(audioFile, 'audio', (progress) => {
+                        updateLoadingProgress(35 + progress * 0.15, `正在上传录音文件... ${progress.toFixed(0)}%`);
+                    });
+                    console.log('[DEBUG] 录音文件上传完成:', audioFilePath);
+                } else if (candidateNameInput) {
+                    console.log('[DEBUG] 提供了候选人姓名，优先使用预存ASR数据，跳过录音上传');
                 }
-
-                // 面试问题文件（可选）
+                
+                // 上传问题文件
                 if (questionsFile) {
-                    formData.append('questions_file', questionsFile);
+                    updateLoadingProgress(50, '正在上传问题文件...');
+                    questionsFilePath = await uploadFileInChunks(questionsFile, 'questions', (progress) => {
+                        updateLoadingProgress(50 + progress * 0.05, `正在上传问题文件... ${progress.toFixed(0)}%`);
+                    });
+                    console.log('[DEBUG] 问题文件上传完成:', questionsFilePath);
                 }
+                
+                updateLoadingProgress(55, '正在发送评价请求...');
+                
+                // 构建请求体（使用文件路径）
+                const requestBody = {
+                    jd_content: jdText,
+                    jd_file_path: jdFilePath,
+                    resume_content: resumeText,
+                    resume_file_path: resumeFilePath,
+                    audio_file_path: audioFilePath,
+                    questions_file_path: questionsFilePath,
+                    candidate_name: candidateNameInput,
+                    jd_title: (jdText || '').match(/(\S+)(岗位|职位)/)?.[1] || '',
+                    temperature: 0.3
+                };
+                
+                console.log('[DEBUG] 请求体:', requestBody);
+                const requestBodyJson = JSON.stringify(requestBody);
+                console.log('[DEBUG] 请求体JSON:', requestBodyJson);
 
-                // 添加候选人姓名（优先使用输入的，其次从简历提取）
-                const candidateName = candidateNameInput || resumeText.match(/姓名[：:]\s*(\S+)/)?.[1] || '';
-                const jdTitle = jdText.match(/(\S+)(岗位|职位)/)?.[1] || '';
-                if (candidateName) formData.append('candidate_name', candidateName);
-                if (jdTitle) formData.append('jd_title', jdTitle);
-
-                // 使用流式API
-                const response = await fetch(`${API_BASE}/api/v1/interview-evaluation/evaluate-stream`, {
+                // 使用文件路径的流式API
+                const apiUrl = `${API_BASE}/api/v1/eval/evaluate-stream-by-path?v=${Date.now()}`;
+                console.log('[DEBUG] 请求URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: requestBodyJson
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // 尝试读取错误详情
+                    let errorMessage = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        if (errorData.detail) {
+                            errorMessage = errorData.detail;
+                        }
+                    } catch (e) {
+                        // 如果无法解析JSON，使用默认错误信息
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const reader = response.body.getReader();
@@ -2077,7 +2219,7 @@
                 // 面试总结
                 () => {
                     const interviewSummary = document.getElementById('interviewSummary');
-                    if (interviewSummary) interviewSummary.textContent = data.summary;
+                    if (interviewSummary) interviewSummary.textContent = data.overall_evaluation || data.summary || '暂无面试总结';
                 },
                 
                 // 候选人标签
@@ -2094,17 +2236,17 @@
                 // 候选人优势
                 () => {
                     const interviewStrengths = document.getElementById('interviewStrengths');
-                    if (interviewStrengths) {
+                    if (interviewStrengths && data.strengths) {
                         interviewStrengths.innerHTML = data.strengths.map(s =>
                             `<span class="tag tag-success">${s}</span>`
                         ).join('');
                     }
                 },
-                
+
                 // 建议
                 () => {
                     const interviewRecommendations = document.getElementById('interviewRecommendations');
-                    if (interviewRecommendations) {
+                    if (interviewRecommendations && data.recommendations) {
                         interviewRecommendations.innerHTML = data.recommendations.map(r =>
                             `<span class="tag tag-info">${r}</span>`
                         ).join('');
@@ -2162,16 +2304,21 @@
             const fixedOrder = ['专业能力', '工作经验', '沟通表达', '逻辑思维', '学习能力', '综合素质'];
             
             // 按照固定顺序排序维度
+            console.log('[DEBUG] renderDimensionScores 输入维度:', dimensions);
+            console.log('[DEBUG] fixedOrder:', fixedOrder);
             const sortedDimensions = fixedOrder.map(name => {
-                return dimensions.find(d => d.name === name) || { name, score: 0, reason: '暂无数据' };
+                const found = dimensions.find(d => d.name === name);
+                console.log(`[DEBUG] 查找维度 "${name}":`, found ? '找到' : '未找到', found);
+                return found || { name, score: 0, evaluation: '暂无数据' };
             });
-            
+
             let html = '';
             for (let i = 0; i < sortedDimensions.length; i++) {
                 const d = sortedDimensions[i];
                 const score = d.score || 0;
                 const name = d.name || '';
-                const reason = d.reason || d.analysis || '';
+                const reason = d.reason || d.analysis || d.evaluation || '暂无数据';
+                console.log(`[DEBUG] 渲染维度 "${name}": score=${score}, reason=${reason}`);
                 
                 // 根据分数设置颜色
                 let color = '#4caf50';
@@ -2614,7 +2761,7 @@
                             <span style="background: #ff6b6b; color: white; padding: 4px 12px; border-radius: 12px; font-size: 14px;">${d.score}分</span>
                         </div>
                         <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                            <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                            <strong>评分理由：</strong>${d.reason || d.analysis || d.evaluation || '无'}
                         </div>
                     </div>
                 `;
@@ -2637,7 +2784,7 @@
                 const d = dimensions[i];
                 const gapColor = d.gap >= 0 ? '#4caf50' : '#ff9800';
                 const gapText = d.gap >= 0 ? '+' + d.gap : '' + d.gap;
-                
+
                 html += `
                     <div class="dimension-item" style="margin-bottom: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -2650,7 +2797,7 @@
                             </div>
                         </div>
                         <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                            <strong>评分理由：</strong>${d.reason || d.analysis || '无'}
+                            <strong>评分理由：</strong>${d.reason || d.analysis || d.evaluation || '无'}
                         </div>
                     </div>
                 `;
@@ -2792,7 +2939,7 @@
 
             // 直接重新初始化图表，避免dispose方法错误
             try {
-                if (window.interviewJdRadarChart) {
+                if (window.interviewJdRadarChart && typeof window.interviewJdRadarChart.dispose === 'function') {
                     window.interviewJdRadarChart.dispose();
                 }
             } catch (e) {
@@ -2882,7 +3029,7 @@
 
             // 直接重新初始化图表，避免dispose方法错误
             try {
-                if (window.interviewCandidateRadarChart) {
+                if (window.interviewCandidateRadarChart && typeof window.interviewCandidateRadarChart.dispose === 'function') {
                     window.interviewCandidateRadarChart.dispose();
                 }
             } catch (e) {

@@ -275,10 +275,10 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         return _calculate_professional_ability_probation(emp_info, prof_ability, job_desc)
     elif is_contract_expiring:
         # 合同到期员工逻辑
-        return _calculate_professional_ability_contract_expiring(emp_info, prof_ability, job_desc)
+        return _calculate_professional_ability_contract_expiring(emp_info, prof_ability, job_desc, db, emp_code)
     else:
         # 普通正式员工逻辑
-        return _calculate_professional_ability_regular(emp_info, prof_ability, job_desc)
+        return _calculate_professional_ability_regular(emp_info, prof_ability, job_desc, db, emp_code)
 
 
 def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
@@ -392,7 +392,7 @@ def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_
     return score, job_requirement, employee_reason, job_reason
 
 
-def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_ability, job_desc: dict, db, emp_code) -> tuple:
     """
     合同到期员工（即将合同到期）专业能力计算
     规则（第一个图片）：
@@ -454,10 +454,10 @@ def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_abili
                       year_performance.get('2024') == 'competent' and 
                       year_performance.get('2025') == 'competent'):
                     consecutive_competent = True
-                
+
                 if consecutive_competent:
-                    performance_bonus -= 5
-                    performance_reason += "连续3年称职-5分；"
+                    # performance_bonus -= 5
+                    performance_reason += "连续3年称职不加分；"
         
         if performance_bonus != 0:
             score += performance_bonus
@@ -529,7 +529,7 @@ def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_abili
     return score, job_requirement, employee_reason, job_reason
 
 
-def _calculate_professional_ability_regular(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+def _calculate_professional_ability_regular(emp_info: dict, prof_ability, job_desc: dict, db, emp_code) -> tuple:
     """
     普通正式员工专业能力计算（原有逻辑）
     """
@@ -558,23 +558,57 @@ def _calculate_professional_ability_regular(emp_info: dict, prof_ability, job_de
             if isinstance(perf_history, list):
                 excellent_count = 0
                 basic_count = 0
+                competent_count = 0
                 # 只统计2023、2024、2025年的绩效
                 valid_years = ['2023', '2024', '2022']
+                year_performance = {}  # 存储每年的绩效等级
+                
                 for perf in perf_history:
                     year = str(perf.get('year', ''))
                     if year in valid_years:
                         level = str(perf.get('level', '')).lower()
                         if '优秀' in level or 'a' in level or 'p1' in level:
                             excellent_count += 1
+                            year_performance[year] = 'excellent'
                         elif '基本称职' in level or 'c' in level:
                             basic_count += 1
+                            year_performance[year] = 'basic'
+                        elif '称职' in level or 'b' in level or 'p2' in level:
+                            competent_count += 1
+                            year_performance[year] = 'competent'
                 
+                # 计算优秀和基本称职的加减分
                 if excellent_count > 0:
                     performance_bonus = 15 * excellent_count
-                    performance_reason = f"2022-2024年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
-                elif basic_count > 0:
-                    performance_bonus = -10 * basic_count
-                    performance_reason = f"2022-2024年{basic_count}次年度绩效基本称职，{performance_bonus}分"
+                    performance_reason = f"2022-2025年{excellent_count}次年度绩效优秀，+{performance_bonus}分"
+                
+                if basic_count > 0:
+                    performance_bonus += -10 * basic_count
+                    if performance_reason:
+                        performance_reason += f"；{basic_count}次年度绩效基本称职，{-10 * basic_count}分"
+                    else:
+                        performance_reason = f"2022-2025年{basic_count}次年度绩效基本称职，{-10 * basic_count}分"
+                
+                # 【新增】判断是否有连续3年称职（需要检查2022、2023、2024或2023、2024、2025）
+                # 注意：这个扣分独立于优秀/基本称职的计算，只要连续3年称职就扣分
+                consecutive_competent = False
+                # 检查 2022-2023-2024
+                if (year_performance.get('2022') == 'competent' and 
+                    year_performance.get('2023') == 'competent' and 
+                    year_performance.get('2024') == 'competent'):
+                    consecutive_competent = True
+                # 检查 2023-2024-2025
+                elif (year_performance.get('2023') == 'competent' and 
+                      year_performance.get('2024') == 'competent' and 
+                      year_performance.get('2025') == 'competent'):
+                    consecutive_competent = True
+                
+                if consecutive_competent:
+                    performance_bonus -= 5
+                    if performance_reason:
+                        performance_reason += "；连续3年称职-5分"
+                    else:
+                        performance_reason = "连续3年称职-5分"
         
         if performance_bonus != 0:
             score += performance_bonus
@@ -1644,10 +1678,13 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
     elif "专科" in education or "大专" in education:
         base_score = 55  # 60 - 5 = 55
         reasons.append(f"专科学历，基础分60分-5分=55分")
-    # 专科以下（扣分）
     else:
-        base_score = 50  # 60 - 10 = 50
-        reasons.append(f"专科以下学历，基础分60分-10分=50分")
+        base_score = 55  # 60 - 5 = 55
+        reasons.append(f"专科学历，基础分60分-5分=55分")
+    # 专科以下（扣分）
+    # else:
+    #     base_score = 50  # 60 - 10 = 50
+    #     reasons.append(f"专科以下学历，基础分60分-10分=50分")
     
     # 专业对口加分（+5分）
     major_bonus = 0
@@ -1889,20 +1926,20 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
     # 判断是否为专科学历，决定权重分配
     is_specialist = "专科" in education or "大专" in education
     
-    if is_specialist:
-        # 专科学历：基础学历:学位提升:综合评价 = 7:1:2
-        final_score = (basic_learning_score * 0.7) + (degree_upgrade_score * 0.1) + (comprehensive_score * 0.2)
-        weight_reason = f"专科学历按7:1:2权重计算：基础学历{basic_learning_score:.0f}分×70%={basic_learning_score * 0.7:.1f}分"
-        if degree_upgrade_score > 0:
-            weight_reason += f"，学位提升{degree_upgrade_score:.0f}分×10%={degree_upgrade_score * 0.1:.1f}分"
-        else:
-            weight_reason += "，学位提升0分×10%=0分"
-        weight_reason += f"，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
-    else:
+    # if is_specialist:
+    #     # 专科学历：基础学历:学位提升:综合评价 = 7:1:2
+    #     final_score = (basic_learning_score * 0.7) + (degree_upgrade_score * 0.1) + (comprehensive_score * 0.2)
+    #     weight_reason = f"专科学历按7:1:2权重计算：基础学历{basic_learning_score:.0f}分×70%={basic_learning_score * 0.7:.1f}分"
+    #     if degree_upgrade_score > 0:
+    #         weight_reason += f"，学位提升{degree_upgrade_score:.0f}分×10%={degree_upgrade_score * 0.1:.1f}分"
+    #     else:
+    #         weight_reason += "，学位提升0分×10%=0分"
+    #     weight_reason += f"，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
+    # else:
         # 非专科学历：基础学历:综合评价 = 8:2（不含学位提升）
-        final_score = (basic_learning_score * 0.8) + (comprehensive_score * 0.2)
-        weight_reason = f"非专科学历按8:2权重计算：基础学历{basic_learning_score:.0f}分×80%={basic_learning_score * 0.8:.1f}分，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
-    
+    final_score = (basic_learning_score * 0.8) + (comprehensive_score * 0.2)
+    weight_reason = f"非专科学历按8:2权重计算：基础学历{basic_learning_score:.0f}分×80%={basic_learning_score * 0.8:.1f}分，综合评价{comprehensive_score:.0f}分×20%={comprehensive_score * 0.2:.1f}分"
+
     employee_reason = "；".join(reasons) + f"；{weight_reason}，最终得分{final_score:.1f}分"
     
     # ========== 岗位侧要求 ==========

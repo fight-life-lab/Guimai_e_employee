@@ -70,6 +70,27 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# 设置请求体大小限制（100MB，用于支持Base64编码的大文件上传）
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class LimitUploadSize(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "POST":
+            content_length = request.headers.get("content-length")
+            if content_length:
+                content_length = int(content_length)
+                max_size = 100 * 1024 * 1024  # 100MB
+                if content_length > max_size:
+                    from fastapi.responses import JSONResponse
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "请求体过大，最大支持100MB"}
+                    )
+        return await call_next(request)
+
+app.add_middleware(LimitUploadSize)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
