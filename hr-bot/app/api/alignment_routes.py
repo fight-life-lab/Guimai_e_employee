@@ -883,7 +883,8 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
             required_experience_type = f"{position_name}相关"
     
     # 岗位侧固定80分，写明具体要求
-    job_requirement = min(80.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    # job_requirement = min(80.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    job_requirement = 80.0   # 除以0.9进行调整，最高100分
     job_reason = f"要求{required_years}年{required_experience_type}工作经验，标准分{job_requirement:.1f}分"
     
     # ========== 2. 计算员工工作履历得分（占比80%）==========
@@ -2199,22 +2200,39 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
         match_rate = (overall_score / job_requirement_score) * 100
     
     # 生成结论
-    if overall_score >= 90:
+    # if overall_score >= 90:
+    #     conclusion = f"该员工与岗位高度匹配，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
+    #     evaluation = "优秀"
+    # elif overall_score >= 80:
+    #     conclusion = f"该员工与岗位匹配度良好，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{highest.name}是优势项，但{lowest.name}需要提升。"
+    #     evaluation = "良好"
+    # elif overall_score >= 60:
+    #     if biggest_gap and biggest_gap.job_requirement - biggest_gap.score > 15:
+    #         conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{biggest_gap.name}方面存在明显差距（要求{biggest_gap.job_requirement:.0f}分，实际{biggest_gap.score:.0f}分），需要针对性培训。"
+    #     else:
+    #         conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。整体表现平稳，建议持续提升。"
+    #     evaluation = "合格"
+    # else:
+    #     conclusion = f"该员工与岗位匹配度较低，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。多项能力指标未达到岗位要求，建议调整岗位或加强培训。"
+    #     evaluation = "待提升"
+    # 生成结论
+    if match_rate >= 90:
         conclusion = f"该员工与岗位高度匹配，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
         evaluation = "优秀"
-    elif overall_score >= 80:
-        conclusion = f"该员工与岗位匹配度良好，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{highest.name}是优势项，但{lowest.name}需要提升。"
-        evaluation = "良好"
-    elif overall_score >= 60:
-        if biggest_gap and biggest_gap.job_requirement - biggest_gap.score > 15:
-            conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{biggest_gap.name}方面存在明显差距（要求{biggest_gap.job_requirement:.0f}分，实际{biggest_gap.score:.0f}分），需要针对性培训。"
-        else:
-            conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。整体表现平稳，建议持续提升。"
+    elif match_rate >= 60:
+        conclusion = f"该员工与岗位要求存在一定差距，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{highest.name}是优势项，但{lowest.name}需要提升。建议员工不续签"
         evaluation = "合格"
+    # elif match_rate >= 60:
+    #     if biggest_gap and biggest_gap.job_requirement - biggest_gap.score > 15:
+    #         conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{biggest_gap.name}方面存在明显差距（要求{biggest_gap.job_requirement:.0f}分，实际{biggest_gap.score:.0f}分），需要针对性培训。"
+    #     else:
+    #         conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。整体表现平稳，建议持续提升。"
+    #     evaluation = "合格"
     else:
         conclusion = f"该员工与岗位匹配度较低，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。多项能力指标未达到岗位要求，建议调整岗位或加强培训。"
         evaluation = "待提升"
-    
+
+
     # 生成建议
     recommendations = []
     
