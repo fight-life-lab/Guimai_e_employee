@@ -62,6 +62,11 @@ class DimensionScore(BaseModel):
     description: str
     employee_reason: str  # 员工该维度得分的详细理由
     job_reason: str  # 岗位该维度要求的详细理由
+    
+    class Config:
+        json_encoders = {
+            float: lambda v: round(v, 1)
+        }
 
 
 class AlignmentAnalyzeResponse(BaseModel):
@@ -386,8 +391,8 @@ def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_
         employee_reason = "；".join(reasons) + f"，最终得分{score}分"
     
     # 岗位侧要求
-    job_requirement = 75
-    job_reason = "要求：具备岗位所需专业技能，标准分75分"
+    job_requirement = min(75 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    job_reason = f"要求：具备岗位所需专业技能，标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -523,8 +528,8 @@ def _calculate_professional_ability_contract_expiring(emp_info: dict, prof_abili
     employee_reason = "；".join(reasons) + f"，最终得分{score}分"
     
     # 岗位侧要求
-    job_requirement = 75
-    job_reason = "要求：具备岗位所需专业技能，标准分75分"
+    job_requirement = min(75 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    job_reason = f"要求：具备岗位所需专业技能，标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -697,26 +702,26 @@ def _calculate_professional_ability_regular(emp_info: dict, prof_ability, job_de
     # 基于岗位说明书确定岗位要求
     qual_skills = job_desc.get('qualifications_skills') if job_desc else None
     
-    job_requirement = 75
+    job_requirement = 75 / 0.9  # 除以0.9进行调整
     job_reason_parts = []
     
     # 分析专业技能要求
     if qual_skills:
         skills_str = str(qual_skills)
         if any(kw in skills_str for kw in ['精通', '高级', '资深']):
-            job_requirement = 85
+            job_requirement = 85 / 0.9  # 除以0.9进行调整
             job_reason_parts.append("需精通专业技能")
         elif any(kw in skills_str for kw in ['熟练', '掌握']):
-            job_requirement = 75
+            job_requirement = 75 / 0.9  # 除以0.9进行调整
             job_reason_parts.append("需熟练掌握技能")
         else:
-            job_requirement = 70
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
             job_reason_parts.append("需具备基础技能")
     else:
         job_reason_parts.append("需具备岗位技能")
     
     # 精简岗位理由
-    job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
+    job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -878,8 +883,8 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
             required_experience_type = f"{position_name}相关"
     
     # 岗位侧固定80分，写明具体要求
-    job_requirement = 80.0
-    job_reason = f"要求{required_years}年{required_experience_type}工作经验，标准分80分"
+    job_requirement = min(80.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    job_reason = f"要求{required_years}年{required_experience_type}工作经验，标准分{job_requirement:.1f}分"
     
     # ========== 2. 计算员工工作履历得分（占比80%）==========
     # 从岗位描述中提取相关关键词
@@ -1134,8 +1139,8 @@ def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> t
         employee_reason = "暂无战略匹配评分数据，按默认分95分计算"
     
     # 岗位战略匹配要求（默认95分）
-    job_requirement = 95.0
-    job_reason = "岗位要求员工工作内容与公司战略及部门年度重点工作直接相关（紧密关联≥90分，一般关联80-90分，较差关联<80分），默认标准分95分"
+    job_requirement = min(95.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+    job_reason = f"岗位要求员工工作内容与公司战略及部门年度重点工作直接相关（紧密关联≥90分，一般关联80-90分，较差关联<80分），标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -1226,8 +1231,8 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
                 employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣5分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（试用期）
-            job_requirement = 100.0
-            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，每低出0.5个百分点扣5分，基础分100分"
+            job_requirement = min(100.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，每低出0.5个百分点扣5分，标准分{job_requirement:.1f}分"
         else:
             # 【非试用期员工计分规则】
             # 基础分70分
@@ -1254,20 +1259,20 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
                 employee_reason = f"正式员工，绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（非试用期）
-            job_requirement = 70.0
-            job_reason = "正式员工岗位要求：绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），基础分70分，每高出0.5个百分点加3分，每低出0.5个百分点扣3分"
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"正式员工岗位要求：绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），标准分{job_requirement:.1f}分，每高出0.5个百分点加3分，每低出0.5个百分点扣3分"
     else:
         # 如果没有找到记录，根据员工类型使用默认分数
         if is_probation:
             score = 100.0
             employee_reason = f"试用期员工（入职{months_since_entry}个月），暂无价值贡献数据，按基础分100分计算"
-            job_requirement = 100.0
-            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，基础分100分"
+            job_requirement = min(100.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，标准分{job_requirement:.1f}分"
         else:
             score = 70.0
             employee_reason = "正式员工，暂无价值贡献数据，按基础分70分计算"
-            job_requirement = 70.0
-            job_reason = "正式员工岗位要求：绩效酬金偏离度达到100%，基础分70分"
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"正式员工岗位要求：绩效酬金偏离度达到100%，标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -1346,9 +1351,9 @@ async def calculate_innovation_score_from_interview(
     
     # 默认分数和理由
     default_score = 70.0
-    default_job_requirement = 70.0
+    default_job_requirement = min(70.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
     default_reason = "暂无录音和提问数据，按默认分70分计算"
-    default_job_reason = "岗位要求员工具备一定的创新思维和能力，能够提出改进建议，标准分70分"
+    default_job_reason = f"岗位要求员工具备一定的创新思维和能力，能够提出改进建议，标准分{default_job_requirement:.1f}分"
     
     # 获取岗位信息
     position_name = job_desc.get('position_name', emp_info.get('position', '未知岗位')) if job_desc else emp_info.get('position', '未知岗位')
@@ -1594,17 +1599,18 @@ async def _calculate_job_innovation_requirement(
                         else:
                             requirement_score = default_requirement
                             reason = '基于岗位分析'
-                        
-                        requirement_score = max(50, min(100, requirement_score))
+                    
+                        # 除以0.9进行调整，最高100分
+                        requirement_score = min(requirement_score / 0.9, 100)
                         # 确保理由精简
                         if len(reason) > 60:
                             reason = reason[:57] + "..."
-                        
+
                         job_reason = f"{reason}，标准分{requirement_score:.1f}分"
                         return requirement_score, job_reason
                     except Exception as e:
-                        logger.error(f"解析岗位创新能力要求结果失败: {e}")
-                        return default_requirement, default_reason
+                            logger.error(f"解析岗位创新能力要求结果失败: {e}")
+                            return default_requirement, default_reason
                 else:
                     logger.error(f"调用大模型分析岗位要求失败，状态码: {response.status}")
                     return default_requirement, default_reason
@@ -1951,19 +1957,19 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
     if qual_edu:
         edu_str = str(qual_edu)
         if '博士' in edu_str:
-            job_requirement = 80
+            job_requirement = min(80 / 0.9, 100)  # 除以0.9进行调整，最高100分
             job_reason_parts.append("博士学历")
         elif '研究生' in edu_str:
-            job_requirement = 70
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
             job_reason_parts.append("硕士及以上学历")
         elif '本科' in edu_str:
-            job_requirement = 60
+            job_requirement = min(60 / 0.9, 100)  # 除以0.9进行调整，最高100分
             job_reason_parts.append("本科及以上学历")
         else:
-            job_requirement = 55
+            job_requirement = min(55 / 0.9, 100)  # 除以0.9进行调整，最高100分
             job_reason_parts.append("大专及以上")
     else:
-        job_requirement = 60
+        job_requirement = 60 / 0.9  # 除以0.9进行调整
         job_reason_parts.append("本科及以上学历")
     
     if qual_major:
@@ -1977,7 +1983,7 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
         except:
             pass
     
-    job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement}分"
+    job_reason = f"要求：{ '，'.join(job_reason_parts) }，标准分{job_requirement:.1f}分"
     
     return final_score, job_requirement, employee_reason, job_reason
 
@@ -2034,13 +2040,13 @@ def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = 
         if is_probation:
             score = 70
             employee_reason = f"试用期员工（入职{months_since_entry}个月），基础分70分，暂无考勤数据"
-            job_requirement = 70
-            job_reason = f"试用期员工（入职{months_since_entry}个月）要求：遵守考勤纪律，积极主动，标准分70分"
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"试用期员工（入职{months_since_entry}个月）要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
         else:
             score = 70
             employee_reason = "正式员工，基础分70分，暂无考勤数据"
-            job_requirement = 70
-            job_reason = "正式员工要求：遵守考勤纪律，积极主动，标准分70分"
+            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
+            job_reason = f"正式员工要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
         return score, job_requirement, employee_reason, job_reason
     
     if is_probation:
@@ -2124,8 +2130,8 @@ def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = 
         employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
         
         # 试用期员工岗位要求
-        job_requirement = 70
-        job_reason = f"试用期员工（入职{months_since_entry}个月）要求：基础分70分，迟到/早退豁免3次/月，旷工每次扣10分（超过3次直接0分），加班或晚打卡可加分，中共党员+5分，党工团兼职最高+10分"
+        job_requirement = 70 / 0.9  # 除以0.9进行调整
+        job_reason = f"试用期员工（入职{months_since_entry}个月）要求：标准分{job_requirement:.1f}分，迟到/早退豁免3次/月，旷工每次扣10分（超过3次直接0分），加班或晚打卡可加分，中共党员+5分，党工团兼职最高+10分"
     else:
         # 【非试用期员工计分规则】
         score = 70  # 基础分70分
@@ -2169,8 +2175,8 @@ def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = 
         employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
         
         # 非试用期员工岗位要求
-        job_requirement = 70
-        job_reason = "正式员工要求：遵守考勤纪律，积极主动，标准分70分"
+        job_requirement = 70 / 0.9  # 除以0.9进行调整
+        job_reason = f"正式员工要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -2547,8 +2553,9 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 5. 计算综合得分（加权平均）
-        overall_score = sum(float(d.score) * d.weight / 100 for d in dimensions)
-        job_requirement_score = sum(float(d.job_requirement) * d.weight / 100 for d in dimensions)
+        overall_score = round(sum(float(d.score) * d.weight / 100 for d in dimensions), 1)
+        # 岗位得分：每个维度的job_requirement先除以0.9，再加权汇总
+        job_requirement_score = round(sum(float(d.job_requirement) * d.weight / 100 for d in dimensions), 1)
         
         # 6. 生成结论和建议
         conclusion, evaluation, recommendations = generate_conclusion(dimensions, overall_score, job_requirement_score, emp_info, job_desc)

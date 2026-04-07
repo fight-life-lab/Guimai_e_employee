@@ -688,21 +688,21 @@ class DetailedAlignmentAnalyzer:
             # 返回默认模型，并标记数据缺失
             logger.warning(f"[岗位能力模型] 未找到岗位 '{position}' 的能力模型数据")
             return {
-                "position_name": position,
-                "department": department,
-                "radar_data": [80, 80, 80, 80, 80, 80],
-                "dimensions": {
-                    "professional": {"standard": 80, "weight": 1.0},
-                    "adaptability": {"standard": 80, "weight": 1.0},
-                    "innovation": {"standard": 80, "weight": 1.0},
-                    "learning": {"standard": 80, "weight": 1.0},
-                    "attendance": {"standard": 80, "weight": 1.0},
-                    "political": {"standard": 80, "weight": 0.8},
-                },
-                "description": f"⚠️ 数据缺失：系统中未找到 '{position}' 岗位的详细能力模型数据。当前使用默认标准值（80分）进行计算。建议补充该岗位的能力模型数据，包括各维度的标准要求和权重配置。",
-                "data_missing": True,
-                "missing_info": f"缺少 '{position}' 岗位的能力模型数据"
-            }
+                    "position_name": position,
+                    "department": department,
+                    "radar_data": [min(80/0.9, 100), min(80/0.9, 100), min(80/0.9, 100), min(80/0.9, 100), min(80/0.9, 100), min(80/0.9, 100)],
+                    "dimensions": {
+                        "professional": {"standard": min(80/0.9, 100), "weight": 1.0},
+                        "adaptability": {"standard": min(80/0.9, 100), "weight": 1.0},
+                        "innovation": {"standard": min(80/0.9, 100), "weight": 1.0},
+                        "learning": {"standard": min(80/0.9, 100), "weight": 1.0},
+                        "attendance": {"standard": min(80/0.9, 100), "weight": 1.0},
+                        "political": {"standard": min(80/0.9, 100), "weight": 0.8},
+                    },
+                    "description": f"⚠️ 数据缺失：系统中未找到 '{position}' 岗位的详细能力模型数据。当前使用默认标准值（80分，已除以0.9调整）进行计算。建议补充该岗位的能力模型数据，包括各维度的标准要求和权重配置。",
+                    "data_missing": True,
+                    "missing_info": f"缺少 '{position}' 岗位的能力模型数据"
+                }
         
         # 解析分析过程（如果有）
         analysis_process = {}
@@ -732,20 +732,20 @@ class DetailedAlignmentAnalyzer:
                 "position_name": model.position_name,
                 "department": model.department,
                 "radar_data": [
-                    model.professional_standard,
-                    model.adaptability_standard,
-                    model.innovation_standard,
-                    model.learning_standard,
-                    model.attendance_standard,
-                    model.political_standard,
+                    min(model.professional_standard / 0.9, 100),
+                    min(model.adaptability_standard / 0.9, 100),
+                    min(model.innovation_standard / 0.9, 100),
+                    min(model.learning_standard / 0.9, 100),
+                    min(model.attendance_standard / 0.9, 100),
+                    min(model.political_standard / 0.9, 100),
                 ],
                 "dimensions": {
-                    "professional": {"standard": model.professional_standard, "weight": model.professional_weight},
-                    "adaptability": {"standard": model.adaptability_standard, "weight": model.adaptability_weight},
-                    "innovation": {"standard": model.innovation_standard, "weight": model.innovation_weight},
-                    "learning": {"standard": model.learning_standard, "weight": model.learning_weight},
-                    "attendance": {"standard": model.attendance_standard, "weight": model.attendance_weight},
-                    "political": {"standard": model.political_standard, "weight": model.political_weight},
+                    "professional": {"standard": min(model.professional_standard / 0.9, 100), "weight": model.professional_weight},
+                    "adaptability": {"standard": min(model.adaptability_standard / 0.9, 100), "weight": model.adaptability_weight},
+                    "innovation": {"standard": min(model.innovation_standard / 0.9, 100), "weight": model.innovation_weight},
+                    "learning": {"standard": min(model.learning_standard / 0.9, 100), "weight": model.learning_weight},
+                    "attendance": {"standard": min(model.attendance_standard / 0.9, 100), "weight": model.attendance_weight},
+                    "political": {"standard": min(model.political_standard / 0.9, 100), "weight": model.political_weight},
                 },
                 "description": model.description or "",
                 "requirements": model.requirements or "",
@@ -851,32 +851,32 @@ class DetailedAlignmentAnalyzer:
                 # 构建dimensions数据
                 dimensions = {
                     "professional": {
-                        "standard": ai_result.get("professional", {}).get("score", 80),
+                        "standard": min(ai_result.get("professional", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("professional", {}).get("reasoning", ""),
                         "weight": 1.0
                     },
                     "adaptability": {
-                        "standard": ai_result.get("adaptability", {}).get("score", 80),
+                        "standard": min(ai_result.get("adaptability", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("adaptability", {}).get("reasoning", ""),
                         "weight": 1.0
                     },
                     "innovation": {
-                        "standard": ai_result.get("innovation", {}).get("score", 80),
+                        "standard": min(ai_result.get("innovation", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("innovation", {}).get("reasoning", ""),
                         "weight": 1.0
                     },
                     "learning": {
-                        "standard": ai_result.get("learning", {}).get("score", 80),
+                        "standard": min(ai_result.get("learning", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("learning", {}).get("reasoning", ""),
                         "weight": 1.0
                     },
                     "attendance": {
-                        "standard": ai_result.get("attendance", {}).get("score", 80),
+                        "standard": min(ai_result.get("attendance", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("attendance", {}).get("reasoning", ""),
                         "weight": 1.0
                     },
                     "political": {
-                        "standard": ai_result.get("political", {}).get("score", 80),
+                        "standard": min(ai_result.get("political", {}).get("score", 80) / 0.9, 100),
                         "reasoning": ai_result.get("political", {}).get("reasoning", ""),
                         "weight": 0.8
                     },
@@ -910,12 +910,12 @@ class DetailedAlignmentAnalyzer:
                     "position_name": position_name,
                     "department": department,
                     "radar_data": [
-                        ai_result.get("professional", {}).get("score", 80),
-                        ai_result.get("adaptability", {}).get("score", 80),
-                        ai_result.get("innovation", {}).get("score", 80),
-                        ai_result.get("learning", {}).get("score", 80),
-                        ai_result.get("attendance", {}).get("score", 80),
-                        ai_result.get("political", {}).get("score", 80),
+                        min(ai_result.get("professional", {}).get("score", 80) / 0.9, 100),
+                        min(ai_result.get("adaptability", {}).get("score", 80) / 0.9, 100),
+                        min(ai_result.get("innovation", {}).get("score", 80) / 0.9, 100),
+                        min(ai_result.get("learning", {}).get("score", 80) / 0.9, 100),
+                        min(ai_result.get("attendance", {}).get("score", 80) / 0.9, 100),
+                        min(ai_result.get("political", {}).get("score", 80) / 0.9, 100),
                     ],
                     "dimensions": dimensions,
                     "description": description,

@@ -3364,7 +3364,7 @@
                                     <div style="font-size: 14px; color: #764ba2; font-weight: 600; margin-bottom: 10px; border-bottom: 2px solid #764ba2; padding-bottom: 8px;">AI评分理由</div>
                                     ${dimensions.map(dim => `
                                         <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #764ba2;">
-                                            <div style="font-weight: 600; color: #333; font-size: 12px; margin-bottom: 2px;">${dim.name}: ${dim.job_requirement}分</div>
+                                            <div style="font-weight: 600; color: #333; font-size: 12px; margin-bottom: 2px;">${dim.name}: ${dim.job_requirement.toFixed(1)}分</div>
                                             <div style="font-size: 11px; color: #666; line-height: 1.4;">${dim.job_reason || '暂无说明'}</div>
                                         </div>
                                     `).join('')}
@@ -3413,7 +3413,7 @@
                                     <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
                                         <td style="padding: 12px; border: 1px solid #ddd; font-weight: 600;">${item.dimension}</td>
                                         <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${item.weight}%</td>
-                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #764ba2; font-weight: 600;">${item.job_requirement}分</td>
+                                        <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #764ba2; font-weight: 600;">${item.job_requirement.toFixed(1)}分</td>
                                         <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: #667eea; font-weight: 600;">${item.employee_score}分</td>
                                         <td style="padding: 12px; border: 1px solid #ddd; text-align: center; color: ${item.gap < 0 ? '#f44336' : '#4caf50'}; font-weight: 600;">${item.gap > 0 ? '+' : ''}${item.gap}分</td>
                                         <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">
