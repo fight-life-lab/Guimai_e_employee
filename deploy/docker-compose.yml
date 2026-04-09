@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # ==================== 数据存储层 ====================
+  
+  # MySQL - 存储合同信息、员工花名册
+  mysql:
+    image: docker.m.daocloud.io/library/mysql:8.0
+    container_name: hr_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: hr_root_password
+      MYSQL_DATABASE: hr_employee_db
+      MYSQL_USER: hr_user
+      MYSQL_PASSWORD: hr_password
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hr_network
+
+  # ChromaDB - 向量数据库
+  chromadb:
+    image: docker.1panel.live/chromadb/chroma:latest
+    container_name: hr_chromadb
+    restart: unless-stopped
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    networks:
+      - hr_network
+
+  # ==================== AI/ML 服务层 ====================
+  
+  # vLLM - Qwen大模型服务 (需要GPU)
+  vllm:
+    image: docker.1panel.live/vllm/vllm-openai:latest
+    container_name: hr_vllm
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+      - HF_HOME=/root/.cache/huggingface
+      - VLLM_ALLOW_LONG_MAX_MODEL_LEN=1
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./models:/models
+      - hf_cache:/root/.cache/huggingface
+    command: >
+      --model /models/qwen/Qwen-14B-Chat
+      --dtype auto
+      --max-model-len 32768
+      --max-num-batched-tokens 16384
+      --gpu-memory-utilization 0.95
+      --served-model-name qwen-14b-chat
+      --swap-space 4
+      --max-num-seqs 64
+      --enforce-eager 
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - hr_network
+
+# ==================== 网络和卷 ====================
+
+volumes:
+  mysql_data:
+    driver: local
+  chroma_data:
+    driver: local
+  hf_cache:
+    driver: local
+
+networks:
+  hr_network:
+    driver: bridge
