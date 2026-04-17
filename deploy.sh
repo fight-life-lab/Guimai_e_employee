@@ -1,95 +1,85 @@
 #!/bin/bash
-
-# 人力数字员工智能体系统 - 部署脚本
-# 用于在远程服务器上部署和启动服务
+# 人力数字员工系统部署脚本
+# 目标服务器: 121.229.172.161
+# 工作目录: /root/shijingjing/e-employee
 
 set -e
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# 配置
-REMOTE_HOST="root@121.229.172.161"
-REMOTE_DIR="/root/shijingjing/e-employee"
-LOCAL_DIR="."
-CONDA_ENV="media_env"
-
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  人力数字员工智能体系统 - 部署脚本  ${NC}"
-echo -e "${GREEN}========================================${NC}"
+echo "=== 人力数字员工系统部署 ==="
+echo "目标服务器: 121.229.172.161"
 echo ""
 
-# 函数：在远程服务器执行命令
-remote_exec() {
-    ssh $REMOTE_HOST "$1"
-}
+# 1. 传输修改的文件
+echo "[1/4] 正在传输文件到远程服务器..."
 
-# 步骤1：创建远程目录
-echo -e "${YELLOW}[1/8] 创建远程目录...${NC}"
-remote_exec "mkdir -p $REMOTE_DIR"
+# 主要修改文件：价值贡献路由
+scp /Users/shijingjing/Desktop/GuomaiProject/e-employee/hr-bot/app/api/value_contribution_routes.py root@121.229.172.161:/root/shijingjing/e-employee/hr-bot/app/api/
 
-# 步骤2：上传代码
-echo -e "${YELLOW}[2/8] 上传代码到远程服务器...${NC}"
-# 排除不需要上传的文件
-rsync -avz --exclude='.git' \
-          --exclude='__pycache__' \
-          --exclude='*.pyc' \
-          --exclude='data/' \
-          --exclude='models/' \
-          --exclude='logs/' \
-          --exclude='.env' \
-          $LOCAL_DIR/ $REMOTE_HOST:$REMOTE_DIR/
+# 价值数据文件
+scp /Users/shijingjing/Desktop/GuomaiProject/e-employee/hr-bot/data/价值数据.xlsx root@121.229.172.161:/root/shijingjing/e-employee/hr-bot/data/
 
-# 步骤3：检查环境
-echo -e "${YELLOW}[3/8] 检查远程环境...${NC}"
-remote_exec "source /root/anaconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && python --version"
+echo "[1/4] 文件传输完成"
+echo ""
 
-# 步骤4：安装依赖
-echo -e "${YELLOW}[4/8] 安装依赖...${NC}"
-remote_exec "cd $REMOTE_DIR && source /root/anaconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple"
+# 2. 远程执行部署命令
+echo "[2/4] 正在远程服务器上执行部署..."
 
-# 步骤5：创建必要目录
-echo -e "${YELLOW}[5/8] 创建必要目录...${NC}"
-remote_exec "cd $REMOTE_DIR && mkdir -p data documents logs models"
+ssh root@121.229.172.161 << 'REMOTE_SCRIPT'
+    echo "  -> 进入工作目录"
+    cd /root/shijingjing/e-employee/hr-bot
+    
+    echo "  -> 查找并停止现有服务进程"
+    # 查找并杀掉现有的 uvicorn 进程
+    PID=$(ps aux | grep "uvicorn app.main:app" | grep -v grep | awk '{print $2}')
+    if [ -n "$PID" ]; then
+        echo "     发现现有进程 PID: $PID，正在停止..."
+        kill -9 $PID
+        sleep 2
+        echo "     进程已停止"
+    else
+        echo "     未发现运行中的服务进程"
+    fi
+    
+    echo "  -> 确保日志目录存在"
+    mkdir -p /root/shijingjing/e-employee/hr-bot/logs
+    
+    echo "  -> 激活 Conda 环境"
+    source /opt/miniconda3/bin/activate media_env
+    
+    echo "  -> 启动服务 (nohup 方式)"
+    nohup uvicorn app.main:app --host 0.0.0.0 --port 3111 > /root/shijingjing/e-employee/hr-bot/logs/hr-bot.log 2>&1 &
+    
+    sleep 3
+    
+    # 检查服务是否启动成功
+    NEW_PID=$(ps aux | grep "uvicorn app.main:app" | grep -v grep | awk '{print $2}')
+    if [ -n "$NEW_PID" ]; then
+        echo "  -> 服务启动成功，PID: $NEW_PID"
+        echo "  -> 日志文件: /root/shijingjing/e-employee/hr-bot/logs/hr-bot.log"
+    else
+        echo "  -> [错误] 服务启动失败，请检查日志"
+        exit 1
+    fi
+REMOTE_SCRIPT
 
-# 步骤6：初始化数据库
-echo -e "${YELLOW}[6/8] 初始化数据库...${NC}"
-remote_exec "cd $REMOTE_DIR && source /root/anaconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && python scripts/init_database.py"
+echo "[2/4] 远程部署完成"
+echo ""
 
-# 步骤7：构建知识库
-echo -e "${YELLOW}[7/8] 构建知识库...${NC}"
-remote_exec "cd $REMOTE_DIR && source /root/anaconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && python scripts/build_knowledge_base.py"
-
-# 步骤8：启动服务
-echo -e "${YELLOW}[8/8] 启动服务...${NC}"
-# 停止旧服务
-remote_exec "pkill -f 'uvicorn app.main:app' || true"
+# 3. 验证服务状态
+echo "[3/4] 验证服务状态..."
 sleep 2
+ssh root@121.229.172.161 "ps aux | grep uvicorn | grep -v grep"
+echo ""
 
-# 启动新服务
-remote_exec "cd $REMOTE_DIR && source /root/anaconda3/etc/profile.d/conda.sh && conda activate $CONDA_ENV && nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 > logs/server.log 2>&1 &"
-
-sleep 3
-
-# 检查服务状态
-if remote_exec "curl -s http://localhost:8000/health | grep -q 'healthy'"; then
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  部署成功！服务已启动  ${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo "服务地址: http://121.229.172.161:8000"
-    echo "API文档: http://121.229.172.161:8000/docs"
-    echo "健康检查: http://121.229.172.161:8000/health"
-    echo ""
-    echo "查看日志: ssh $REMOTE_HOST 'tail -f $REMOTE_DIR/logs/server.log'"
-else
-    echo -e "${RED}========================================${NC}"
-    echo -e "${RED}  部署可能失败，请检查日志  ${NC}"
-    echo -e "${RED}========================================${NC}"
-    echo ""
-    echo "查看日志: ssh $REMOTE_HOST 'tail -n 50 $REMOTE_DIR/logs/server.log'"
-    exit 1
-fi
+# 4. 显示部署信息
+echo "[4/4] 部署完成！"
+echo ""
+echo "=== 服务信息 ==="
+echo "访问地址: http://121.229.172.161:3111"
+echo "日志文件: /root/shijingjing/e-employee/hr-bot/logs/hr-bot.log"
+echo ""
+echo "=== 查看日志命令 ==="
+echo "ssh root@121.229.172.161 'tail -f /root/shijingjing/e-employee/hr-bot/logs/hr-bot.log'"
+echo ""
+echo "=== 数据导入 ==="
+echo "现在可以通过前端页面导入价值数据.xlsx文件了"

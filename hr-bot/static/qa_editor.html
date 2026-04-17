@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面试问答校对 - 20260401战略招聘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* 候选人选择 */
+        .candidate-selector {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .candidate-selector label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .candidate-selector select {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            min-width: 200px;
+            cursor: pointer;
+        }
+        
+        .candidate-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #73d13d;
+        }
+        
+        .btn-warning {
+            background: #faad14;
+            color: white;
+        }
+        
+        /* 问答列表 */
+        .qa-list {
+            margin-top: 20px;
+        }
+        
+        .qa-item {
+            background: #fafafa;
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        
+        .qa-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .qa-item.found {
+            border-left: 4px solid #52c41a;
+        }
+        
+        .qa-item.not-found {
+            border-left: 4px solid #ff4d4f;
+        }
+        
+        .qa-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .qa-module {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .qa-status {
+            font-size: 13px;
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+        
+        .qa-status.found {
+            background: #f6ffed;
+            color: #52c41a;
+            border: 1px solid #b7eb8f;
+        }
+        
+        .qa-status.not-found {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border: 1px solid #ffccc7;
+        }
+        
+        .qa-question {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        
+        .qa-answer-section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .qa-answer-section label {
+            display: block;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .qa-answer-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: inherit;
+        }
+        
+        .qa-answer-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .qa-keypoints {
+            margin-top: 15px;
+        }
+        
+        .qa-keypoints label {
+            display: block;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .qa-keypoints-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .qa-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        /* 薪酬信息 */
+        .salary-section {
+            background: linear-gradient(135deg, #fff7e6 0%, #fff1b8 100%);
+            border: 1px solid #ffd591;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .salary-section h3 {
+            color: #d46b08;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .salary-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .salary-input-group label {
+            display: block;
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .salary-input-group input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        /* 底部操作栏 */
+        .bottom-actions {
+            position: sticky;
+            bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .save-status {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .save-status.success {
+            color: #52c41a;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 面试问答校对</h1>
+            <p class="subtitle">查看和编辑从ASR中提取的面试问答，修正后重新进行AI评估</p>
+        </div>
+        
+        <div class="candidate-selector">
+            <label>选择候选人：</label>
+            <select id="candidateSelect">
+                <option value="">请选择候选人</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadQaData()">加载问答</button>
+            <button class="btn btn-success" onclick="saveQaData()">保存修改</button>
+            <button class="btn btn-warning" onclick="reEvaluate()">重新评估</button>
+        </div>
+        
+        <div id="qaContainer" class="qa-list">
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>请选择候选人加载问答数据</p>
+            </div>
+        </div>
+        
+        <div class="bottom-actions" style="display: none;" id="bottomActions">
+            <span class="save-status" id="saveStatus">未保存</span>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="saveQaData()">保存修改</button>
+                <button class="btn btn-success" onclick="reEvaluate()">重新AI评估</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQaData = null;
+        let currentCandidate = '';
+        
+        // 页面加载时获取候选人列表
+        window.onload = async function() {
+            await loadCandidateList();
+        };
+        
+        // 加载候选人列表
+        async function loadCandidateList() {
+            try {
+                const response = await fetch('/api/interview/candidates');
+                const data = await response.json();
+                
+                const select = document.getElementById('candidateSelect');
+                select.innerHTML = '<option value="">请选择候选人</option>';
+                
+                data.candidates.forEach(candidate => {
+                    const option = document.createElement('option');
+                    option.value = candidate.name;
+                    option.textContent = candidate.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载候选人列表失败:', error);
+                // 使用硬编码的候选人列表作为备选
+                const candidates = ['仇天硕', '吴届生', '李贤峰', '石欣慰', '褚祎鹤', '邱洋', '邹川龙', '郑振东', '雷雨田', '黄俊华'];
+                const select = document.getElementById('candidateSelect');
+                candidates.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+            }
+        }
+        
+        // 加载问答数据
+        async function loadQaData() {
+            const candidateName = document.getElementById('candidateSelect').value;
+            if (!candidateName) {
+                alert('请先选择候选人');
+                return;
+            }
+            
+            currentCandidate = candidateName;
+            const container = document.getElementById('qaContainer');
+            container.innerHTML = '<div class="loading">正在加载问答数据</div>';
+            
+            try {
+                // 从服务器加载问答数据
+                const response = await fetch(`/api/interview/qa/${encodeURIComponent(candidateName)}`);
+                if (!response.ok) throw new Error('加载失败');
+                currentQaData = await response.json();
+            } catch (error) {
+                console.error('从API加载失败，尝试本地加载:', error);
+                // 如果API失败，显示提示
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <p>无法加载问答数据</p>
+                        <p style="font-size: 12px; margin-top: 10px;">请确保已运行提取脚本生成qa_cache数据</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            renderQaList();
+            document.getElementById('bottomActions').style.display = 'flex';
+            updateSaveStatus('已加载');
+        }
+        
+        // 渲染问答列表
+        function renderQaList() {
+            const container = document.getElementById('qaContainer');
+            
+            if (!currentQaData || !currentQaData.qa_list) {
+                container.innerHTML = '<div class="empty-state">暂无问答数据</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            currentQaData.qa_list.forEach((qa, index) => {
+                const isFound = qa.found;
+                const statusClass = isFound ? 'found' : 'not-found';
+                const statusText = isFound ? '✅ 已找到答案' : '⚠️ 未找到答案';
+                
+                html += `
+                    <div class="qa-item ${statusClass}" data-index="${index}">
+                        <div class="qa-header">
+                            <span class="qa-module">${qa.module || '未知'}</span>
+                            <span class="qa-status ${statusClass}">${statusText}</span>
+                        </div>
+                        <div class="qa-question">${qa.question}</div>
+                        <div class="qa-answer-section">
+                            <label>回答内容：</label>
+                            <textarea 
+                                class="qa-answer-textarea" 
+                                data-field="answer"
+                                data-index="${index}"
+                                placeholder="请输入或编辑回答内容..."
+                            >${qa.answer || ''}</textarea>
+                        </div>
+                        <div class="qa-keypoints">
+                            <label>要点（用分号分隔）：</label>
+                            <input 
+                                type="text" 
+                                class="qa-keypoints-input"
+                                data-field="key_points"
+                                data-index="${index}"
+                                value="${qa.key_points ? qa.key_points.join('；') : ''}"
+                                placeholder="输入要点，用分号分隔"
+                            >
+                        </div>
+                        <div class="qa-actions">
+                            <button class="btn btn-primary" onclick="toggleFound(${index})">
+                                ${isFound ? '标记为未找到' : '标记为已找到'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // 添加薪酬信息编辑区域
+            const salaryQa = currentQaData.qa_list.find(qa => qa.salary_data);
+            if (salaryQa) {
+                html += `
+                    <div class="salary-section">
+                        <h3>💰 薪酬信息</h3>
+                        <div class="salary-inputs">
+                            <div class="salary-input-group">
+                                <label>当前薪资（万/年）：</label>
+                                <input type="text" id="currentSalary" 
+                                    value="${salaryQa.salary_data?.current_salary || ''}" 
+                                    placeholder="如：25">
+                            </div>
+                            <div class="salary-input-group">
+                                <label>期望薪资（万/年）：</label>
+                                <input type="text" id="expectedSalary" 
+                                    value="${salaryQa.salary_data?.expected_salary || ''}" 
+                                    placeholder="如：30 或 25-30">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            
+            // 添加输入监听
+            container.querySelectorAll('textarea, input').forEach(el => {
+                el.addEventListener('change', () => updateSaveStatus('有未保存的修改'));
+                el.addEventListener('input', () => updateSaveStatus('有未保存的修改'));
+            });
+        }
+        
+        // 切换找到状态
+        function toggleFound(index) {
+            if (!currentQaData || !currentQaData.qa_list[index]) return;
+            
+            currentQaData.qa_list[index].found = !currentQaData.qa_list[index].found;
+            renderQaList();
+            updateSaveStatus('有未保存的修改');
+        }
+        
+        // 保存问答数据
+        async function saveQaData() {
+            if (!currentCandidate || !currentQaData) {
+                alert('请先加载候选人数据');
+                return;
+            }
+            
+            // 收集修改后的数据
+            const qaItems = document.querySelectorAll('.qa-item');
+            qaItems.forEach((item, idx) => {
+                const index = parseInt(item.dataset.index);
+                const answerTextarea = item.querySelector('[data-field="answer"]');
+                const keypointsInput = item.querySelector('[data-field="key_points"]');
+                
+                if (answerTextarea) {
+                    currentQaData.qa_list[index].answer = answerTextarea.value;
+                }
+                if (keypointsInput) {
+                    const points = keypointsInput.value.split('；').filter(p => p.trim());
+                    currentQaData.qa_list[index].key_points = points;
+                }
+            });
+            
+            // 更新薪酬数据
+            const currentSalaryInput = document.getElementById('currentSalary');
+            const expectedSalaryInput = document.getElementById('expectedSalary');
+            if (currentSalaryInput && expectedSalaryInput) {
+                const salaryQa = currentQaData.qa_list.find(qa => qa.salary_data);
+                if (salaryQa) {
+                    salaryQa.salary_data.current_salary = currentSalaryInput.value;
+                    salaryQa.salary_data.expected_salary = expectedSalaryInput.value;
+                }
+            }
+            
+            // 发送到服务器保存
+            try {
+                const response = await fetch(`/api/interview/qa/${encodeURIComponent(currentCandidate)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentQaData)
+                });
+                
+                if (response.ok) {
+                    updateSaveStatus('已保存', true);
+                    alert('保存成功！');
+                } else {
+                    throw new Error('保存失败');
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                alert('保存失败，请检查网络连接');
+            }
+        }
+        
+        // 重新评估
+        async function reEvaluate() {
+            if (!currentCandidate) {
+                alert('请先选择候选人');
+                return;
+            }
+            
+            if (!confirm('确定要重新进行AI评估吗？这将覆盖现有的评估结果。')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/interview/evaluate/${encodeURIComponent(currentCandidate)}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    alert('AI评估已启动，请稍后查看评估结果');
+                } else {
+                    throw new Error('评估请求失败');
+                }
+            } catch (error) {
+                console.error('评估请求失败:', error);
+                alert('评估请求失败，请稍后重试');
+            }
+        }
+        
+        // 更新保存状态显示
+        function updateSaveStatus(text, isSuccess = false) {
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.textContent = text;
+            statusEl.className = isSuccess ? 'save-status success' : 'save-status';
+        }
+    </script>
+</body>
+</html>

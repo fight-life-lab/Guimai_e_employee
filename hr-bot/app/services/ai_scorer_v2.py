@@ -187,24 +187,114 @@ class AIScorerV2:
         return 60, "基础分60分"
     
     def _calculate_learning_score(self, data: Dict) -> tuple:
-        """计算学习能力分数"""
-        education = data.get("education", "")
+        """计算学习能力分数
         
-        # 学历基础分
-        base_score = 60
-        if "博士" in education:
-            edu_bonus = 20
-        elif "硕士" in education:
-            edu_bonus = 15
-        elif "本科" in education:
-            edu_bonus = 10
-        else:
-            edu_bonus = 5
+        规则：
+        一、基础学习能力（占比80%）
+        1. 基础分阶段，按照全日制最高学位：
+           - 学士阶段：普通院校60分，211/QS50-100得70分，985/QS前50得80分
+           - 硕士阶段：普通院校70分，211/QS50-100得80分，985/QS前50得90分
+           - 博士阶段：普通院校80分，211/QS50-100得90分，985/QS前50得100分
         
-        score = base_score + edu_bonus
-        score = min(100, score)
+        2. 扣分项：
+           - 专科学历：扣5分
+           - 专科以下学历：扣10分
         
-        return score, f"基础分{base_score}分，学历加分{edu_bonus}分，学习能力{score}分"
+        3. 加分项（持续学习能力-学位提升，在职教育）：
+           - 学士阶段：普通专升本+2，211/QS50-100专升本+3，985/QS前50专升本+4
+           - 硕士阶段：普通硕士+3，211/QS50-100硕士+5，985/QS前50硕士+7
+           - 博士阶段：普通博士+4，211/QS50-100博士+6，985/QS前50博士+8
+        
+        二、持续学习能力（综合评价，占比20%）- 由AI评价
+        """
+        # 获取数据
+        education = data.get("education", "")  # 最高学历
+        school_type = data.get("school_type", "")  # 学校类型（国内-985/国内-211/国内-普通/海外-QS前50/海外-QS50-100/海外-其他）
+        fulltime_degree = data.get("fulltime_degree", "")  # 全日制最高学位
+        degree_upgrade = data.get("degree_upgrade", False)  # 是否有学位提升
+        upgrade_school_type = data.get("upgrade_school_type", "")  # 提升学位的学校类型
+        
+        # 判断学校档次
+        def get_school_level(s_type):
+            """获取学校档次：普通/211/985"""
+            if not s_type:
+                return "普通"
+            if "985" in s_type or "QS前50" in s_type:
+                return "985"
+            elif "211" in s_type or "QS50-100" in s_type:
+                return "211"
+            else:
+                return "普通"
+        
+        # 判断学位阶段
+        def get_degree_stage(degree):
+            """获取学位阶段：学士/硕士/博士/专科"""
+            if not degree:
+                return "学士"  # 默认学士
+            if "博士" in degree:
+                return "博士"
+            elif "硕士" in degree:
+                return "硕士"
+            elif "专科" in degree or "大专" in degree:
+                return "专科"
+            else:
+                return "学士"
+        
+        # 基础分表（按学位阶段和学校档次）
+        base_score_table = {
+            "学士": {"普通": 60, "211": 70, "985": 80},
+            "硕士": {"普通": 70, "211": 80, "985": 90},
+            "博士": {"普通": 80, "211": 90, "985": 100},
+            "专科": {"普通": 55, "211": 55, "985": 55}  # 专科基础分统一55，后面再扣
+        }
+        
+        # 加分表（学位提升）
+        upgrade_bonus_table = {
+            "学士": {"普通": 2, "211": 3, "985": 4},
+            "硕士": {"普通": 3, "211": 5, "985": 7},
+            "博士": {"普通": 4, "211": 6, "985": 8}
+        }
+        
+        # 计算基础分
+        degree_stage = get_degree_stage(fulltime_degree or education)
+        school_level = get_school_level(school_type)
+        
+        # 基础学习能力分（占80%）
+        base_learning_score = base_score_table.get(degree_stage, base_score_table["学士"]).get(school_level, 60)
+        
+        # 扣分项
+        deduction = 0
+        if degree_stage == "专科":
+            deduction = 5
+        # 注意：专科以下（高中及以下）扣10分，但数据库中可能没有这类数据
+        
+        # 学位提升加分
+        upgrade_bonus = 0
+        if degree_upgrade:
+            upgrade_degree_stage = get_degree_stage(education)  # 提升后的学位
+            upgrade_school_level = get_school_level(upgrade_school_type) if upgrade_school_type else school_level
+            upgrade_bonus = upgrade_bonus_table.get(upgrade_degree_stage, {}).get(upgrade_school_level, 0)
+        
+        # 基础学习能力最终分
+        base_learning_final = base_learning_score - deduction + upgrade_bonus
+        base_learning_final = max(0, min(100, base_learning_final))
+        
+        # 构建说明
+        reason_parts = []
+        reason_parts.append(f"基础学习能力（80%权重）：{fulltime_degree or education}阶段，{school_type or '普通院校'}，基础分{base_learning_score}分")
+        
+        if deduction > 0:
+            reason_parts.append(f"专科学历扣{deduction}分")
+        
+        if upgrade_bonus > 0:
+            reason_parts.append(f"学位提升（{education}）加{upgrade_bonus}分")
+        
+        reason_parts.append(f"基础学习能力得分：{base_learning_final}分")
+        
+        # 持续学习能力（20%权重）- 由AI在后续评价
+        # 这里先返回基础分，AI会在生成理由时补充持续学习能力的评价
+        
+        return base_learning_final, "；".join(reason_parts)
     
     def _calculate_attendance_score(self, data: Dict) -> tuple:
         """计算工时维度分数"""

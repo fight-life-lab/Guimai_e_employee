@@ -1594,6 +1594,7 @@
                         基于5维度模型进行员工与岗位的匹配度分析
                     </div>
                     <div class="alignment-inline-input">
+                        <input type="text" id="alignmentEmpId" placeholder="请输入员工ID">
                         <input type="text" id="alignmentEmpName" placeholder="请输入员工姓名">
                         <button class="btn-analyze-inline" onclick="analyzeEmployeeAlignment()">开始分析</button>
                     </div>
@@ -2810,6 +2811,7 @@
 
         // 重置人岗适配分析表单
         function resetAlignmentForm() {
+            document.getElementById('alignmentEmpId').value = '';
             document.getElementById('alignmentEmpName').value = '';
             document.getElementById('alignmentStatusMsg').className = 'upload-status-msg';
         }
@@ -2976,9 +2978,12 @@
 
         // 分析员工人岗适配
         async function analyzeEmployeeAlignment() {
+            const empId = document.getElementById('alignmentEmpId').value.trim();
             const empName = document.getElementById('alignmentEmpName').value.trim();
-            if (!empName) {
-                showAlignmentStatus('请输入员工姓名', 'error');
+
+            // 校验：员工ID和员工姓名都必须填写
+            if (!empId || !empName) {
+                showAlignmentStatus('员工ID和员工姓名都必须填写', 'error');
                 return;
             }
 
@@ -2996,8 +3001,11 @@
                     }
                 }
 
-                // 调用人岗适配分析API
-                const requestBody = { employee_name: empName };
+                // 调用人岗适配分析API（同时传递员工ID和姓名）
+                const requestBody = {
+                    employee_id: empId,
+                    employee_name: empName
+                };
                 if (innovationFiles.audio_path) {
                     requestBody.innovation_audio_file = innovationFiles.audio_path;
                 }
@@ -3019,7 +3027,13 @@
                     // 在聊天框中显示结果
                     displayAlignmentResultInChat(result.data);
                 } else {
-                    showAlignmentStatus(result.message || '分析失败', 'error');
+                    // 处理错误提示
+                    let errorMsg = result.message || '分析失败';
+                    // 如果是未找到员工的错误，显示更友好的提示
+                    if (errorMsg.includes('未找到') || errorMsg.includes('不存在')) {
+                        errorMsg = '员工ID或员工名字输入错误，请检查后重新输入';
+                    }
+                    showAlignmentStatus(errorMsg, 'error');
                 }
             } catch (error) {
                 console.error('人岗适配分析失败:', error);

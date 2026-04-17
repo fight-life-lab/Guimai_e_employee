@@ -16,7 +16,8 @@ from app.database.models import get_async_session
 from app.database.models import (
     Employee, AttendanceRecord, SalaryRecord,
     PositionCapabilityModel, AttendancePolicy, PositionDescription,
-    ProbationAssessment, EmployeeHistoricalPerformance, EmployeeSalaryStandard
+    ProbationAssessment, EmployeeHistoricalPerformance, EmployeeSalaryStandard,
+    SchoolRating
 )
 from app.config import get_settings
 from app.services.alignment_advisor import alignment_advisor
@@ -955,6 +956,16 @@ class DetailedAlignmentAnalyzer:
 
     async def _calculate_ai_scores(self, employee: Employee, salary_records: List) -> Dict:
         """使用AI计算员工分数."""
+        # 查询学校类型（从 school_ratings 表）
+        school_type = None
+        if employee.school:
+            result = await self.db.execute(
+                select(SchoolRating).where(SchoolRating.school_name == employee.school)
+            )
+            school_rating = result.scalar_one_or_none()
+            if school_rating:
+                school_type = school_rating.school_type
+        
         # 构建员工数据
         employee_data = {
             "name": employee.name,
@@ -962,6 +973,7 @@ class DetailedAlignmentAnalyzer:
             "department": employee.department,
             "education": employee.education,
             "school": employee.school,  # 毕业院校
+            "school_type": school_type,  # 学校类型（从school_ratings表查询）
             "bonus_score": employee.bonus_score,  # 学校加分
             "hire_date": str(employee.hire_date) if employee.hire_date else None,
             "professional_title": employee.professional_title,

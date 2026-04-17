@@ -1,3 +1,6 @@
+---
+alwaysApply: false
+---
 ```markdown
 ### 角色设定
 

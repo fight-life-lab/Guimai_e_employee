@@ -47,7 +47,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class AlignmentAnalyzeRequest(BaseModel):
     """人岗适配分析请求"""
-    employee_name: str
+    employee_id: str  # 员工ID（工号）- 必填
+    employee_name: str  # 员工姓名 - 必填
     position_name: Optional[str] = None
     innovation_audio_file: Optional[str] = None  # 创新能力评估录音文件路径（wav/mp3）
     innovation_questions_file: Optional[str] = None  # 创新能力评估提问问题Excel文件路径
@@ -88,8 +89,8 @@ class AlignmentAnalyzeResponse(BaseModel):
     gap_analysis: Optional[List[Dict]]  # 差距分析
 
 
-def get_employee_info(db, emp_name: str):
-    """从MySQL获取员工信息"""
+def get_employee_info_by_name(db, emp_name: str):
+    """从MySQL根据员工姓名获取员工信息"""
     sql = text("""
         SELECT emp_code, emp_name, dept_level1, dept_level2, position_name,
                highest_education, highest_degree, highest_degree_school, highest_degree_school_type,
@@ -101,6 +102,19 @@ def get_employee_info(db, emp_name: str):
     result = db.execute(sql, {'emp_name': f'%{emp_name}%'})
     row = result.fetchone()
     if row:
+        # 获取学校类型 - 优先从 school_ratings 表查询
+        school_type = row.highest_degree_school_type
+        if row.highest_degree_school:
+            school_sql = text("""
+                SELECT school_type FROM school_ratings
+                WHERE school_name = :school_name
+                LIMIT 1
+            """)
+            school_result = db.execute(school_sql, {'school_name': row.highest_degree_school})
+            school_row = school_result.fetchone()
+            if school_row and school_row.school_type:
+                school_type = school_row.school_type
+
         return {
             'emp_code': row.emp_code,
             'emp_name': row.emp_name,
@@ -109,13 +123,65 @@ def get_employee_info(db, emp_name: str):
             'education': row.highest_education,
             'highest_degree': row.highest_degree,
             'school': row.highest_degree_school,
-            'school_type': row.highest_degree_school_type,
+            'school_type': school_type,
             'entry_date': row.entry_date,
             'job_level': row.job_level,
             'work_years': row.work_years,
             'company_years': row.company_years,
             'contract_end_date': row.contract_end_date
         }
+    return None
+
+
+def get_employee_info_by_id_and_name(db, emp_id: str, emp_name: str):
+    """从MySQL根据员工ID（工号）和员工姓名同时获取员工信息（AND查询）"""
+    sql = text("""
+        SELECT emp_code, emp_name, dept_level1, dept_level2, position_name,
+               highest_education, highest_degree, highest_degree_school, highest_degree_school_type,
+               entry_date, job_level, work_years, company_years, contract_end_date
+        FROM emp_roster
+        WHERE emp_code = :emp_id AND emp_name = :emp_name
+        LIMIT 1
+    """)
+    result = db.execute(sql, {'emp_id': emp_id, 'emp_name': emp_name})
+    row = result.fetchone()
+    if row:
+        # 获取学校类型 - 优先从 school_ratings 表查询
+        school_type = row.highest_degree_school_type
+        if row.highest_degree_school:
+            school_sql = text("""
+                SELECT school_type FROM school_ratings
+                WHERE school_name = :school_name
+                LIMIT 1
+            """)
+            school_result = db.execute(school_sql, {'school_name': row.highest_degree_school})
+            school_row = school_result.fetchone()
+            if school_row and school_row.school_type:
+                school_type = school_row.school_type
+
+        return {
+            'emp_code': row.emp_code,
+            'emp_name': row.emp_name,
+            'department': f"{row.dept_level1 or ''} {row.dept_level2 or ''}".strip(),
+            'position': row.position_name,
+            'education': row.highest_education,
+            'highest_degree': row.highest_degree,
+            'school': row.highest_degree_school,
+            'school_type': school_type,
+            'entry_date': row.entry_date,
+            'job_level': row.job_level,
+            'work_years': row.work_years,
+            'company_years': row.company_years,
+            'contract_end_date': row.contract_end_date
+        }
+    return None
+
+
+def get_employee_info(db, emp_name: str = None, emp_id: str = None):
+    """从MySQL获取员工信息（使用员工ID和姓名同时查询，AND关系）"""
+    # 只有当员工ID和姓名都提供时，才进行AND查询
+    if emp_id and emp_name:
+        return get_employee_info_by_id_and_name(db, emp_id, emp_name)
     return None
 
 
@@ -866,14 +932,22 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
         qual_exp = job_desc.get('qualifications_job_work_experience', '')
         if qual_exp:
             import re
-            # 提取年限要求
-            years_match = re.search(r'(\d+)', str(qual_exp))
+            # 提取年限要求 - 优先匹配"X年"或"X年以上"的模式
+            # 避免匹配序号（如"1、"）
+            qual_exp_str = str(qual_exp)
+            # 先尝试匹配"X年"或"X年以上"的模式
+            years_match = re.search(r'(\d+)\s*年(?:及)?以?上?', qual_exp_str)
             if years_match:
                 required_years = int(years_match.group(1))
+            else:
+                # 如果没有匹配到，再尝试匹配第一个数字（但排除序号"1、"的情况）
+                years_match = re.search(r'(?<!、)(?<!\d)(\d+)(?!\s*、)', qual_exp_str)
+                if years_match:
+                    required_years = int(years_match.group(1))
             # 提取经验类型要求
-            if '相关' in str(qual_exp):
+            if '相关' in qual_exp_str:
                 required_experience_type = "相关专业"
-            elif '本' in str(qual_exp):
+            elif '本' in qual_exp_str:
                 required_experience_type = "本专业"
         
         # 从岗位名称、职责中提取专业方向
@@ -1155,13 +1229,13 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
     【非试用期员工】
     - 基础分70分，满分上限100分
     - 偏离度为100%时，不加分、不扣分（保持基础分70分）
-    - 偏离度较100%，每高出0.5个百分点，加3分
-    - 偏离度较100%，每低出0.5个百分点，扣3分
+    - 偏离度较100%，每高出1个百分点，加3分
+    - 偏离度较100%，每低出1个百分点，扣3分
     
     【试用期员工（入职≤6个月）】
     - 基础分100分，满分上限100分
     - 入职以来N个月（剔除入职首月）绩效酬金偏离度≥100%时，不加分、不扣分
-    - 入职以来N个月（剔除入职首月）绩效酬金偏离度较100%，每低出0.5个百分点，扣5分
+    - 入职以来N个月（剔除入职首月）绩效酬金偏离度较100%，每低出1个百分点，扣5分
     """
     from app.models.value_contribution import ValueContributionScore
     from datetime import datetime, date
@@ -1222,18 +1296,18 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
                 score_change = 0
                 employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（≥100%），不加分不扣分，价值贡献得分{score:.1f}分"
             else:
-                # 偏离度<100%时，每低出0.5个百分点，扣5分
-                score_change = (abs(diff) / 0.5) * 5
+                # 偏离度<100%时，每低出1个百分点，扣5分
+                score_change = (abs(diff) ) * 5
                 score = base_score - score_change
                 
                 # 限制在0-100范围内
                 score = max(0.0, min(100.0, score))
                 
-                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣5分，价值贡献得分{score:.1f}分"
+                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣5分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（试用期）
             job_requirement = min(100.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
-            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，每低出0.5个百分点扣5分，标准分{job_requirement:.1f}分"
+            job_reason = f"试用期员工（入职{months_since_entry}个月）岗位要求：绩效酬金偏离度≥100%时不扣分，每低出1个百分点扣5分，标准分{job_requirement:.1f}分"
         else:
             # 【非试用期员工计分规则】
             # 基础分70分
@@ -1242,8 +1316,8 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
             # 计算与100%的偏差
             diff = deviation_rate - 100.0
             
-            # 每0.5个百分点变化3分
-            score_change = (diff / 0.5) * 3
+            # 每1个百分点变化3分
+            score_change = (diff / 1.0) * 3
             
             # 计算最终分数
             score = base_score + score_change
@@ -1253,15 +1327,15 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
             
             # 生成评分理由
             if diff > 0:
-                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出0.5个百分点加3分，价值贡献得分{score:.1f}分"
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出1个百分点加3分，价值贡献得分{score:.1f}分"
             elif diff < 0:
-                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出0.5个百分点扣3分，价值贡献得分{score:.1f}分"
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣3分，价值贡献得分{score:.1f}分"
             else:
                 employee_reason = f"正式员工，绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（非试用期）
             job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
-            job_reason = f"正式员工岗位要求：绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），标准分{job_requirement:.1f}分，每高出0.5个百分点加3分，每低出0.5个百分点扣3分"
+            job_reason = f"正式员工岗位要求：绩效酬金偏离度达到100%（即实际发放绩效与标准绩效一致），标准分{job_requirement:.1f}分，每高出1个百分点加3分，每低出1个百分点扣3分"
     else:
         # 如果没有找到记录，根据员工类型使用默认分数
         if is_probation:
@@ -2472,16 +2546,16 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
     人岗适配分析
     基于6维度模型：专业能力(30%)、经验(10%)、战略匹配(10%)、学习能力(20%)、工作态度(20%)、价值贡献(10%)
     """
-    logger.info(f"[Alignment] 开始人岗适配分析，员工: {request.employee_name}")
-    
+    logger.info(f"[Alignment] 开始人岗适配分析，员工ID: {request.employee_id}, 姓名: {request.employee_name}")
+
     db = SessionLocal()
     try:
-        # 1. 获取员工信息
-        emp_info = get_employee_info(db, request.employee_name)
+        # 1. 获取员工信息（使用员工ID和姓名同时查询，AND关系）
+        emp_info = get_employee_info(db, emp_name=request.employee_name, emp_id=request.employee_id)
         if not emp_info:
             return {
                 "success": False,
-                "message": f"未找到员工: {request.employee_name}"
+                "message": "员工ID或员工名字输入错误，请检查后重新输入"
             }
         
         # 2. 获取岗位描述
@@ -2694,8 +2768,8 @@ async def get_alignment_dimensions():
                 "criteria": [
                     "基础分70分，满分上限100分",
                     "偏离度为100%时，不加分、不扣分",
-                    "偏离度较100%，每高出0.5个百分点，加3分",
-                    "偏离度较100%，每低出0.5个百分点，扣3分"
+                    "偏离度较100%，每高出1个百分点，加3分",
+                    "偏离度较100%，每低出1个百分点，扣3分"
                 ]
             }
         ]

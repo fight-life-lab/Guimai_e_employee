@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <div id="result"></div>
+    <script>
+        console.log('=== 测试开始 ===');
+        const projectDir = '20260401战略招聘';
+        
+        async function testAPI() {
+            try {
+                console.log('1. 调用API...');
+                const response = await fetch(`/api/v1/interview-batch/candidates/${projectDir}`);
+                console.log('2. 响应状态:', response.status);
+                
+                const result = await response.json();
+                console.log('3. 返回数据:', result);
+                
+                document.getElementById('result').innerHTML = 
+                    '<p>成功: ' + result.success + '</p>' +
+                    '<p>总数: ' + result.total + '</p>' +
+                    '<p>候选人: ' + (result.candidates ? result.candidates.map(c => c.name).join(', ') : '无') + '</p>';
+            } catch (error) {
+                console.error('错误:', error);
+                document.getElementById('result').innerHTML = '<p style="color:red">错误: ' + error.message + '</p>';
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

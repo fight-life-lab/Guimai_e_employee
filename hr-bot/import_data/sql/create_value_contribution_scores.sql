@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS value_contribution_scores (
     performance_standard DECIMAL(10,2) COMMENT '绩效酬金标准',
     actual_performance DECIMAL(10,2) COMMENT '实际发放绩效',
     deviation_rate DECIMAL(5,2) COMMENT '偏离度(%)',
-    score DECIMAL(5,2) NOT NULL COMMENT '价值贡献分数(0-100)',
+    score DECIMAL(5,2) COMMENT '价值贡献分数(0-100)',
     evaluation_year INT COMMENT '考核年度',
     evaluator VARCHAR(100) COMMENT '评定人',
     evaluation_basis TEXT COMMENT '评定依据',

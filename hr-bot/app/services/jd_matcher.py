@@ -134,7 +134,7 @@ class JDMatcher:
     {resume_content}
 
     ## 分析任务：
-    请从以下6个维度进行双角度分析,**严格控制维度匹配度不超过100分，且综合得分避免轻易出现满分**，需体现候选人与岗位的真实差距。：
+    请从以下7个维度进行双角度分析,**严格控制维度匹配度不超过100分，且综合得分避免轻易出现满分**，需体现候选人与岗位的真实差距。：
 
     ### 第一部分：JD要求分析
     分析JD在每个维度的要求程度（重要程度0-100分，要求等级：高/中/低），并提取JD对该维度的具体要求和关键词。
@@ -146,6 +146,7 @@ class JDMatcher:
     4. **软技能匹配度**：JD对沟通、协作、领导力、执行力等软技能的要求程度
     5. **职业发展匹配度**：JD对职业规划、岗位稳定性、晋升意愿的要求程度。**重要说明**：同一家公司内部的岗位调整、晋升不算不稳定，反而是职业发展清晰、能力获得认可的表现，应给予正面评价
     6. **文化契合度**：JD对价值观、工作风格、企业适配性的要求程度。**国脉文化加分项**：对于符合国脉文化（新国脉数字文化股份有限公司）特点的候选人给予加分，包括但不限于：中共党员、央国企背景、文化行业经验、政治素质过硬、勤勉敬业、团队协作精神等
+    7. **薪酬匹配度**：JD对候选人当前薪资水平与岗位预算的匹配程度。**重要说明**：分析候选人简历中的薪资信息（如有）与岗位薪酬范围的匹配情况。如简历未提及薪资，则根据候选人当前职级、工作年限、行业背景推断其薪资期望，评估与岗位预算的匹配度
 
     ### 第二部分：候选人匹配度分析
     分析候选人在每个维度与JD要求的匹配程度（0-100分），**禁止轻易给满分**，需体现细微差距：
@@ -155,6 +156,7 @@ class JDMatcher:
     - **核心能力维度**（如工作经验、软技能）：根据实际能力匹配度评分
     - **专业技能维度**：**专项技能可以弱化**，不要求完全匹配。有相关经验即可给70-85分，具备通用管理能力可弥补专项技能不足
     - **软性素质维度**（如文化契合）：根据具体表现评分
+    - **薪酬匹配维度**：根据候选人当前薪资水平（或推断的薪资期望）与岗位预算的匹配程度评分。薪资匹配度高的给80-95分，基本匹配的给60-79分，明显不匹配的给40-59分
     - **评分调整原则（不直接显示加分，融入分析中）**：对于符合以下特点的候选人，在评分时给予倾斜，但分析中不直接说"加多少分"，而是自然融入评价：
       * **现任岗位高度契合（重要）**：如果候选人目前就在目标岗位或高度相关岗位任职，各维度评分从优，但分析中不要直白提及"现任"、"兼任"等词，而是用"岗位契合度高"、"各项要求均符合"、"能力全面匹配"、"对岗位要求理解深入"等含蓄表达
       * 公司内部员工：分析中强调"熟悉组织运作"、"环境适应性强"
@@ -177,6 +179,7 @@ class JDMatcher:
     4. **软技能匹配度**：候选人的软技能与JD要求的匹配程度
     5. **职业发展匹配度**：候选人的职业规划与JD要求的匹配程度。**稳定性评估原则**：同一家公司内部的岗位调整、职级晋升是积极的职业发展信号，说明能力获得认可、职业发展路径清晰，应给予高分（80-95分）；只有频繁跳槽（不同公司间变动）才视为稳定性不足
     6. **文化契合度**：候选人的价值观与JD要求的匹配程度
+    7. **薪酬匹配度**：候选人当前薪资水平（或推断的薪资期望）与岗位预算的匹配程度。如简历明确提及薪资，直接对比；如未提及，根据候选人职级、工作年限、行业背景推断其薪资期望进行评估
 
     ### 加权计算规则（用于生成overall_score）：
     1.  先计算各维度**权重**：`维度权重 = 该维度importance / 所有维度importance总和`
@@ -450,12 +453,13 @@ class JDMatcher:
             overall_score=0,
             match_level="分析失败",
             dimensions=[
-                MatchDimension(name="专业技能匹配度", score=0, weight=0.25, analysis="分析失败"),
-                MatchDimension(name="工作经验匹配度", score=0, weight=0.20, analysis="分析失败"),
-                MatchDimension(name="教育背景匹配度", score=0, weight=0.15, analysis="分析失败"),
-                MatchDimension(name="软技能匹配度", score=0, weight=0.15, analysis="分析失败"),
-                MatchDimension(name="职业发展匹配度", score=0, weight=0.15, analysis="分析失败"),
-                MatchDimension(name="文化契合度", score=0, weight=0.10, analysis="分析失败"),
+                MatchDimension(name="专业技能匹配度", score=0, weight=0.22, analysis="分析失败"),
+                MatchDimension(name="工作经验匹配度", score=0, weight=0.18, analysis="分析失败"),
+                MatchDimension(name="教育背景匹配度", score=0, weight=0.13, analysis="分析失败"),
+                MatchDimension(name="软技能匹配度", score=0, weight=0.13, analysis="分析失败"),
+                MatchDimension(name="职业发展匹配度", score=0, weight=0.13, analysis="分析失败"),
+                MatchDimension(name="文化契合度", score=0, weight=0.09, analysis="分析失败"),
+                MatchDimension(name="薪酬匹配度", score=0, weight=0.12, analysis="分析失败"),
             ],
             jd_requirements=[
                 JDRequirementDimension(name="专业技能匹配度", importance=80, requirement_level="高", description="分析失败", keywords=[]),
@@ -464,6 +468,7 @@ class JDMatcher:
                 JDRequirementDimension(name="软技能匹配度", importance=70, requirement_level="中", description="分析失败", keywords=[]),
                 JDRequirementDimension(name="职业发展匹配度", importance=60, requirement_level="中", description="分析失败", keywords=[]),
                 JDRequirementDimension(name="文化契合度", importance=70, requirement_level="中", description="分析失败", keywords=[]),
+                JDRequirementDimension(name="薪酬匹配度", importance=65, requirement_level="中", description="分析失败", keywords=[]),
             ],
             summary="分析过程出现错误，请稍后重试",
             strengths=[],

@@ -1,0 +1,3653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI面试评估系统 - 20260401战略招聘</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .project-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+        
+        /* ASR上传区域 */
+        .asr-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px dashed #667eea;
+        }
+        
+        .asr-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .asr-title .icon {
+            font-size: 24px;
+        }
+        
+        .upload-area {
+            background: white;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .file-list {
+            margin-top: 20px;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-icon {
+            font-size: 20px;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .file-size {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .file-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-cached {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .progress-bar {
+            width: 100px;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .action-bar {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        /* 候选人列表 */
+        .candidates-section {
+            margin-top: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .candidate-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .candidate-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .candidate-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        
+        .candidate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        
+        .candidate-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .candidate-status {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .candidate-info {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .candidate-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .candidate-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .candidate-actions .btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
+        }
+        
+        /* 统计面板 */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* 模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .transcript-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+        
+        /* 评估报告样式 */
+        .evaluation-report {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .evaluation-report::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .evaluation-report::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .evaluation-report::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        .score-section {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin-bottom: 25px;
+            color: white;
+        }
+        
+        .overall-score {
+            display: inline-block;
+        }
+        
+        .score-number {
+            font-size: 56px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .score-label {
+            font-size: 16px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+        
+        .score-level {
+            font-size: 20px;
+            margin-top: 8px;
+            padding: 4px 16px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .dimensions-section,
+        .summary-section,
+        .strengths-section,
+        .weaknesses-section,
+        .recommendations-section,
+        .qa-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .dimensions-section h4,
+        .summary-section h4,
+        .strengths-section h4,
+        .weaknesses-section h4,
+        .recommendations-section h4,
+        .qa-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .dimensions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        
+        .dimension-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .dimension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .dimension-name {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .dimension-score {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .dimension-weight {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .dimension-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .dimension-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .dimension-analysis {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .summary-section p {
+            line-height: 1.8;
+            color: #444;
+        }
+        
+        .strengths-section ul,
+        .weaknesses-section ul,
+        .recommendations-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .strengths-section li,
+        .weaknesses-section li,
+        .recommendations-section li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+            line-height: 1.6;
+        }
+        
+        .strengths-section li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #52c41a;
+            font-weight: bold;
+        }
+        
+        .weaknesses-section li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #f5222d;
+            font-weight: bold;
+        }
+        
+        .recommendations-section li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #1890ff;
+            font-weight: bold;
+        }
+        
+        .qa-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .qa-question {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        
+        .qa-answer {
+            color: #444;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .qa-score {
+            display: inline-block;
+            padding: 2px 10px;
+            background: #e6f7ff;
+            color: #1890ff;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .qa-evaluation {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        /* JD匹配报告样式 */
+        .jd-match-report {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .jd-match-report::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .jd-match-report::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .jd-match-report::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+        
+        .dimensions-compare-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .dimensions-compare-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .dimensions-compare-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .dimension-compare-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        
+        .dimension-compare-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+        
+        .dimension-compare-body {
+            padding: 15px;
+        }
+        
+        .jd-requirement {
+            background: #fff7e6;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid #faad14;
+        }
+        
+        .jd-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        
+        .jd-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #faad14;
+        }
+        
+        .jd-level {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .jd-desc {
+            font-size: 13px;
+            color: #666;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        
+        .candidate-match {
+            background: #f6ffed;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #52c41a;
+        }
+        
+        .match-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        
+        .match-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #52c41a;
+        }
+        
+        .match-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .match-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .match-analysis {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+            margin-top: 8px;
+        }
+        
+        /* Toast提示 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateX(0);
+        }
+        
+        .toast.success {
+            background: #48bb78;
+        }
+        
+        .toast.error {
+            background: #f56565;
+        }
+        
+        .toast.info {
+            background: #4299e1;
+        }
+        
+        /* 加载动画 */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 上传区域折叠样式 */
+        .upload-area.collapsed {
+            display: none;
+        }
+        
+        .action-bar.collapsed {
+            display: none;
+        }
+        
+        /* 文件列表紧凑模式 */
+        .file-list.compact {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .file-list.compact .file-item {
+            padding: 8px 12px;
+            margin-bottom: 6px;
+        }
+        
+        .upload-summary {
+            background: #f7fafc;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .upload-summary-text {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        
+        .upload-summary-count {
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面头部 -->
+        <div class="header">
+            <h1>🎯 AI面试评估系统</h1>
+            <p class="subtitle">基于大模型的面试录音智能分析与评估</p>
+            <div class="project-badge" id="projectBadge">📋 项目：加载中...</div>
+        </div>
+        
+        <!-- 统计面板 -->
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCandidates">0</div>
+                <div class="stat-label">候选人总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="processedCount">0</div>
+                <div class="stat-label">已转录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="evaluationCount">0</div>
+                <div class="stat-label">已AI评估</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-label">待处理</div>
+            </div>
+        </div>
+        
+        <!-- 共享资源管理 -->
+        <div class="asr-section" style="border-color: #48bb78;">
+            <div class="asr-title">
+                <span class="icon">📋</span>
+                <span>共享资源管理（JD & 面试问题）</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">招聘JD（支持Word/TXT文件）</label>
+                    <input type="file" id="jdFile" accept=".doc,.docx,.txt" style="display: none;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('jdFile').click()">
+                            <span>📄</span> 选择JD文件
+                        </button>
+                        <span id="jdFileName" style="color: #666; font-size: 14px;">未选择文件</span>
+                    </div>
+                    <textarea id="sharedJD" style="width: 100%; height: 100px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; resize: vertical;" placeholder="JD内容将显示在这里，也可以直接编辑..."></textarea>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">评价标准</label>
+                    <textarea id="sharedCriteria" style="width: 100%; height: 150px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; resize: vertical;" placeholder="请输入评价标准..."></textarea>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">结构化面试问题（Excel）</label>
+                <input type="file" id="questionsFile" accept=".xlsx,.xls" style="display: none;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('questionsFile').click()">
+                        <span>📁</span> 选择文件
+                    </button>
+                    <span id="questionsFileName" style="color: #666;">未选择文件</span>
+                </div>
+                <div id="questionsPreview" style="margin-top: 10px; padding: 10px; background: #f7fafc; border-radius: 6px; display: none;">
+                    <strong>已加载问题：</strong><span id="questionsCount">0</span> 个
+                </div>
+            </div>
+            
+            <div class="action-bar">
+                <button class="btn btn-primary" onclick="saveSharedResources()">
+                    <span>💾</span> 保存共享资源
+                </button>
+                <button class="btn btn-secondary" onclick="loadSharedResources()">
+                    <span>🔄</span> 加载已有资源
+                </button>
+            </div>
+        </div>
+        
+        <!-- 批量操作区域 -->
+        <div class="asr-section" style="border-color: #ed8936;">
+            <div class="asr-title">
+                <span class="icon">⚡</span>
+                <span>批量操作</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button class="btn btn-primary" onclick="batchProcessAll()" style="height: 60px;">
+                    <div style="font-size: 16px;">🚀 一键批量处理</div>
+                    <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">转录 + 读简历 + 评估</div>
+                </button>
+                <button class="btn btn-secondary" onclick="batchTranscribeAll()" style="height: 60px;">
+                    <div style="font-size: 16px;">🎙️ 批量转录所有录音</div>
+                    <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">自动识别项目目录</div>
+                </button>
+                <button class="btn btn-secondary" onclick="batchLoadResumes()" style="height: 60px;">
+                    <div style="font-size: 16px;">📄 批量读取简历</div>
+                    <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">解析所有Excel报名表</div>
+                </button>
+            </div>
+        </div>
+        
+        <!-- ASR批量上传区域 -->
+        <div class="asr-section">
+            <div class="asr-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span class="icon">🎙️</span>
+                    <span>批量录音转录（ASR）</span>
+                </div>
+                <button class="btn btn-secondary" id="toggleUploadBtn" onclick="toggleUploadArea()" style="display: none;">
+                    <span>📁</span> 展开上传区域
+                </button>
+            </div>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">点击或拖拽上传面试录音文件</div>
+                <div class="upload-hint">支持格式：AAC, MP3, WAV, M4A, MP4 | 单个文件最大 50MB</div>
+                <input type="file" id="fileInput" multiple accept=".aac,.mp3,.wav,.m4a,.mp4" style="display: none;">
+            </div>
+            
+            <div class="file-list" id="fileList"></div>
+            
+            <div class="action-bar" id="uploadActionBar">
+                <button class="btn btn-primary" id="startTranscriptionBtn" onclick="startBatchTranscription()">
+                    <span>🚀</span> 开始批量转录
+                </button>
+                <button class="btn btn-secondary" id="clearCompletedBtn" onclick="clearCompleted()">
+                    <span>🧹</span> 清除已完成
+                </button>
+                <button class="btn btn-secondary" onclick="loadExistingTranscriptions()">
+                    <span>📂</span> 加载已有缓存
+                </button>
+            </div>
+        </div>
+        
+        <!-- 候选人列表 -->
+        <div class="candidates-section">
+            <div class="section-header">
+                <h2 class="section-title">候选人列表</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="loadExistingEvaluations()">
+                        <span>📂</span> 加载已有评估缓存
+                    </button>
+                    <button class="btn btn-primary" onclick="evaluateAll()">
+                        <span>🤖</span> 批量AI评估
+                    </button>
+                </div>
+            </div>
+            
+            <div class="candidate-grid" id="candidateGrid">
+                <!-- 候选人卡片将动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 转录文本查看模态框 -->
+    <div class="modal-overlay" id="transcriptModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 面试转录文本</h3>
+                <button class="modal-close" onclick="closeTranscriptModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="transcript-content" id="transcriptContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 评估结果模态框 -->
+    <div class="modal-overlay" id="evaluationModal">
+        <div class="modal" style="max-width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">📊 AI面试评估报告</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary" onclick="downloadEvaluationReport(true)" style="padding: 6px 12px; font-size: 14px;" title="不含雷达图，文件更小">
+                        <span>📄</span> 简洁版
+                    </button>
+                    <button class="btn btn-primary" onclick="downloadEvaluationReport(false)" style="padding: 6px 12px; font-size: 14px;" title="包含完整内容和雷达图">
+                        <span>📥</span> 完整版
+                    </button>
+                    <button class="modal-close" onclick="closeEvaluationModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="evaluationModalBody">
+                <div id="evaluationContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JD匹配结果模态框 -->
+    <div class="modal-overlay" id="jdMatchModal">
+        <div class="modal" style="max-width: 1100px; max-height: 95vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">🎯 JD岗位匹配分析报告</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-primary" onclick="downloadJDMatchReport()" style="padding: 6px 12px; font-size: 14px;">
+                        <span>📥</span> 下载报告
+                    </button>
+                    <button class="modal-close" onclick="closeJDMatchModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="jdMatchModalBody" style="padding: 20px;">
+                <div id="jdMatchContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 问答编辑模态框 -->
+    <div class="modal-overlay" id="qaEditModal">
+        <div class="modal" style="max-width: 1000px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 面试问答校对</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-primary" onclick="saveQAChanges()" style="padding: 6px 12px; font-size: 14px;">
+                        <span>💾</span> 保存修改
+                    </button>
+                    <button class="btn btn-success" onclick="reEvaluateFromQA()" style="padding: 6px 12px; font-size: 14px;">
+                        <span>🤖</span> 重新评估
+                    </button>
+                    <button class="modal-close" onclick="closeQAEditModal()">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" id="qaEditModalBody" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
+                <div id="qaEditContent"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // 全局状态
+        let uploadQueue = [];
+        let candidates = [];
+        let projectDir = '20260401战略招聘'; // 默认项目，可以通过URL参数或选择器修改
+        let sharedResources = {};
+        
+        // 项目配置列表（可根据需要扩展）
+        const PROJECT_CONFIGS = {
+            '20260401战略招聘': {
+                name: '战略与创新部副总经理招聘',
+                jdTitle: '战略与创新部副总经理',
+                jdFile: '20260401 国脉文化公司战略与创新部副总经理总经理助理岗位招聘公告 V1.0- OA发布.docx'
+            }
+            // 可以添加更多项目配置
+        };
+        
+        // 获取当前项目配置
+        function getCurrentProjectConfig() {
+            return PROJECT_CONFIGS[projectDir] || {
+                name: projectDir,
+                jdTitle: '岗位招聘',
+                jdFile: ''
+            };
+        }
+        
+        // 切换项目
+        function switchProject(newProjectDir) {
+            if (newProjectDir !== projectDir) {
+                projectDir = newProjectDir;
+                candidates = []; // 清空当前候选人列表
+                renderCandidates();
+                loadExistingTranscriptions(); // 重新加载新项目的数据
+                showToast(`已切换到项目: ${getCurrentProjectConfig().name}`, 'success');
+            }
+        }
+
+        // 获取分数颜色
+        function getScoreColor(score) {
+            if (!score && score !== 0) return '#666';
+            if (score >= 90) return '#52c41a';
+            if (score >= 80) return '#73d13d';
+            if (score >= 70) return '#faad14';
+            if (score >= 60) return '#fa8c16';
+            return '#f5222d';
+        }
+
+        // 更新评分对比表格（显示模型输出的评分）
+        function updateCalibrationComparison() {
+            const tbody = document.getElementById('calibrationComparison');
+            
+            if (candidates.length === 0 || !candidates[0]?.hasEvaluation) {
+                tbody.innerHTML = `
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td colspan="4" style="padding: 15px; text-align: center; color: #999;">请先加载评估数据</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // 使用模型输出的评分
+            const scoredCandidates = candidates.map(c => {
+                if (!c.hasEvaluation) return null;
+                const evaluation = c.evaluation?.candidate_performance || c.evaluation;
+                const score = evaluation?.overall_score || 0;
+                return {
+                    name: c.name,
+                    score
+                };
+            }).filter(Boolean).sort((a, b) => b.score - a.score);
+            
+            // 生成排名
+            let rank = 1;
+            let prevScore = null;
+            scoredCandidates.forEach((c, idx) => {
+                if (prevScore !== null && c.score !== prevScore) {
+                    rank = idx + 1;
+                }
+                c.rank = rank;
+                prevScore = c.score;
+            });
+            
+            // 渲染表格
+            tbody.innerHTML = scoredCandidates.map(c => {
+                const rankIcon = c.rank === 1 ? '🥇' : c.rank === 2 ? '🥈' : c.rank === 3 ? '🥉' : `${c.rank}.`;
+                
+                return `
+                    <tr style="border-bottom: 1px solid #f0f0f0;">
+                        <td style="padding: 10px; font-weight: 500;">${c.name}</td>
+                        <td style="padding: 10px; text-align: center; font-weight: bold; color: ${getScoreColor(c.score)};">${c.score}</td>
+                        <td style="padding: 10px; text-align: center;">${rankIcon}</td>
+                        <td style="padding: 10px; text-align: center; color: #666;">${c.score >= 80 ? '推荐' : c.score >= 60 ? '可考虑' : '不推荐'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 重新运行AI评估（使用优化后的prompt）
+        function applyCalibration() {
+            showToast('正在重新运行AI评估（使用优化后的评分标准）...', 'info');
+            loadBatchEvaluations().then(() => {
+                renderCandidates();
+                showToast('评估数据已重新加载', 'success');
+            }).catch(() => {
+                showToast('重新加载失败', 'error');
+            });
+        }
+
+        // 渲染维度分数预览
+        function renderDimensionScores(dimensions) {
+            if (!dimensions || dimensions.length === 0) return '';
+            
+            // 6个核心维度映射
+            const dimensionNames = {
+                '专业能力': '专业',
+                '工作经验': '经验',
+                '沟通表达': '沟通',
+                '逻辑思维': '逻辑',
+                '学习能力': '学习',
+                '综合素质': '综合'
+            };
+            
+            return dimensions.map(d => {
+                const shortName = dimensionNames[d.name] || d.name.substring(0, 2);
+                const score = d.score || 0;
+                const color = getScoreColor(score);
+                return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; background: white; border-radius: 3px;">
+                    <span style="color: #666;">${shortName}</span>
+                    <span style="color: ${color}; font-weight: bold;">${score}</span>
+                </div>`;
+            }).join('');
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initUploadArea();
+        });
+        
+        // 初始化上传区域
+        function initUploadArea() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+        }
+        
+        // 处理上传的文件
+        function handleFiles(files) {
+            const validTypes = ['.aac', '.mp3', '.wav', '.m4a', '.mp4'];
+            
+            Array.from(files).forEach(file => {
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                if (validTypes.includes(ext)) {
+                    // 检查是否已存在
+                    const exists = uploadQueue.some(item => item.file.name === file.name);
+                    if (!exists) {
+                        uploadQueue.push({
+                            file: file,
+                            status: 'pending',
+                            progress: 0,
+                            result: null
+                        });
+                    }
+                } else {
+                    showToast(`不支持的文件格式: ${file.name}`, 'error');
+                }
+            });
+            
+            renderFileList();
+        }
+        
+        // 渲染文件列表
+        function renderFileList() {
+            const fileList = document.getElementById('fileList');
+            const uploadArea = document.getElementById('uploadArea');
+            const actionBar = document.getElementById('uploadActionBar');
+            const toggleBtn = document.getElementById('toggleUploadBtn');
+            
+            if (uploadQueue.length === 0) {
+                fileList.innerHTML = '';
+                // 没有文件时显示上传区域
+                uploadArea.classList.remove('collapsed');
+                actionBar.classList.remove('collapsed');
+                toggleBtn.style.display = 'none';
+                fileList.classList.remove('compact');
+                return;
+            }
+            
+            // 有文件时折叠上传区域
+            uploadArea.classList.add('collapsed');
+            actionBar.classList.add('collapsed');
+            toggleBtn.style.display = 'inline-block';
+            fileList.classList.add('compact');
+            
+            // 显示文件列表和摘要
+            const completedCount = uploadQueue.filter(i => i.status === 'completed' || i.status === 'cached').length;
+            const processingCount = uploadQueue.filter(i => i.status === 'processing').length;
+            const pendingCount = uploadQueue.filter(i => i.status === 'pending').length;
+            
+            let summaryHtml = `
+                <div class="upload-summary">
+                    <div class="upload-summary-text">
+                        已上传 <span class="upload-summary-count">${uploadQueue.length}</span> 个文件
+                        ${completedCount > 0 ? `| 已完成: ${completedCount}` : ''}
+                        ${processingCount > 0 ? `| 处理中: ${processingCount}` : ''}
+                        ${pendingCount > 0 ? `| 待处理: ${pendingCount}` : ''}
+                    </div>
+                </div>
+            `;
+            
+            const fileListHtml = uploadQueue.map((item, index) => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <span class="file-icon">🎵</span>
+                        <div>
+                            <div class="file-name">${item.file.name}</div>
+                            <div class="file-size">${formatFileSize(item.file.size)}</div>
+                        </div>
+                    </div>
+                    <div class="file-status">
+                        ${renderStatus(item)}
+                        <button class="btn btn-danger" onclick="removeFile(${index})" ${item.status === 'processing' ? 'disabled' : ''}>删除</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            fileList.innerHTML = summaryHtml + fileListHtml;
+        }
+        
+        // 切换上传区域显示/隐藏
+        function toggleUploadArea() {
+            const uploadArea = document.getElementById('uploadArea');
+            const actionBar = document.getElementById('uploadActionBar');
+            const toggleBtn = document.getElementById('toggleUploadBtn');
+            
+            if (uploadArea.classList.contains('collapsed')) {
+                // 展开
+                uploadArea.classList.remove('collapsed');
+                actionBar.classList.remove('collapsed');
+                toggleBtn.innerHTML = '<span>📁</span> 收起上传区域';
+            } else {
+                // 收起
+                uploadArea.classList.add('collapsed');
+                actionBar.classList.add('collapsed');
+                toggleBtn.innerHTML = '<span>📁</span> 展开上传区域';
+            }
+        }
+        
+        // 渲染状态
+        function renderStatus(item) {
+            const statusMap = {
+                'pending': { class: 'status-pending', text: '待处理' },
+                'processing': { class: 'status-processing', text: '处理中' },
+                'completed': { class: 'status-completed', text: '已完成' },
+                'error': { class: 'status-error', text: '失败' },
+                'cached': { class: 'status-cached', text: '已缓存' }
+            };
+            
+            const status = statusMap[item.status] || statusMap['pending'];
+            
+            if (item.status === 'processing') {
+                return `
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${item.progress}%"></div>
+                    </div>
+                    <span class="status-badge ${status.class}">${status.text}</span>
+                `;
+            }
+            
+            return `<span class="status-badge ${status.class}">${status.text}</span>`;
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 删除文件
+        function removeFile(index) {
+            uploadQueue.splice(index, 1);
+            renderFileList();
+        }
+        
+        // 开始批量转录
+        async function startBatchTranscription() {
+            const pendingFiles = uploadQueue.filter(item => item.status === 'pending');
+            
+            if (pendingFiles.length === 0) {
+                showToast('没有待处理的文件', 'info');
+                return;
+            }
+            
+            showToast(`开始批量转录 ${pendingFiles.length} 个文件...`, 'info');
+            
+            for (const item of pendingFiles) {
+                if (item.status !== 'pending') continue;
+                
+                item.status = 'processing';
+                item.progress = 10;
+                renderFileList();
+                
+                try {
+                    const result = await transcribeAudio(item.file, (progress) => {
+                        item.progress = progress;
+                        renderFileList();
+                    });
+                    
+                    item.result = result;
+                    item.status = result.cached ? 'cached' : 'completed';
+                    item.progress = 100;
+                    
+                    // 添加到候选人列表
+                    addCandidateFromTranscription(result);
+                    
+                } catch (error) {
+                    item.status = 'error';
+                    item.error = error.message;
+                    showToast(`转录失败: ${item.file.name}`, 'error');
+                }
+                
+                renderFileList();
+            }
+            
+            showToast('批量转录完成', 'success');
+            updateStats();
+        }
+        
+        // 转录音频
+        async function transcribeAudio(file, onProgress) {
+            const formData = new FormData();
+            formData.append('audio_file', file);
+            formData.append('project', projectDir);
+            
+            onProgress(10);
+            
+            try {
+                // 使用 AbortController 来支持超时
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 600000); // 10分钟超时
+                
+                const response = await fetch('/api/v1/interview-evaluation/transcribe', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                onProgress(80);
+                
+                if (!response.ok) {
+                    let errorMsg = '转录失败';
+                    try {
+                        const error = await response.json();
+                        errorMsg = error.detail || error.message || '转录失败';
+                    } catch (e) {
+                        errorMsg = `服务器错误: ${response.status}`;
+                    }
+                    throw new Error(errorMsg);
+                }
+                
+                const result = await response.json();
+                onProgress(100);
+                
+                return result;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('转录超时，请稍后重试');
+                }
+                throw error;
+            }
+        }
+        
+        // 从转录结果添加候选人
+        function addCandidateFromTranscription(result) {
+            const candidateName = result.candidate_name || extractCandidateName(result.file_name);
+            
+            // 检查是否已存在
+            const existingCandidate = candidates.find(c => c.name === candidateName);
+            if (existingCandidate) {
+                // 如果已存在，更新转录文本
+                if (result.transcription) {
+                    existingCandidate.transcription = result.transcription;
+                    existingCandidate.hasTranscription = true;
+                    if (result.file_name) {
+                        existingCandidate.fileName = result.file_name;
+                    }
+                    renderCandidates();
+                }
+                return;
+            }
+            
+            // 不存在则添加新候选人
+            candidates.push({
+                name: candidateName,
+                fileName: result.file_name,
+                hasTranscription: true,
+                transcription: result.transcription,
+                hasEvaluation: false,
+                evaluation: null
+            });
+            
+            renderCandidates();
+        }
+        
+        // 从文件名提取候选人姓名
+        function extractCandidateName(fileName) {
+            // 文件名格式: 04月10日_10黄俊华.aac
+            try {
+                const namePart = fileName.split('_').pop();
+                const name = namePart.split('.')[0];
+                for (let i = 0; i < name.length; i++) {
+                    if (!/\d/.test(name[i])) {
+                        return name.substring(i);
+                    }
+                }
+                return name;
+            } catch {
+                return fileName;
+            }
+        }
+        
+        // 加载已有缓存
+        // 从新的目录结构加载转录文本 (tras/{候选人}.json)
+        async function loadTranscriptionsFromNewStructure() {
+            try {
+                // 首先获取项目目录下的所有音频文件
+                const audioFiles = [];
+                const audioExtensions = ['.aac', '.mp3', '.wav', '.m4a'];
+                
+                // 这里假设我们有一个API可以列出项目目录下的文件
+                // 如果没有，我们可以尝试从tras目录读取
+                const trasDir = `/data/interview/${projectDir}/tras`;
+                
+                let loadedCount = 0;
+                
+                // 尝试从tras目录加载转录数据
+                // 我们需要知道有哪些候选人，这里尝试从tras目录读取
+                // 由于没有直接的目录列表API，我们尝试加载已知的候选人
+                const knownCandidates = ['仇天硕', '褚祎鹤', '石欣慰', '李贤峰', '郑振东', 
+                                         '邹川龙', '邱洋', '黄俊华', '吴届生', '雷雨田'];
+                
+                for (const candidateName of knownCandidates) {
+                    try {
+                        const response = await fetch(`/data/interview/${projectDir}/tras/${candidateName}.json`);
+                        if (response.ok) {
+                            const trasData = await response.json();
+                            if (trasData && trasData.transcription) {
+                                // 检查候选人是否已存在
+                                const existingCandidate = candidates.find(c => c.name === candidateName);
+                                if (!existingCandidate) {
+                                    addCandidateFromTranscription({
+                                        candidate_name: candidateName,
+                                        file_name: trasData.audio_file || `${candidateName}.aac`,
+                                        transcription: trasData.transcription,
+                                        status: 'completed'
+                                    });
+                                    loadedCount++;
+                                } else {
+                                    // 更新现有候选人的转录文本
+                                    existingCandidate.transcription = trasData.transcription;
+                                    existingCandidate.hasTranscription = true;
+                                    existingCandidate.fileName = trasData.audio_file || `${candidateName}.aac`;
+                                    loadedCount++;
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.log(`${candidateName} 转录数据不存在或加载失败`);
+                    }
+                }
+                
+                // 无论新增还是更新，都重新渲染界面
+                updateStats();
+                renderCandidates();
+                
+                if (loadedCount > 0) {
+                    showToast(`已从新目录结构加载/更新 ${loadedCount} 个转录数据`, 'success');
+                }
+                
+                return loadedCount;
+            } catch (error) {
+                console.error('从新的目录结构加载转录数据失败:', error);
+                return 0;
+            }
+        }
+        
+        async function loadExistingTranscriptions() {
+            // 首先尝试从新的目录结构加载
+            const newStructureCount = await loadTranscriptionsFromNewStructure();
+            
+            // 如果新结构没有加载到数据，尝试旧结构（API接口）
+            if (newStructureCount === 0) {
+                try {
+                    const response = await fetch(`/api/v1/interview-batch/candidates/${projectDir}`);
+                    if (!response.ok) return;
+                    
+                    const data = await response.json();
+                    
+                    if (data.candidates) {
+                        data.candidates.forEach(c => {
+                            addCandidateFromTranscription({
+                                candidate_name: c.name,
+                                file_name: c.filename || c.name + '.aac',
+                                transcription: c.transcript || c.transcription || '',
+                                status: c.status || 'completed'
+                            });
+                        });
+                        
+                        updateStats();
+                        showToast(`已从旧结构加载 ${data.candidates.length} 个候选人`, 'success');
+                    }
+                } catch (error) {
+                    console.error('从旧结构加载缓存失败:', error);
+                }
+            }
+            
+            // 同时加载评估缓存
+            await loadBatchEvaluations();
+        }
+        
+        // 加载已有评估缓存（单个候选人）
+        async function loadExistingEvaluations() {
+            if (candidates.length === 0) {
+                showToast('暂无候选人数据', 'info');
+                return;
+            }
+            
+            showToast('正在加载评估缓存...', 'info');
+            let loadedCount = 0;
+            let errorCount = 0;
+            
+            for (const candidate of candidates) {
+                try {
+                    const response = await fetch(`/api/v1/interview-evaluation/evaluation-cache?candidate_name=${encodeURIComponent(candidate.name)}&project=${encodeURIComponent(projectDir)}`);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.cached && data.evaluation) {
+                            candidate.hasEvaluation = true;
+                            candidate.evaluation = data.evaluation;
+                            loadedCount++;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`加载 ${candidate.name} 的评估缓存失败:`, error);
+                    errorCount++;
+                }
+            }
+            
+            renderCandidates();
+            
+            if (loadedCount > 0) {
+                showToast(`成功加载 ${loadedCount} 个评估缓存`, 'success');
+            } else if (errorCount === 0) {
+                showToast('未找到评估缓存', 'info');
+            } else {
+                showToast(`加载完成，${loadedCount} 个成功，${errorCount} 个失败`, 'warning');
+            }
+        }
+
+        // 从新的目录结构加载评估数据 (eval/{候选人}.json)
+        async function loadEvaluationsFromNewStructure() {
+            let loadedCount = 0;
+            
+            for (const candidate of candidates) {
+                try {
+                    // 尝试从新的目录结构加载评估数据
+                    const response = await fetch(`/data/interview/${projectDir}/eval/${candidate.name}.json`);
+                    
+                    if (response.ok) {
+                        const evalData = await response.json();
+                        if (evalData) {
+                            candidate.hasEvaluation = true;
+                            candidate.evaluation = evalData;
+                            loadedCount++;
+                        }
+                    }
+                } catch (error) {
+                    // 新结构不存在，忽略错误
+                    console.log(`${candidate.name} 新结构评估数据不存在`);
+                }
+            }
+            
+            if (loadedCount > 0) {
+                renderCandidates();
+                showToast(`已从新目录结构加载 ${loadedCount} 个评估数据`, 'success');
+            }
+            
+            return loadedCount;
+        }
+        
+        // 批量加载所有评估缓存（兼容新旧结构）
+        async function loadBatchEvaluations() {
+            // 首先尝试从新的目录结构加载
+            const newStructureCount = await loadEvaluationsFromNewStructure();
+            
+            // 如果新结构没有加载到数据，尝试旧结构（API接口）
+            if (newStructureCount === 0) {
+                try {
+                    const response = await fetch(`/api/v1/interview-evaluation/evaluations-batch?project=${encodeURIComponent(projectDir)}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('批量加载失败');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.evaluations && data.evaluations.length > 0) {
+                        let loadedCount = 0;
+                        
+                        data.evaluations.forEach(item => {
+                            const candidate = candidates.find(c => c.name === item.candidate_name);
+                            if (candidate) {
+                                candidate.hasEvaluation = true;
+                                candidate.evaluation = item.evaluation;
+                                loadedCount++;
+                            }
+                        });
+                        
+                        renderCandidates();
+                        
+                        if (loadedCount > 0) {
+                            showToast(`已从旧结构加载 ${loadedCount} 个AI评估缓存`, 'success');
+                        }
+                        
+                        return loadedCount;
+                    }
+                } catch (error) {
+                    console.error('从旧结构批量加载评估缓存失败:', error);
+                }
+            }
+            
+            return newStructureCount;
+        }
+        
+        // 渲染候选人列表
+        function renderCandidates() {
+            const grid = document.getElementById('candidateGrid');
+            
+            if (candidates.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">暂无候选人数据</div>';
+                return;
+            }
+            
+            let html = '';
+            for (let i = 0; i < candidates.length; i++) {
+                const c = candidates[i];
+                const statusClass = c.hasEvaluation ? 'status-completed' : (c.hasTranscription ? 'status-processing' : 'status-pending');
+                const statusText = c.hasEvaluation ? '已评估' : (c.hasTranscription ? '待评估' : '待转录');
+                const fileName = c.fileName || (c.transcription && c.transcription.audio_file) || (c.transcription && c.transcription.file_name) || '未上传文件';
+                
+                html += '<div class="candidate-card">';
+                html += '<div class="candidate-header">';
+                html += '<div class="candidate-name">' + c.name + '</div>';
+                html += '<span class="candidate-status ' + statusClass + '">' + statusText + '</span>';
+                html += '</div>';
+                
+                html += '<div class="candidate-info">';
+                html += '<div class="candidate-info-item"><span>🎵</span><span>' + fileName + '</span></div>';
+                html += '<div class="candidate-info-item"><span>📝</span><span>' + (c.hasTranscription ? '转录完成' : '未转录') + '</span></div>';
+                
+                if (c.hasResume) {
+                    html += '<div class="candidate-info-item"><span>📄</span><span>已加载简历</span></div>';
+                }
+                
+                if (c.hasEvaluation && c.evaluation) {
+                    const overallScore = (c.evaluation.candidate_performance && c.evaluation.candidate_performance.overall_score) || c.evaluation.overall_score || '-';
+                    html += '<div class="candidate-info-item"><span>⭐</span><span>AI初面评分: <strong>' + overallScore + '</strong></span></div>';
+                }
+                
+                html += '</div>';
+                
+                html += '<div class="candidate-actions">';
+                if (c.hasTranscription) {
+                    html += '<button class="btn btn-secondary" onclick="viewTranscript(\'' + c.name + '\')">查看文本</button>';
+                } else {
+                    html += '<button class="btn btn-secondary" disabled>查看文本</button>';
+                }
+                html += '<button class="btn btn-info" onclick="editQA(\'' + c.name + '\')">问答</button>';
+                html += '<button class="btn btn-success" onclick="viewEvaluation(\'' + c.name + '\')">查看评估</button>';
+                html += '<button class="btn btn-danger" onclick="deleteCandidate(\'' + c.name + '\')">删除</button>';
+                html += '</div>';
+                
+                html += '</div>';
+            }
+            
+            grid.innerHTML = html;
+            updateStats();
+        }
+        
+        // 查看转录文本
+        function viewTranscript(candidateName) {
+            const candidate = candidates.find(c => c.name === candidateName);
+            if (!candidate || !candidate.transcription) {
+                showToast('转录文本不存在', 'error');
+                return;
+            }
+            
+            // 处理转录文本 - 可能是字符串或对象
+            let transcriptText = '';
+            if (typeof candidate.transcription === 'string') {
+                transcriptText = candidate.transcription;
+            } else if (typeof candidate.transcription === 'object') {
+                // 如果是对象，尝试获取 transcription 或 text 字段
+                transcriptText = candidate.transcription.transcription || 
+                                candidate.transcription.text || 
+                                '';
+            }
+            
+            // 如果转录文本为空，显示提示
+            if (!transcriptText || transcriptText.trim() === '') {
+                transcriptText = '【转录文本为空】\n\n可能原因：\n1. 音频文件静音或无法识别\n2. ASR服务暂时不可用\n3. 音频格式不支持\n\n建议重新上传音频文件或联系管理员。';
+            }
+            
+            document.getElementById('transcriptContent').textContent = transcriptText;
+            document.getElementById('transcriptModal').classList.add('active');
+        }
+        
+        // 关闭转录文本模态框
+        function closeTranscriptModal() {
+            document.getElementById('transcriptModal').classList.remove('active');
+        }
+        
+        // 当前查看的AI评估报告数据（用于下载）
+        let currentEvaluationReport = null;
+        let currentEvaluationCandidateName = '';
+        
+        // 查看评估结果
+        function viewEvaluation(candidateName) {
+            const candidate = candidates.find(c => c.name === candidateName);
+            if (!candidate || !candidate.evaluation) {
+                showToast('评估结果不存在', 'error');
+                return;
+            }
+            
+            currentEvaluationCandidateName = candidateName;
+            currentEvaluationReport = candidate.evaluation;
+            
+            const evaluation = candidate.evaluation;
+            
+            // 新格式：jd_requirements(岗位要求), candidate_performance(候选人表现), salary_match(薪酬匹配)
+            const jdRequirements = evaluation.jd_requirements || null;
+            const candidatePerformance = evaluation.candidate_performance || evaluation;
+            const salaryMatch = evaluation.salary_match || null;
+            
+            // 获取维度数据
+            // 优先使用后端返回的jd_requirements数据，如果没有则根据JD内容动态计算
+            let jdDimensions = [];
+            if (jdRequirements && jdRequirements.dimensions && jdRequirements.dimensions.length > 0) {
+                // 使用后端返回的真实岗位要求数据
+                jdDimensions = jdRequirements.dimensions;
+            } else {
+                // 根据候选人表现和JD内容动态生成合理的岗位要求
+                // 不同维度应该有差异化的要求，而不是全部100分
+                const candidateDims = candidatePerformance.dimensions || [];
+                jdDimensions = candidateDims.map(d => {
+                    // 根据维度名称设置不同的基础要求分数
+                    let baseScore = 75; // 默认基础要求
+                    const name = d.name;
+                    if (name.includes('专业') || name.includes('能力')) {
+                        baseScore = 85; // 专业能力要求较高
+                    } else if (name.includes('经验')) {
+                        baseScore = 80; // 工作经验要求较高
+                    } else if (name.includes('沟通')) {
+                        baseScore = 70; // 沟通表达要求中等
+                    } else if (name.includes('逻辑')) {
+                        baseScore = 75; // 逻辑思维要求中等偏上
+                    } else if (name.includes('学习')) {
+                        baseScore = 70; // 学习能力要求中等
+                    } else if (name.includes('综合')) {
+                        baseScore = 75; // 综合素质要求中等偏上
+                    }
+                    // 根据候选人得分微调要求（如果候选人得分很高，说明岗位要求应该也较高）
+                    const candidateScore = d.score || 0;
+                    if (candidateScore >= 90) {
+                        baseScore = Math.min(95, baseScore + 10);
+                    } else if (candidateScore >= 80) {
+                        baseScore = Math.min(90, baseScore + 5);
+                    } else if (candidateScore <= 50) {
+                        baseScore = Math.max(60, baseScore - 10);
+                    }
+                    return {
+                        name: d.name,
+                        score: baseScore,
+                        description: '根据JD分析得出的岗位要求'
+                    };
+                });
+            }
+            const candidateDimensions = candidatePerformance.dimensions || [];
+            
+            // 构建评估报告HTML - 参考附件格式
+            let html = `
+                <div class="evaluation-report" id="evaluationReportContent">
+                    <!-- 双雷达图区域 -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                        <!-- JD要求雷达图 -->
+                        <div class="radar-section" style="padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                            <h4 style="text-align: center; margin-bottom: 15px;">📋 岗位要求</h4>
+                            <div id="jdRadarChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        
+                        <!-- 候选人表现雷达图 -->
+                        <div class="radar-section" style="padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                            <h4 style="text-align: center; margin-bottom: 15px;">👤 候选人表现</h4>
+                            <div id="candidateRadarChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 6维度详细对比 -->
+                    <div class="dimensions-compare-section" style="margin-bottom: 25px;">
+                        <h4>📊 6维度详细对比</h4>
+                        <div class="dimensions-compare-grid">
+                            ${candidateDimensions.map((d, idx) => {
+                                const jdDim = jdDimensions[idx] || {score: 0};
+                                return `
+                                <div class="dimension-compare-card">
+                                    <div class="dimension-compare-header">
+                                        <span class="dimension-name">${d.name}</span>
+                                    </div>
+                                    <div class="dimension-compare-body">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <!-- 岗位要求 -->
+                                            <div class="jd-requirement" style="background: #fff2f0; border-left: 3px solid #ff4d4f; padding: 10px; border-radius: 6px;">
+                                                <div style="font-size: 11px; color: #666; margin-bottom: 4px;">岗位要求</div>
+                                                <div style="font-size: 18px; font-weight: bold; color: #ff4d4f;">${jdDim.score || '-'}分</div>
+                                                <div style="margin-top: 5px; font-size: 11px; color: #666;">${jdDim.description || ''}</div>
+                                            </div>
+                                            <!-- 候选人表现 -->
+                                            <div class="candidate-performance" style="background: #f6ffed; border-left: 3px solid #52c41a; padding: 10px; border-radius: 6px;">
+                                                <div style="font-size: 11px; color: #666; margin-bottom: 4px;">候选人表现</div>
+                                                <div style="font-size: 18px; font-weight: bold; color: #52c41a;">${d.score}分</div>
+                                                <div style="margin-top: 5px; font-size: 11px; color: #666;">${d.analysis || ''}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- AI综合评分和薪酬匹配情况 - 两个分数卡片 -->
+                    <div class="score-match-section" style="margin-bottom: 25px; padding: 25px; background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%); border-radius: 12px; border-left: 4px solid #1890ff;">
+                        <h4 style="color: #096dd9; margin-bottom: 20px; text-align: center;">📊 AI评估与薪酬匹配</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <!-- AI综合评分 -->
+                            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 14px; color: #666; margin-bottom: 10px;">AI综合评分</div>
+                                <div style="font-size: 48px; font-weight: bold; color: #1890ff;">${candidatePerformance.overall_score || '-'}</div>
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">分 (6维度均值)</div>
+                            </div>
+                            <!-- 薪酬匹配度 -->
+                            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                <div style="font-size: 14px; color: #666; margin-bottom: 10px;">薪酬匹配度</div>
+                                <div style="font-size: 48px; font-weight: bold; color: ${salaryMatch ? ((salaryMatch.match_percentage || salaryMatch.score) >= 80 ? '#52c41a' : ((salaryMatch.match_percentage || salaryMatch.score) >= 60 ? '#faad14' : '#ff4d4f')) : '#999'};">${salaryMatch ? (salaryMatch.match_percentage || salaryMatch.score || 'N/A') : 'N/A'}</div>
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">${salaryMatch ? '%' : ''}</div>
+                            </div>
+                        </div>
+                        ${salaryMatch ? `
+                        <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; font-size: 13px;">
+                                <div><strong>岗位薪酬范围:</strong> ${salaryMatch.jd_salary_range || '未明确'}</div>
+                                <div><strong>候选人期望:</strong> ${salaryMatch.expected_salary || '未明确'}</div>
+                                <div><strong>当前薪酬:</strong> ${salaryMatch.current_salary || '未明确'}</div>
+                            </div>
+                            <div style="color: #666; line-height: 1.6; font-size: 13px;">${salaryMatch.analysis || ''}</div>
+                        </div>
+                        ` : '<div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; text-align: center; color: #999;">未找到薪酬信息</div>'}
+                    </div>
+                    
+                    <!-- JD要求总结 -->
+                    ${jdRequirements && jdRequirements.summary ? `
+                    <div class="summary-section" style="background: #e6f7ff;">
+                        <h4>📋 JD要求总结</h4>
+                        <p>${jdRequirements.summary}</p>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 综合评价 -->
+                    <div class="summary-section">
+                        <h4>📝 综合评价</h4>
+                        <p>${candidatePerformance.summary || '暂无评价'}</p>
+                    </div>
+                    
+                    <!-- 候选人优势 -->
+                    ${candidatePerformance.strengths && candidatePerformance.strengths.length > 0 ? `
+                    <div class="strengths-section">
+                        <h4>✅ 候选人优势</h4>
+                        <ul>
+                            ${candidatePerformance.strengths.map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 候选人不足 -->
+                    ${candidatePerformance.weaknesses && candidatePerformance.weaknesses.length > 0 ? `
+                    <div class="weaknesses-section">
+                        <h4>⚠️ 候选人不足</h4>
+                        <ul>
+                            ${candidatePerformance.weaknesses.map(w => `<li>${w}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 招聘建议 -->
+                    ${candidatePerformance.recommendations && candidatePerformance.recommendations.length > 0 ? `
+                    <div class="recommendations-section">
+                        <h4>💡 招聘建议</h4>
+                        <ul>
+                            ${candidatePerformance.recommendations.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 问答评价 -->
+                    ${candidatePerformance.question_answers && candidatePerformance.question_answers.length > 0 ? `
+                    <div class="qa-section">
+                        <h4>🎯 问答评价</h4>
+                        ${candidatePerformance.question_answers.map((qa, idx) => `
+                            <div class="qa-item">
+                                <div class="qa-question">Q${idx + 1}: ${qa.question}</div>
+                                <div class="qa-answer">${qa.answer_summary}</div>
+                                <div class="qa-score">评分: ${qa.score}分</div>
+                                <div class="qa-evaluation">${qa.evaluation}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('evaluationContent').innerHTML = html;
+            document.getElementById('evaluationModal').classList.add('active');
+            
+            // 渲染两个雷达图 - JD要求和候选人表现
+            setTimeout(() => {
+                renderJDRadarChart(jdDimensions);
+                renderCandidateRadarChart(candidateDimensions);
+            }, 100);
+        }
+        
+        // 渲染JD要求雷达图
+        function renderJDRadarChart(dimensions) {
+            const chartDom = document.getElementById('jdRadarChart');
+            if (!chartDom || !dimensions || dimensions.length === 0) return;
+            
+            const myChart = echarts.init(chartDom);
+            
+            const indicators = dimensions.map(dim => ({
+                name: dim.name,
+                max: 100
+            }));
+            
+            const jdData = dimensions.map(dim => dim.score || 0);
+            
+            const option = {
+                tooltip: { trigger: 'item' },
+                radar: {
+                    indicator: indicators,
+                    shape: 'polygon',
+                    splitNumber: 5,
+                    radius: '65%',
+                    axisName: {
+                        color: '#ff4d4f',
+                        fontSize: 11
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: ['rgba(255, 77, 79, 0.1)', 'rgba(255, 77, 79, 0.2)',
+                                   'rgba(255, 77, 79, 0.4)', 'rgba(255, 77, 79, 0.6)',
+                                   'rgba(255, 77, 79, 0.8)', 'rgba(255, 77, 79, 1)'].reverse()
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(255, 77, 79, 0.5)' }
+                    }
+                },
+                series: [{
+                    name: '岗位要求',
+                    type: 'radar',
+                    data: [{
+                        value: jdData,
+                        name: '岗位要求',
+                        areaStyle: { color: 'rgba(255, 77, 79, 0.2)' },
+                        lineStyle: { color: '#ff4d4f', width: 2 },
+                        itemStyle: { color: '#ff4d4f' }
+                    }]
+                }]
+            };
+            
+            myChart.setOption(option);
+        }
+        
+        // 渲染候选人表现雷达图
+        function renderCandidateRadarChart(dimensions) {
+            const chartDom = document.getElementById('candidateRadarChart');
+            if (!chartDom || !dimensions || dimensions.length === 0) return;
+            
+            const myChart = echarts.init(chartDom);
+            
+            const indicators = dimensions.map(dim => ({
+                name: dim.name,
+                max: 100
+            }));
+            
+            const candidateData = dimensions.map(dim => dim.score || 0);
+            
+            const option = {
+                tooltip: { trigger: 'item' },
+                radar: {
+                    indicator: indicators,
+                    shape: 'polygon',
+                    splitNumber: 5,
+                    radius: '65%',
+                    axisName: {
+                        color: '#52c41a',
+                        fontSize: 11
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: ['rgba(82, 196, 26, 0.1)', 'rgba(82, 196, 26, 0.2)',
+                                   'rgba(82, 196, 26, 0.4)', 'rgba(82, 196, 26, 0.6)',
+                                   'rgba(82, 196, 26, 0.8)', 'rgba(82, 196, 26, 1)'].reverse()
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(82, 196, 26, 0.5)' }
+                    }
+                },
+                series: [{
+                    name: '候选人表现',
+                    type: 'radar',
+                    data: [{
+                        value: candidateData,
+                        name: '候选人表现',
+                        areaStyle: { color: 'rgba(82, 196, 26, 0.2)' },
+                        lineStyle: { color: '#52c41a', width: 2 },
+                        itemStyle: { color: '#52c41a' }
+                    }]
+                }]
+            };
+            
+            myChart.setOption(option);
+            
+            // 响应式
+            window.addEventListener('resize', () => {
+                myChart.resize();
+            });
+        }
+        
+        // 关闭评估结果模态框
+        function closeEvaluationModal() {
+            document.getElementById('evaluationModal').classList.remove('active');
+        }
+        
+        // 生成雷达图SVG
+        function generateRadarChartSVG(jdDimensions, candidateDimensions) {
+            const size = 300;
+            const center = size / 2;
+            const radius = 100;
+            const levels = 5;
+            
+            // 6个维度的角度
+            const angles = [0, 60, 120, 180, 240, 300].map(a => (a - 90) * Math.PI / 180);
+            const labels = ['专业能力', '工作经验', '沟通表达', '逻辑思维', '学习能力', '综合素质'];
+            
+            // 获取分数
+            const jdScores = labels.map((label, idx) => {
+                const dim = jdDimensions.find(d => d.name === label) || jdDimensions[idx];
+                return dim ? dim.score : 0;
+            });
+            const candidateScores = labels.map((label, idx) => {
+                const dim = candidateDimensions.find(d => d.name === label) || candidateDimensions[idx];
+                return dim ? dim.score : 0;
+            });
+            
+            // 计算坐标
+            function getPoint(score, angle) {
+                const r = (score / 100) * radius;
+                return {
+                    x: center + r * Math.cos(angle),
+                    y: center + r * Math.sin(angle)
+                };
+            }
+            
+            // 生成网格线
+            let gridLines = '';
+            for (let i = 1; i <= levels; i++) {
+                const r = (radius / levels) * i;
+                const points = angles.map(a => {
+                    const x = center + r * Math.cos(a);
+                    const y = center + r * Math.sin(a);
+                    return `${x},${y}`;
+                }).join(' ');
+                gridLines += `<polygon points="${points}" fill="none" stroke="#e8e8e8" stroke-width="1"/>`;
+            }
+            
+            // 生成轴线
+            let axisLines = '';
+            angles.forEach(a => {
+                const x = center + radius * Math.cos(a);
+                const y = center + radius * Math.sin(a);
+                axisLines += `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="#e8e8e8" stroke-width="1"/>`;
+            });
+            
+            // 生成JD多边形
+            const jdPoints = jdScores.map((score, i) => {
+                const p = getPoint(score, angles[i]);
+                return `${p.x},${p.y}`;
+            }).join(' ');
+            
+            // 生成候选人多边形
+            const candidatePoints = candidateScores.map((score, i) => {
+                const p = getPoint(score, angles[i]);
+                return `${p.x},${p.y}`;
+            }).join(' ');
+            
+            // 生成标签
+            let labelTexts = '';
+            angles.forEach((a, i) => {
+                const labelRadius = radius + 25;
+                const x = center + labelRadius * Math.cos(a);
+                const y = center + labelRadius * Math.sin(a);
+                labelTexts += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#666">${labels[i]}</text>`;
+            });
+            
+            // 生成分数标签
+            let scoreLabels = '';
+            candidateScores.forEach((score, i) => {
+                const p = getPoint(score, angles[i]);
+                scoreLabels += `<text x="${p.x}" y="${p.y - 8}" text-anchor="middle" font-size="10" fill="#52c41a" font-weight="bold">${score}</text>`;
+            });
+            
+            return `
+                <svg width="${size}" height="${size}" style="display: block; margin: 0 auto;">
+                    ${gridLines}
+                    ${axisLines}
+                    <polygon points="${jdPoints}" fill="rgba(255, 77, 79, 0.2)" stroke="#ff4d4f" stroke-width="2"/>
+                    <polygon points="${candidatePoints}" fill="rgba(82, 196, 26, 0.2)" stroke="#52c41a" stroke-width="2"/>
+                    ${labelTexts}
+                    ${scoreLabels}
+                    <rect x="10" y="10" width="120" height="50" fill="white" stroke="#e8e8e8" rx="4"/>
+                    <line x1="20" y1="25" x2="40" y2="25" stroke="#ff4d4f" stroke-width="3"/>
+                    <text x="45" y="29" font-size="11" fill="#666">岗位要求</text>
+                    <line x1="20" y1="40" x2="40" y2="40" stroke="#52c41a" stroke-width="3"/>
+                    <text x="45" y="44" font-size="11" fill="#666">候选人表现</text>
+                </svg>
+            `;
+        }
+        
+        // 下载AI面试评估报告（PDF格式）
+        // @param simpleMode: true为简洁版（不含雷达图），false为完整版
+        function downloadEvaluationReport(simpleMode = false) {
+            const candidate = candidates.find(c => c.name === currentEvaluationCandidateName);
+            if (!candidate || !candidate.evaluation) {
+                showToast('没有可下载的评估报告', 'error');
+                return;
+            }
+            
+            const evaluation = candidate.evaluation;
+            const jdRequirements = evaluation.jd_requirements || null;
+            const candidatePerformance = evaluation.candidate_performance || evaluation;
+            const salaryMatch = evaluation.salary_match || null;
+            
+            // 构建PDF友好的HTML报告内容
+            let reportHTML = `
+                <!DOCTYPE html>
+                <html lang="zh-CN">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>AI面试评估报告 - ${candidate.name}</title>
+                    <style>
+                        @page { size: A4; margin: 20mm; }
+                        body { 
+                            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+                            line-height: 1.6; 
+                            color: #333;
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        h1 { 
+                            color: #1890ff; 
+                            border-bottom: 3px solid #1890ff; 
+                            padding-bottom: 10px;
+                            font-size: 24px;
+                        }
+                        h2 { 
+                            color: #333; 
+                            margin-top: 30px; 
+                            font-size: 18px;
+                            border-left: 4px solid #1890ff;
+                            padding-left: 10px;
+                        }
+                        h3 { 
+                            color: #666; 
+                            font-size: 16px; 
+                            margin-top: 20px;
+                        }
+                        .header-info {
+                            background: #f0f7ff;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin: 20px 0;
+                        }
+                        .score-box {
+                            display: inline-block;
+                            padding: 10px 20px;
+                            background: linear-gradient(135deg, #1890ff, #096dd9);
+                            color: white;
+                            border-radius: 8px;
+                            font-size: 24px;
+                            font-weight: bold;
+                            margin: 10px 0;
+                        }
+                        .dimension-card {
+                            background: #fafafa;
+                            border: 1px solid #e8e8e8;
+                            border-radius: 8px;
+                            padding: 15px;
+                            margin: 15px 0;
+                        }
+                        .dimension-title {
+                            font-weight: bold;
+                            color: #1890ff;
+                            font-size: 16px;
+                            margin-bottom: 10px;
+                        }
+                        .score-comparison {
+                            display: flex;
+                            gap: 20px;
+                            margin: 10px 0;
+                        }
+                        .score-item {
+                            flex: 1;
+                            padding: 10px;
+                            background: white;
+                            border-radius: 6px;
+                        }
+                        .score-label {
+                            font-size: 12px;
+                            color: #999;
+                        }
+                        .score-value {
+                            font-size: 20px;
+                            font-weight: bold;
+                            color: #1890ff;
+                        }
+                        .description {
+                            color: #666;
+                            font-size: 14px;
+                            margin-top: 8px;
+                        }
+                        .strength { color: #52c41a; }
+                        .weakness { color: #ff4d4f; }
+                        ul { padding-left: 20px; }
+                        li { margin: 5px 0; }
+                        .footer {
+                            margin-top: 40px;
+                            padding-top: 20px;
+                            border-top: 1px solid #e8e8e8;
+                            text-align: center;
+                            color: #999;
+                            font-size: 12px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>📊 AI面试评估报告</h1>
+                    
+                    <div class="header-info">
+                        <strong>候选人：</strong>${candidate.name}<br>
+                        <strong>评估时间：</strong>${new Date().toLocaleString()}<br>
+                        <strong>项目：</strong>20260401战略招聘
+                    </div>
+            `;
+            
+            // 获取维度数据（提前定义，避免重复声明）
+            const jdDimensions = jdRequirements ? (jdRequirements.dimensions || []) : [];
+            const candidateDimensions = candidatePerformance.dimensions || [];
+            
+            // AI综合评分和雷达图（简洁版不包含雷达图）
+            if (simpleMode) {
+                // 简洁版：只显示分数，不包含雷达图
+                reportHTML += `
+                    <h2>AI综合评分</h2>
+                    <div style="text-align: center; margin: 20px 0; padding: 20px; background: #f0f7ff; border-radius: 12px;">
+                        <div class="score-box">${candidatePerformance.overall_score || '-'} 分</div>
+                        <p style="color: #666; margin-top: 10px;">AI综合评分（6维度均值）</p>
+                    </div>
+                `;
+            } else {
+                // 完整版：包含雷达图
+                reportHTML += `
+                    <h2>AI综合评分与能力雷达图</h2>
+                    <div style="display: flex; gap: 30px; align-items: flex-start; margin: 20px 0;">
+                        <div style="flex: 0 0 200px;">
+                            <div class="score-box">${candidatePerformance.overall_score || '-'} 分</div>
+                            <p style="color: #666; margin-top: 5px;">AI综合评分（6维度均值）</p>
+                        </div>
+                        <div style="flex: 1;">
+                            ${generateRadarChartSVG(jdDimensions, candidateDimensions)}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (salaryMatch) {
+                const matchPercentage = salaryMatch.match_percentage || salaryMatch.score || 'N/A';
+                reportHTML += `
+                    <div style="margin-top: 20px; padding: 15px; background: #fff7e6; border-radius: 8px; border-left: 4px solid #faad14;">
+                        <h3 style="margin-top: 0; color: #d46b08;">💰 薪酬匹配度：${matchPercentage}%</h3>
+                        <p><strong>岗位薪酬范围：</strong>${salaryMatch.jd_salary_range || '未明确'}</p>
+                        <p><strong>候选人期望：</strong>${salaryMatch.expected_salary || '未明确'}</p>
+                        <p><strong>当前薪酬：</strong>${salaryMatch.current_salary || '未明确'}</p>
+                        <p><strong>分析：</strong>${salaryMatch.analysis || ''}</p>
+                    </div>
+                `;
+            }
+            
+            // 6维度详细对比
+            reportHTML += `<h2>6维度详细对比</h2>`;
+            
+            candidateDimensions.forEach((d, idx) => {
+                const jdDim = jdDimensions[idx] || {score: '-', description: ''};
+                reportHTML += `
+                    <div class="dimension-card">
+                        <div class="dimension-title">${d.name}</div>
+                        <div class="score-comparison">
+                            <div class="score-item">
+                                <div class="score-label">岗位要求</div>
+                                <div class="score-value">${jdDim.score}分</div>
+                                <div class="description">${jdDim.description || '暂无描述'}</div>
+                            </div>
+                            <div class="score-item">
+                                <div class="score-label">候选人表现</div>
+                                <div class="score-value" style="color: ${d.score >= 80 ? '#52c41a' : (d.score >= 60 ? '#faad14' : '#ff4d4f')};">${d.score}分</div>
+                                <div class="description">${d.analysis || '暂无分析'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // JD要求总结
+            if (jdRequirements && jdRequirements.summary) {
+                reportHTML += `
+                    <h2>JD要求总结</h2>
+                    <div style="background: #f6ffed; padding: 15px; border-radius: 8px; border-left: 4px solid #52c41a;">
+                        ${jdRequirements.summary}
+                    </div>
+                `;
+            }
+            
+            // 综合评价
+            reportHTML += `
+                    <h2>综合评价</h2>
+                    <div style="background: #f0f7ff; padding: 15px; border-radius: 8px;">
+                        ${candidatePerformance.summary || '暂无评价'}
+                    </div>
+            `;
+            
+            // 候选人优势
+            if (candidatePerformance.strengths && candidatePerformance.strengths.length > 0) {
+                reportHTML += `
+                    <h2>✅ 候选人优势</h2>
+                    <ul>
+                        ${candidatePerformance.strengths.map(s => `<li class="strength">${s}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            // 候选人不足
+            if (candidatePerformance.weaknesses && candidatePerformance.weaknesses.length > 0) {
+                reportHTML += `
+                    <h2>⚠️ 候选人不足</h2>
+                    <ul>
+                        ${candidatePerformance.weaknesses.map(w => `<li class="weakness">${w}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            reportHTML += `
+                    <div class="footer">
+                        <p>本报告由AI面试评估系统自动生成</p>
+                        <p>生成时间：${new Date().toLocaleString()}</p>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // 创建新窗口并打印为PDF
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(reportHTML);
+            printWindow.document.close();
+            
+            // 等待内容加载完成后打印
+            printWindow.onload = function() {
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500);
+            };
+            
+            showToast('正在生成PDF报告，请在打印对话框中选择"保存为PDF"', 'success');
+        }
+        
+        // AI评估候选人
+        async function evaluateCandidate(candidateName) {
+            const candidate = candidates.find(c => c.name === candidateName);
+            
+            // 首先检查是否有评估缓存
+            try {
+                showToast(`正在检查 ${candidateName} 的评估缓存...`, 'info');
+                const cacheResponse = await fetch(`/api/v1/interview-evaluation/evaluation-cache?candidate_name=${encodeURIComponent(candidateName)}&project=${encodeURIComponent(projectDir)}`);
+                
+                if (cacheResponse.ok) {
+                    const cacheData = await cacheResponse.json();
+                    if (cacheData.cached && cacheData.evaluation) {
+                        // 使用缓存的评估结果
+                        if (candidate) {
+                            candidate.hasEvaluation = true;
+                            candidate.evaluation = cacheData.evaluation;
+                        }
+                        renderCandidates();
+                        showToast(`${candidateName} 已加载缓存的评估结果`, 'success');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log('检查缓存失败，继续执行AI评估:', error);
+            }
+            
+            // 没有缓存，进行AI评估
+            showToast(`正在评估 ${candidateName}...`, 'info');
+            
+            try {
+                const response = await fetch('/api/v1/interview-evaluation/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        candidate_name: candidateName,
+                        project: projectDir
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('评估失败');
+                }
+                
+                const result = await response.json();
+                
+                // 更新候选人数据
+                if (candidate) {
+                    candidate.hasEvaluation = true;
+                    candidate.evaluation = result;
+                }
+                
+                renderCandidates();
+                showToast(`${candidateName} 评估完成`, 'success');
+                
+            } catch (error) {
+                showToast(`评估失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 批量评估所有候选人
+        async function evaluateAll() {
+            const pendingCandidates = candidates.filter(c => c.hasTranscription && !c.hasEvaluation);
+            
+            if (pendingCandidates.length === 0) {
+                showToast('没有待评估的候选人', 'info');
+                return;
+            }
+            
+            showToast(`开始批量评估 ${pendingCandidates.length} 个候选人...`, 'info');
+            
+            for (const candidate of pendingCandidates) {
+                await evaluateCandidate(candidate.name);
+            }
+            
+            showToast('批量评估完成', 'success');
+        }
+        
+        // 将简历对象转换为文本
+        function resumeToText(resume) {
+            if (!resume) return '';
+            
+            let text = '';
+            
+            // 基本信息
+            if (resume.basic_info && Object.keys(resume.basic_info).length > 0) {
+                text += '基本信息:\n';
+                for (const [key, value] of Object.entries(resume.basic_info)) {
+                    text += `${key}: ${value}\n`;
+                }
+                text += '\n';
+            }
+            
+            // 教育经历
+            if (resume.education && resume.education.length > 0) {
+                text += '教育经历:\n';
+                resume.education.forEach((edu, idx) => {
+                    text += `${idx + 1}. `;
+                    for (const [key, value] of Object.entries(edu)) {
+                        text += `${key}: ${value}; `;
+                    }
+                    text += '\n';
+                });
+                text += '\n';
+            }
+            
+            // 工作经历
+            if (resume.work_experience && resume.work_experience.length > 0) {
+                text += '工作经历:\n';
+                resume.work_experience.forEach((work, idx) => {
+                    text += `${idx + 1}. `;
+                    for (const [key, value] of Object.entries(work)) {
+                        text += `${key}: ${value}; `;
+                    }
+                    text += '\n';
+                });
+                text += '\n';
+            }
+            
+            // 项目经历
+            if (resume.projects && resume.projects.length > 0) {
+                text += '项目经历:\n';
+                resume.projects.forEach((proj, idx) => {
+                    text += `${idx + 1}. `;
+                    for (const [key, value] of Object.entries(proj)) {
+                        text += `${key}: ${value}; `;
+                    }
+                    text += '\n';
+                });
+                text += '\n';
+            }
+            
+            // 技能
+            if (resume.skills && resume.skills.length > 0) {
+                text += '技能:\n';
+                text += resume.skills.join(', ');
+                text += '\n';
+            }
+            
+            return text;
+        }
+        
+        // JD匹配评估候选人
+        async function jdMatchCandidate(candidateName) {
+            const candidate = candidates.find(c => c.name === candidateName);
+            if (!candidate || !candidate.resume) {
+                showToast('候选人简历不存在', 'error');
+                return;
+            }
+            
+            // 将简历对象转换为文本
+            const resumeText = resumeToText(candidate.resume);
+            if (!resumeText.trim()) {
+                showToast('候选人简历内容为空', 'error');
+                return;
+            }
+            
+            showToast(`正在进行JD匹配分析: ${candidateName}...`, 'info');
+            
+            try {
+                // 获取JD内容（从共享资源）
+                const jdContent = sharedResources.job_description || '';
+                if (!jdContent) {
+                    showToast('JD内容未加载，请先上传JD文件', 'error');
+                    return;
+                }
+                
+                const response = await fetch('/api/v1/jd-match/analyze-text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        jd_content: jdContent,
+                        resume_content: resumeText
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'JD匹配分析失败');
+                }
+                
+                const result = await response.json();
+                
+                // 更新候选人数据
+                if (candidate) {
+                    candidate.hasJDMatch = true;
+                    candidate.jdMatch = result;
+                }
+                
+                renderCandidates();
+                showToast(`${candidateName} JD匹配分析完成`, 'success');
+                
+                // 自动打开查看
+                viewJDMatch(candidateName);
+                
+            } catch (error) {
+                showToast(`JD匹配分析失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 删除候选人
+        async function deleteCandidate(candidateName) {
+            if (!confirm(`确定要删除候选人 "${candidateName}" 吗？\n\n这将删除该候选人的所有数据（转录、简历、评估结果）。`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/v1/interview-batch/candidates/${projectDir}/${encodeURIComponent(candidateName)}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('删除失败');
+                }
+                
+                // 从前端列表中移除
+                candidates = candidates.filter(c => c.name !== candidateName);
+                renderCandidates();
+                showToast(`已删除候选人: ${candidateName}`, 'success');
+                
+            } catch (error) {
+                showToast(`删除失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 当前查看的JD匹配报告数据（用于下载）
+        let currentJDMatchReport = null;
+        let currentJDMatchCandidateName = '';
+        
+        // 查看JD匹配结果
+        function viewJDMatch(candidateName) {
+            const candidate = candidates.find(c => c.name === candidateName);
+            if (!candidate || !candidate.jdMatch) {
+                showToast('JD匹配结果不存在', 'error');
+                return;
+            }
+            
+            currentJDMatchCandidateName = candidateName;
+            currentJDMatchReport = candidate.jdMatch;
+            
+            const match = candidate.jdMatch;
+            const dimensions = match.dimensions || [];
+            const jdRequirements = match.jd_requirements || [];
+            
+            // 构建JD匹配报告HTML
+            let html = `
+                <div class="jd-match-report" id="jdMatchReportContent">
+                    <!-- 总体评分 -->
+                    <div class="score-section">
+                        <div class="overall-score">
+                            <div class="score-number">${match.overall_score || '-'}</div>
+                            <div class="score-label">综合匹配度</div>
+                            <div class="score-level">${match.match_level || '-'}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 雷达图对比 -->
+                    <div class="radar-section" style="margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                        <h4>📊 JD要求 vs 候选人匹配度 - 雷达图对比</h4>
+                        <div id="jdMatchRadarChart" style="width: 100%; height: 400px;"></div>
+                    </div>
+                    
+                    <!-- 双维度对比 -->
+                    <div class="dimensions-compare-section">
+                        <h4>📋 岗位JD要求 vs 候选人匹配度 - 详细对比</h4>
+                        <div class="dimensions-compare-grid">
+                            ${dimensions.map((dim, idx) => {
+                                const jdReq = jdRequirements[idx] || {};
+                                return `
+                                <div class="dimension-compare-card">
+                                    <div class="dimension-compare-header">
+                                        <span class="dimension-name">${dim.name}</span>
+                                    </div>
+                                    <div class="dimension-compare-body">
+                                        <div class="jd-requirement">
+                                            <div class="jd-label">JD要求</div>
+                                            <div class="jd-score">${jdReq.importance || '-'}分</div>
+                                            <div class="jd-level">等级: ${jdReq.requirement_level || '-'}</div>
+                                            <div class="jd-desc">${jdReq.description || ''}</div>
+                                        </div>
+                                        <div class="candidate-match">
+                                            <div class="match-label">候选人</div>
+                                            <div class="match-score">${dim.score}分</div>
+                                            <div class="match-bar">
+                                                <div class="match-bar-fill" style="width: ${dim.score}%; background: ${dim.score >= 80 ? '#52c41a' : dim.score >= 60 ? '#faad14' : '#f5222d'}"></div>
+                                            </div>
+                                            <div class="match-analysis">${dim.analysis}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- 综合评价 -->
+                    <div class="summary-section">
+                        <h4>📝 匹配总结</h4>
+                        <p>${match.summary || '暂无评价'}</p>
+                    </div>
+                    
+                    <!-- 优势 -->
+                    ${match.strengths && match.strengths.length > 0 ? `
+                    <div class="strengths-section">
+                        <h4>✅ 候选人优势</h4>
+                        <ul>
+                            ${match.strengths.map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 不足 -->
+                    ${match.weaknesses && match.weaknesses.length > 0 ? `
+                    <div class="weaknesses-section">
+                        <h4>⚠️ 候选人不足</h4>
+                        <ul>
+                            ${match.weaknesses.map(w => `<li>${w}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- 建议 -->
+                    ${match.recommendations && match.recommendations.length > 0 ? `
+                    <div class="recommendations-section">
+                        <h4>💡 招聘建议</h4>
+                        <ul>
+                            ${match.recommendations.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            document.getElementById('jdMatchContent').innerHTML = html;
+            document.getElementById('jdMatchModal').classList.add('active');
+            
+            // 渲染雷达图
+            setTimeout(() => {
+                renderJDMatchRadarChart(dimensions, jdRequirements);
+            }, 100);
+        }
+        
+        // 渲染JD匹配雷达图
+        function renderJDMatchRadarChart(dimensions, jdRequirements) {
+            const chartDom = document.getElementById('jdMatchRadarChart');
+            if (!chartDom) return;
+            
+            const myChart = echarts.init(chartDom);
+            
+            // 准备数据
+            const indicators = dimensions.map((dim, idx) => ({
+                name: dim.name.replace('匹配度', ''),
+                max: 100
+            }));
+            
+            const jdData = jdRequirements.map(jd => jd.importance || 0);
+            const candidateData = dimensions.map(dim => dim.score || 0);
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item'
+                },
+                legend: {
+                    data: ['JD要求', '候选人匹配度'],
+                    bottom: 10
+                },
+                radar: {
+                    indicator: indicators,
+                    shape: 'polygon',
+                    splitNumber: 5,
+                    axisName: {
+                        color: '#333',
+                        fontSize: 12
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: ['rgba(238, 197, 102, 0.1)', 'rgba(238, 197, 102, 0.2)',
+                                   'rgba(238, 197, 102, 0.4)', 'rgba(238, 197, 102, 0.6)',
+                                   'rgba(238, 197, 102, 0.8)', 'rgba(238, 197, 102, 1)'].reverse()
+                        }
+                    },
+                    splitArea: {
+                        show: false
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(238, 197, 102, 0.5)'
+                        }
+                    }
+                },
+                series: [{
+                    name: 'JD匹配分析',
+                    type: 'radar',
+                    data: [
+                        {
+                            value: jdData,
+                            name: 'JD要求',
+                            lineStyle: {
+                                color: '#faad14',
+                                width: 2
+                            },
+                            areaStyle: {
+                                color: 'rgba(250, 173, 20, 0.2)'
+                            },
+                            itemStyle: {
+                                color: '#faad14'
+                            }
+                        },
+                        {
+                            value: candidateData,
+                            name: '候选人匹配度',
+                            lineStyle: {
+                                color: '#52c41a',
+                                width: 2
+                            },
+                            areaStyle: {
+                                color: 'rgba(82, 196, 26, 0.2)'
+                            },
+                            itemStyle: {
+                                color: '#52c41a'
+                            }
+                        }
+                    ]
+                }]
+            };
+            
+            myChart.setOption(option);
+            
+            // 响应式
+            window.addEventListener('resize', () => {
+                myChart.resize();
+            });
+        }
+        
+        // 下载JD匹配报告
+        function downloadJDMatchReport() {
+            if (!currentJDMatchReport || !currentJDMatchCandidateName) {
+                showToast('没有可下载的报告', 'error');
+                return;
+            }
+            
+            const match = currentJDMatchReport;
+            const dimensions = match.dimensions || [];
+            const jdRequirements = match.jd_requirements || [];
+            
+            // 构建报告文本
+            let reportText = `JD岗位匹配分析报告\n`;
+            reportText += `==================\n\n`;
+            reportText += `候选人: ${currentJDMatchCandidateName}\n`;
+            reportText += `综合匹配度: ${match.overall_score || '-'}分\n`;
+            reportText += `匹配等级: ${match.match_level || '-'}\n\n`;
+            
+            reportText += `【各维度对比】\n`;
+            reportText += `------------------\n\n`;
+            
+            dimensions.forEach((dim, idx) => {
+                const jdReq = jdRequirements[idx] || {};
+                reportText += `${dim.name}:\n`;
+                reportText += `  JD要求: ${jdReq.importance || '-'}分 (${jdReq.requirement_level || '-'})\n`;
+                reportText += `  候选人: ${dim.score}分\n`;
+                reportText += `  分析: ${dim.analysis || ''}\n\n`;
+            });
+            
+            reportText += `\n【匹配总结】\n`;
+            reportText += `------------------\n`;
+            reportText += `${match.summary || '暂无'}\n\n`;
+            
+            if (match.strengths && match.strengths.length > 0) {
+                reportText += `【候选人优势】\n`;
+                reportText += `------------------\n`;
+                match.strengths.forEach(s => {
+                    reportText += `✓ ${s}\n`;
+                });
+                reportText += `\n`;
+            }
+            
+            if (match.weaknesses && match.weaknesses.length > 0) {
+                reportText += `【候选人不足】\n`;
+                reportText += `------------------\n`;
+                match.weaknesses.forEach(w => {
+                    reportText += `• ${w}\n`;
+                });
+                reportText += `\n`;
+            }
+            
+            if (match.recommendations && match.recommendations.length > 0) {
+                reportText += `【招聘建议】\n`;
+                reportText += `------------------\n`;
+                match.recommendations.forEach(r => {
+                    reportText += `→ ${r}\n`;
+                });
+                reportText += `\n`;
+            }
+            
+            reportText += `\n==================\n`;
+            reportText += `报告生成时间: ${new Date().toLocaleString()}\n`;
+            
+            // 创建下载
+            const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `JD匹配报告_${currentJDMatchCandidateName}_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('报告下载成功', 'success');
+        }
+        
+        // 关闭JD匹配模态框
+        function closeJDMatchModal() {
+            document.getElementById('jdMatchModal').classList.remove('active');
+            currentJDMatchReport = null;
+            currentJDMatchCandidateName = '';
+        }
+        
+        // ============ 问答编辑功能 ============
+        let currentQACandidate = '';
+        let currentQAData = null;
+        
+        // 打开问答编辑模态框
+        async function editQA(candidateName) {
+            currentQACandidate = candidateName;
+            showToast(`正在加载 ${candidateName} 的问答数据...`, 'info');
+            
+            try {
+                // 从服务器加载问答数据
+                const response = await fetch(`/api/v1/interview-evaluation/qa/${encodeURIComponent(candidateName)}`);
+                if (!response.ok) {
+                    throw new Error('加载问答数据失败');
+                }
+                
+                currentQAData = await response.json();
+                renderQAEditForm();
+                document.getElementById('qaEditModal').classList.add('active');
+                
+            } catch (error) {
+                console.error('加载问答数据失败:', error);
+                showToast('加载问答数据失败，请检查是否已提取问答', 'error');
+            }
+        }
+        
+        // 渲染问答编辑表单
+        function renderQAEditForm() {
+            const container = document.getElementById('qaEditContent');
+            
+            if (!currentQAData || !currentQAData.qa_list || currentQAData.qa_list.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <p>暂无问答数据</p>
+                        <p style="font-size: 12px; margin-top: 10px;">请先运行问答提取脚本</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #1890ff;">
+                    <strong>候选人：</strong>${currentQACandidate}<br>
+                    <strong>问题数量：</strong>${currentQAData.total_questions} 个<br>
+                    <strong>已找到答案：</strong>${currentQAData.found_answers} 个
+                </div>
+            `;
+            
+            // 渲染每个问答
+            currentQAData.qa_list.forEach((qa, index) => {
+                const isFound = qa.found;
+                const borderColor = isFound ? '#52c41a' : '#ff4d4f';
+                const bgColor = isFound ? '#f6ffed' : '#fff2f0';
+                
+                html += `
+                    <div class="qa-edit-item" data-index="${index}" style="
+                        margin-bottom: 20px; 
+                        padding: 20px; 
+                        background: ${bgColor}; 
+                        border: 1px solid ${borderColor}; 
+                        border-radius: 12px;
+                        border-left: 4px solid ${borderColor};
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <span style="
+                                display: inline-block;
+                                background: ${isFound ? '#52c41a' : '#ff4d4f'};
+                                color: white;
+                                padding: 4px 12px;
+                                border-radius: 4px;
+                                font-size: 12px;
+                                font-weight: 500;
+                            ">${qa.module || '未知'}</span>
+                            <span style="font-size: 13px; color: ${isFound ? '#52c41a' : '#ff4d4f'};">
+                                ${isFound ? '✅ 已找到答案' : '⚠️ 未找到答案'}
+                            </span>
+                        </div>
+                        
+                        <div style="font-weight: bold; color: #333; margin-bottom: 15px; font-size: 15px; line-height: 1.6;">
+                            ${qa.question}
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 500; color: #666; margin-bottom: 8px; font-size: 13px;">
+                                回答内容：
+                            </label>
+                            <textarea 
+                                class="qa-answer-textarea" 
+                                data-field="answer"
+                                data-index="${index}"
+                                style="
+                                    width: 100%;
+                                    min-height: 120px;
+                                    padding: 12px;
+                                    border: 1px solid #d9d9d9;
+                                    border-radius: 6px;
+                                    font-size: 14px;
+                                    line-height: 1.6;
+                                    resize: vertical;
+                                    font-family: inherit;
+                                "
+                                placeholder="请输入或编辑回答内容..."
+                            >${qa.answer || ''}</textarea>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 500; color: #666; margin-bottom: 8px; font-size: 13px;">
+                                要点（用分号分隔）：
+                            </label>
+                            <input 
+                                type="text" 
+                                class="qa-keypoints-input"
+                                data-field="key_points"
+                                data-index="${index}"
+                                value="${qa.key_points ? qa.key_points.join('；') : ''}"
+                                style="
+                                    width: 100%;
+                                    padding: 10px 12px;
+                                    border: 1px solid #d9d9d9;
+                                    border-radius: 6px;
+                                    font-size: 14px;
+                                "
+                                placeholder="输入要点，用分号分隔"
+                            >
+                        </div>
+                        
+                        <div style="text-align: right;">
+                            <button class="btn btn-secondary" onclick="toggleQAFound(${index})" style="font-size: 13px;">
+                                ${isFound ? '标记为未找到' : '标记为已找到'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // 添加薪酬信息编辑区域
+            const salaryQa = currentQAData.qa_list.find(qa => qa.salary_data);
+            if (salaryQa && salaryQa.salary_data) {
+                html += `
+                    <div style="
+                        background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+                        border: 1px solid #ffd591;
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin-top: 30px;
+                    ">
+                        <h4 style="color: #d46b08; margin-bottom: 15px; font-size: 16px;">💰 薪酬信息</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <label style="display: block; font-weight: 500; color: #666; margin-bottom: 8px; font-size: 13px;">
+                                    当前薪资（万/年）：
+                                </label>
+                                <input type="text" id="qaCurrentSalary" 
+                                    value="${salaryQa.salary_data.current_salary || ''}" 
+                                    placeholder="如：25"
+                                    style="
+                                        width: 100%;
+                                        padding: 10px 12px;
+                                        border: 1px solid #d9d9d9;
+                                        border-radius: 6px;
+                                        font-size: 14px;
+                                    "
+                                >
+                            </div>
+                            <div>
+                                <label style="display: block; font-weight: 500; color: #666; margin-bottom: 8px; font-size: 13px;">
+                                    期望薪资（万/年）：
+                                </label>
+                                <input type="text" id="qaExpectedSalary" 
+                                    value="${salaryQa.salary_data.expected_salary || ''}" 
+                                    placeholder="如：30 或 25-30"
+                                    style="
+                                        width: 100%;
+                                        padding: 10px 12px;
+                                        border: 1px solid #d9d9d9;
+                                        border-radius: 6px;
+                                        font-size: 14px;
+                                    "
+                                >
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // 切换问答找到状态
+        function toggleQAFound(index) {
+            if (!currentQAData || !currentQAData.qa_list[index]) return;
+            
+            currentQAData.qa_list[index].found = !currentQAData.qa_list[index].found;
+            renderQAEditForm();
+            showToast('状态已更新，请保存修改', 'info');
+        }
+        
+        // 保存问答修改
+        async function saveQAChanges() {
+            if (!currentQACandidate || !currentQAData) {
+                showToast('没有可保存的数据', 'error');
+                return;
+            }
+            
+            // 收集修改后的数据
+            const qaItems = document.querySelectorAll('.qa-edit-item');
+            qaItems.forEach((item) => {
+                const index = parseInt(item.dataset.index);
+                const answerTextarea = item.querySelector('[data-field="answer"]');
+                const keypointsInput = item.querySelector('[data-field="key_points"]');
+                
+                if (answerTextarea) {
+                    currentQAData.qa_list[index].answer = answerTextarea.value;
+                }
+                if (keypointsInput) {
+                    const points = keypointsInput.value.split('；').filter(p => p.trim());
+                    currentQAData.qa_list[index].key_points = points;
+                }
+            });
+            
+            // 更新薪酬数据
+            const currentSalaryInput = document.getElementById('qaCurrentSalary');
+            const expectedSalaryInput = document.getElementById('qaExpectedSalary');
+            if (currentSalaryInput && expectedSalaryInput) {
+                const salaryQa = currentQAData.qa_list.find(qa => qa.salary_data);
+                if (salaryQa) {
+                    salaryQa.salary_data.current_salary = currentSalaryInput.value;
+                    salaryQa.salary_data.expected_salary = expectedSalaryInput.value;
+                }
+            }
+            
+            // 发送到服务器保存
+            try {
+                const response = await fetch(`/api/v1/interview-evaluation/qa/${encodeURIComponent(currentQACandidate)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentQAData)
+                });
+                
+                if (response.ok) {
+                    showToast('保存成功！', 'success');
+                } else {
+                    throw new Error('保存失败');
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                showToast('保存失败，请检查网络连接', 'error');
+            }
+        }
+        
+        // 从问答页面重新评估
+        async function reEvaluateFromQA() {
+            if (!currentQACandidate) {
+                showToast('请先选择候选人', 'error');
+                return;
+            }
+            
+            if (!confirm('确定要重新进行AI评估吗？这将覆盖现有的评估结果。')) {
+                return;
+            }
+            
+            // 先保存当前修改
+            await saveQAChanges();
+            
+            // 关闭问答模态框
+            closeQAEditModal();
+            
+            // 调用评估函数
+            await evaluateCandidate(currentQACandidate);
+        }
+        
+        // 关闭问答编辑模态框
+        function closeQAEditModal() {
+            document.getElementById('qaEditModal').classList.remove('active');
+            currentQACandidate = '';
+            currentQAData = null;
+        }
+        
+        // 清除已完成的文件
+        function clearCompleted() {
+            uploadQueue = uploadQueue.filter(item => item.status === 'pending' || item.status === 'processing');
+            renderFileList();
+            showToast('已清除已完成的文件', 'success');
+        }
+        
+        // 更新统计
+        function updateStats() {
+            document.getElementById('totalCandidates').textContent = candidates.length;
+            document.getElementById('processedCount').textContent = candidates.filter(c => c.hasTranscription).length;
+            document.getElementById('evaluationCount').textContent = candidates.filter(c => c.hasEvaluation).length;
+            document.getElementById('pendingCount').textContent = candidates.filter(c => !c.hasTranscription).length;
+        }
+        
+        // 显示Toast提示
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // ============ 共享资源管理 ============
+        
+        // 监听面试问题文件选择
+        document.getElementById('questionsFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('questionsFileName').textContent = file.name;
+            }
+        });
+        
+        // 监听JD文件选择
+        document.getElementById('jdFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('jdFileName').textContent = file.name;
+            
+            // 读取文件内容
+            try {
+                const content = await readFileContent(file);
+                document.getElementById('sharedJD').value = content;
+                showToast('JD文件读取成功', 'success');
+            } catch (error) {
+                showToast(`读取JD文件失败: ${error.message}`, 'error');
+            }
+        });
+        
+        // 读取文件内容的辅助函数
+        async function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        resolve(content);
+                    } catch (error) {
+                        reject(new Error('文件解析失败'));
+                    }
+                };
+                
+                reader.onerror = () => {
+                    reject(new Error('文件读取失败'));
+                };
+                
+                if (file.name.endsWith('.txt')) {
+                    reader.readAsText(file, 'UTF-8');
+                } else if (file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+                    // Word文件需要特殊处理，这里先提示用户
+                    reject(new Error('Word文件请手动复制内容到文本框，或转换为TXT格式上传'));
+                } else {
+                    reader.readAsText(file, 'UTF-8');
+                }
+            });
+        }
+        
+        // 保存共享资源
+        async function saveSharedResources() {
+            const jd = document.getElementById('sharedJD').value;
+            const criteria = document.getElementById('sharedCriteria').value;
+            const questionsFile = document.getElementById('questionsFile').files[0];
+            
+            const formData = new FormData();
+            if (jd) formData.append('job_description', jd);
+            if (criteria) formData.append('evaluation_criteria', criteria);
+            if (questionsFile) formData.append('questions_file', questionsFile);
+            
+            try {
+                const response = await fetch(`/api/v1/interview-batch/shared-resources/${projectDir}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('保存失败');
+                
+                const result = await response.json();
+                
+                // 更新变量和UI
+                if (result.resources) {
+                    sharedResources = result.resources;
+                    
+                    // 更新问题数量显示
+                    if (result.resources.interview_questions) {
+                        document.getElementById('questionsCount').textContent = result.resources.interview_questions.length;
+                        document.getElementById('questionsPreview').style.display = 'block';
+                    }
+                }
+                
+                showToast('共享资源已保存', 'success');
+            } catch (error) {
+                showToast(`保存失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 加载共享资源
+        async function loadSharedResources() {
+            try {
+                const response = await fetch(`/api/v1/interview-batch/shared-resources/${projectDir}`);
+                if (!response.ok) throw new Error('加载失败');
+                
+                const result = await response.json();
+                
+                if (result.resources) {
+                    // 存储到变量供其他函数使用
+                    sharedResources = result.resources;
+                    
+                    document.getElementById('sharedJD').value = result.resources.job_description || '';
+                    document.getElementById('sharedCriteria').value = result.resources.evaluation_criteria || '';
+                    
+                    if (result.resources.interview_questions && result.resources.interview_questions.length > 0) {
+                        document.getElementById('questionsCount').textContent = result.resources.interview_questions.length;
+                        document.getElementById('questionsPreview').style.display = 'block';
+                    }
+                }
+                
+                showToast('共享资源已加载', 'success');
+            } catch (error) {
+                showToast(`加载失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 批量操作 ============
+        
+        // 批量转录所有录音
+        async function batchTranscribeAll() {
+            showToast('开始批量转录所有录音...', 'info');
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30分钟超时
+                
+                const response = await fetch('/api/v1/interview-batch/transcribe-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_name: projectDir
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    let errorMsg = '批量转录失败';
+                    try {
+                        const error = await response.json();
+                        errorMsg = error.detail || error.message || '批量转录失败';
+                    } catch (e) {
+                        errorMsg = `服务器错误: ${response.status}`;
+                    }
+                    throw new Error(errorMsg);
+                }
+                
+                const result = await response.json();
+                
+                showToast(`批量转录完成！总计: ${result.total}, 成功: ${result.processed}, 缓存: ${result.cached}, 失败: ${result.failed}`, 'success');
+                
+                // 刷新候选人列表
+                await loadAllCandidates();
+                
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    showToast('批量转录超时，请稍后重试或使用单个文件上传', 'error');
+                } else {
+                    showToast(`批量转录失败: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // 批量读取简历
+        async function batchLoadResumes() {
+            showToast('开始批量读取简历...', 'info');
+            
+            try {
+                const response = await fetch(`/api/v1/interview-batch/resumes/${projectDir}`);
+                if (!response.ok) throw new Error('读取失败');
+                
+                const result = await response.json();
+                
+                // 更新候选人简历信息
+                result.resumes.forEach(resume => {
+                    let candidate = candidates.find(c => c.name === resume.name);
+                    if (!candidate) {
+                        candidate = {
+                            name: resume.name,
+                            hasResume: true,
+                            hasTranscription: false,
+                            resume: resume
+                        };
+                        candidates.push(candidate);
+                    } else {
+                        candidate.hasResume = true;
+                        candidate.resume = resume;
+                    }
+                });
+                
+                renderCandidates();
+                showToast(`成功读取 ${result.total} 份简历`, 'success');
+                
+            } catch (error) {
+                showToast(`读取简历失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 一键批量处理（转录 + 读简历 + 评估）
+        async function batchProcessAll() {
+            showToast('开始一键批量处理...', 'info');
+            
+            // 1. 批量转录
+            await batchTranscribeAll();
+            
+            // 2. 批量读取简历
+            await batchLoadResumes();
+            
+            // 3. 批量评估
+            const readyCandidates = candidates.filter(c => c.hasTranscription && !c.hasEvaluation);
+            if (readyCandidates.length > 0) {
+                showToast(`开始评估 ${readyCandidates.length} 个候选人...`, 'info');
+                for (const candidate of readyCandidates) {
+                    await evaluateCandidate(candidate.name);
+                }
+            }
+            
+            showToast('一键批量处理完成！', 'success');
+        }
+        
+        // 加载所有候选人信息
+        async function loadAllCandidates() {
+            try {
+                console.log('开始加载候选人，项目目录:', projectDir);
+                const response = await fetch(`/api/v1/interview-batch/candidates/${projectDir}`);
+                console.log('API响应状态:', response.status);
+                if (!response.ok) throw new Error('加载失败');
+                
+                const result = await response.json();
+                console.log('API返回数据:', result);
+                console.log('候选人数量:', result.candidates ? result.candidates.length : 0);
+                
+                candidates = result.candidates.map(c => ({
+                    name: c.name,
+                    hasResume: c.has_resume,
+                    hasTranscription: c.has_transcription,
+                    resume: c.resume,
+                    transcription: c.transcription,
+                    hasEvaluation: c.has_evaluation,
+                    evaluation: c.evaluation,
+                    hasJDMatch: c.has_jd_match || false,
+                    jdMatch: c.jd_match || null
+                }));
+                
+                console.log('映射后的候选人:', candidates);
+                renderCandidates();
+                updateStats();
+                
+            } catch (error) {
+                console.error('加载候选人失败:', error);
+            }
+        }
+        
+        // 点击模态框外部关闭
+        document.getElementById('transcriptModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeTranscriptModal();
+            }
+        });
+        
+        document.getElementById('evaluationModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeEvaluationModal();
+            }
+        });
+        
+        document.getElementById('jdMatchModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeJDMatchModal();
+            }
+        });
+        
+        document.getElementById('qaEditModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeQAEditModal();
+            }
+        });
+        
+        // 更新项目显示
+        function updateProjectDisplay() {
+            const projectBadge = document.getElementById('projectBadge');
+            if (projectBadge) {
+                const config = getCurrentProjectConfig();
+                projectBadge.textContent = `📋 项目：${config.name}`;
+            }
+        }
+        
+        // 页面加载时自动加载所有数据
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('=== 开始初始化 ===');
+            try {
+                // 更新项目显示
+                updateProjectDisplay();
+                
+                console.log('1. 加载共享资源...');
+                await loadSharedResources();
+                console.log('2. 加载候选人数据...');
+                await loadAllCandidates();
+                console.log('3. 从新目录结构加载转录数据...');
+                await loadTranscriptionsFromNewStructure();
+                console.log('4. 加载评估缓存...');
+                await loadBatchEvaluations();
+                console.log('=== 初始化完成 ===');
+            } catch (error) {
+                console.error('初始化失败:', error);
+            }
+        });
+    </script>
+</body>
+</html>
