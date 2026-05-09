@@ -27,6 +27,8 @@ from app.api.strategic_alignment_routes import router as strategic_alignment_rou
 from app.api.value_contribution_routes import router as value_contribution_router
 from app.api.interview_batch_routes import router as interview_batch_router
 from app.api.batch_evaluation_routes import router as batch_evaluation_router
+from app.api.employee_recruitment_evaluation_routes import router as employee_recruitment_evaluation_router
+from app.api.unified_interview_routes import router as unified_interview_router
 from app.config import get_settings
 from app.database.models import init_database
 
@@ -122,6 +124,8 @@ app.include_router(strategic_alignment_router)
 app.include_router(value_contribution_router)
 app.include_router(interview_batch_router)
 app.include_router(batch_evaluation_router)
+app.include_router(employee_recruitment_evaluation_router)
+app.include_router(unified_interview_router)
 
 # Mount static files (for web UI)
 if os.path.exists("./static"):

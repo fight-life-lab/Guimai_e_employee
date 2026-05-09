@@ -139,6 +139,8 @@ class DetailedAlignmentRequest(BaseModel):
     """详细人岗适配分析请求."""
     employee_name: str = Field(..., description="员工姓名", min_length=1, max_length=64)
     scoring_method: str = Field(default="rule", description="评分方式: rule=规则评分, ai=AI评分")
+    innovation_audio_file: Optional[str] = Field(None, description="创新能力评估录音文件路径（wav/mp3）")
+    innovation_questions_file: Optional[str] = Field(None, description="创新能力评估提问问题Excel文件路径")
 
 
 class DetailedAlignmentResponse(BaseModel):
@@ -150,6 +152,7 @@ class DetailedAlignmentResponse(BaseModel):
     match_analysis: Dict
     final_conclusion: str
     recommendations: List[str]
+    qa_summary: Optional[List[Dict]] = None  # 问答概要（从录音和提问中提取）
     debug_info: Optional[Dict] = None
 
 
@@ -252,7 +255,7 @@ class DetailedAlignmentAnalyzer:
             "match_analysis": match_analysis,
         }
 
-    async def analyze(self, employee_name: str) -> Dict:
+    async def analyze(self, employee_name: str, audio_file_path: str = None, questions_file_path: str = None) -> Dict:
         """
         执行详细的人岗适配分析.
         
@@ -262,7 +265,8 @@ class DetailedAlignmentAnalyzer:
         3. 查询岗位能力模型（理想雷达图）
         4. 计算员工实际表现（实际雷达图）
         5. 计算匹配度
-        6. 生成结论和建议
+        6. 生成问答概要（从录音和提问文件中提取）
+        7. 生成结论和建议
         """
         # 1. 查询员工基本信息
         employee = await self._get_employee(employee_name)
@@ -297,7 +301,13 @@ class DetailedAlignmentAnalyzer:
             employee, policy_violations, match_analysis, employee_scores
         )
 
-        # 9. 使用AI生成个性化适配建议（整合多维度数据）
+        # 9. 生成问答概要（从录音和提问文件中提取）
+        from app.api.alignment_routes import generate_qa_summary_from_interview
+        qa_summary = await generate_qa_summary_from_interview(
+            audio_file_path, questions_file_path
+        )
+
+        # 10. 使用AI生成个性化适配建议（整合多维度数据）
         ai_advice = await self._generate_ai_advice(
             employee, position_model, employee_scores, attendance_data, match_analysis
         )
@@ -334,6 +344,7 @@ class DetailedAlignmentAnalyzer:
             "match_analysis": match_analysis,
             "final_conclusion": final_conclusion,
             "recommendations": recommendations,
+            "qa_summary": qa_summary,
             "ai_advice": ai_advice,
             "debug_info": debug_info,
         }
@@ -1604,6 +1615,7 @@ async def detailed_alignment_analysis(
     - 岗位理想雷达图
     - 员工实际雷达图
     - 匹配度分析
+    - 问答概要（从录音和提问文件中提取）
     - 最终结论和建议
     """
     logger.info(f"[详细人岗适配分析] 开始分析员工: {request.employee_name}, 评分方式: {request.scoring_method}")
@@ -1611,7 +1623,11 @@ async def detailed_alignment_analysis(
 
     try:
         analyzer = DetailedAlignmentAnalyzer(db, scoring_method=request.scoring_method)
-        result = await analyzer.analyze(request.employee_name)
+        result = await analyzer.analyze(
+            request.employee_name,
+            request.innovation_audio_file,
+            request.innovation_questions_file
+        )
         
         elapsed_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"[详细人岗适配分析] 完成分析，耗时: {elapsed_time:.2f}s")

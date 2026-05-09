@@ -49,7 +49,8 @@ class AlignmentAnalyzeRequest(BaseModel):
     """人岗适配分析请求"""
     employee_id: str  # 员工ID（工号）- 必填
     employee_name: str  # 员工姓名 - 必填
-    position_name: Optional[str] = None
+    position_id: Optional[str] = None  # 岗位ID - 用于精确匹配
+    position_name: Optional[str] = None  # 岗位名称 - 用于模糊匹配
     innovation_audio_file: Optional[str] = None  # 创新能力评估录音文件路径（wav/mp3）
     innovation_questions_file: Optional[str] = None  # 创新能力评估提问问题Excel文件路径
 
@@ -70,6 +71,12 @@ class DimensionScore(BaseModel):
         }
 
 
+class QASummaryItem(BaseModel):
+    """问答概要项"""
+    question: str  # 问题内容
+    answer_summary: str  # 答案概要
+
+
 class AlignmentAnalyzeResponse(BaseModel):
     """人岗适配分析响应"""
     success: bool
@@ -87,6 +94,7 @@ class AlignmentAnalyzeResponse(BaseModel):
     quadrant: Optional[Dict]  # 四象限图数据
     radar_data: Optional[Dict]  # 雷达图数据
     gap_analysis: Optional[List[Dict]]  # 差距分析
+    qa_summary: Optional[List[QASummaryItem]]  # 问答概要（从录音和提问中提取）
 
 
 def get_employee_info_by_name(db, emp_name: str):
@@ -185,10 +193,10 @@ def get_employee_info(db, emp_name: str = None, emp_id: str = None):
     return None
 
 
-def get_job_description(db, position_name: str, emp_name: str = None):
-    """从MySQL获取岗位描述"""
-    if emp_name:
-        # 优先根据员工姓名查询岗位信息
+def get_job_description(db, position_id: str = None, position_name: str = None, emp_id: str = None, emp_name: str = None):
+    """从MySQL获取岗位描述，优先级：员工ID+姓名双重校验 > 岗位ID精确匹配 > 岗位名称模糊匹配"""
+    # 优先根据员工ID和姓名双重校验查询岗位信息
+    if emp_id and emp_name:
         sql = text("""
             SELECT position_name, department, position_purpose,
                    duties_and_responsibilities, 
@@ -198,10 +206,10 @@ def get_job_description(db, position_name: str, emp_name: str = None):
                    qualifications_skills, qualifications_others,
                    kpis
             FROM ods_emp_job_description
-            WHERE emp_name = :emp_name
+            WHERE emp_id = :emp_id AND emp_name = :emp_name
             LIMIT 1
         """)
-        result = db.execute(sql, {'emp_name': emp_name})
+        result = db.execute(sql, {'emp_id': emp_id, 'emp_name': emp_name})
         row = result.fetchone()
         if row:
             return {
@@ -218,7 +226,38 @@ def get_job_description(db, position_name: str, emp_name: str = None):
                 'kpis': row.kpis
             }
     
-    # 如果没有提供员工姓名，或者根据员工姓名没有找到岗位信息，再根据岗位名称查询
+    # 根据岗位ID精确查询
+    if position_id:
+        sql = text("""
+            SELECT position_name, department, position_purpose,
+                   duties_and_responsibilities, 
+                   qualifications_education, qualifications_major,
+                   qualifications_job_work_experience, 
+                   qualifications_required_professional_certification,
+                   qualifications_skills, qualifications_others,
+                   kpis
+            FROM ods_emp_job_description
+            WHERE id = :position_id
+            LIMIT 1
+        """)
+        result = db.execute(sql, {'position_id': position_id})
+        row = result.fetchone()
+        if row:
+            return {
+                'position_name': row.position_name,
+                'department': row.department,
+                'position_purpose': row.position_purpose,
+                'duties': row.duties_and_responsibilities,
+                'qualifications_education': row.qualifications_education,
+                'qualifications_major': row.qualifications_major,
+                'qualifications_job_work_experience': row.qualifications_job_work_experience,
+                'qualifications_cert': row.qualifications_required_professional_certification,
+                'qualifications_skills': row.qualifications_skills,
+                'qualifications_others': row.qualifications_others,
+                'kpis': row.kpis
+            }
+    
+    # 根据岗位名称模糊查询
     if position_name:
         sql = text("""
             SELECT position_name, department, position_purpose,
@@ -251,39 +290,77 @@ def get_job_description(db, position_name: str, emp_name: str = None):
     return None
 
 
-def get_attendance_summary(db, emp_code: str):
-    """从MySQL获取考勤汇总数据"""
-    sql = text("""
-        SELECT 
-            avg(normal_attendance_days) as total_normal_days,
-            avg(expected_attendance_days) as total_expected_days,
-            avg(late_count) as total_late,
-            avg(early_leave_count) as total_early_leave,
-            avg(leave_count) as total_leave,
-            avg(outing_count) as total_outing,
-            avg(overtime_count) as total_overtime,
-            avg(overtime_hours) as total_overtime_hours
-        FROM ods_attendance_summary
-        WHERE emp_code = :emp_code
-        AND normal_attendance_days>0 
-    """)
-    result = db.execute(sql, {'emp_code': emp_code})
-    row = result.fetchone()
-    if row:
-        return {
-            'normal_days': float(row.total_normal_days or 0),
-            'expected_days': float(row.total_expected_days or 0),
-            'late_count': row.total_late or 0,
-            'early_leave_count': row.total_early_leave or 0,
-            'leave_count': row.total_leave or 0,
-            'outing_count': row.total_outing or 0,
-            'overtime_count': row.total_overtime or 0,
-            'overtime_hours': float(row.total_overtime_hours or 0)
-        }
+def get_attendance_summary(db, emp_code: str, emp_name: str = None):
+    """从MySQL获取考勤汇总数据（月均值），使用emp_code+emp_name双重校验"""
+    if emp_code and emp_name:
+        sql = text("""
+            SELECT 
+                COUNT(*) as month_count,
+                avg(normal_attendance_days) as total_normal_days,
+                avg(expected_attendance_days) as total_expected_days,
+                avg(late_count) as total_late,
+                avg(early_leave_count) as total_early_leave,
+                avg(leave_count) as total_leave,
+                avg(outing_count) as total_outing,
+                avg(overtime_count) as total_overtime,
+                avg(overtime_hours) as total_overtime_hours,
+                avg(overtime_2030_count) as total_overtime_2030_count
+            FROM ods_attendance_summary
+            WHERE emp_code = :emp_code AND emp_name = :emp_name
+            AND normal_attendance_days>0 
+        """)
+        result = db.execute(sql, {'emp_code': emp_code, 'emp_name': emp_name})
+        row = result.fetchone()
+        if row:
+            return {
+                'month_count': row.month_count or 0,
+                'normal_days': float(row.total_normal_days or 0),
+                'expected_days': float(row.total_expected_days or 0),
+                'late_count': row.total_late or 0,
+                'early_leave_count': row.total_early_leave or 0,
+                'leave_count': row.total_leave or 0,
+                'outing_count': row.total_outing or 0,
+                'overtime_count': row.total_overtime or 0,
+                'overtime_hours': float(row.total_overtime_hours or 0),
+                'overtime_2030_count': row.total_overtime_2030_count or 0
+            }
+    # 降级：仅使用emp_code查询
+    if emp_code:
+        sql = text("""
+            SELECT 
+                COUNT(*) as month_count,
+                avg(normal_attendance_days) as total_normal_days,
+                avg(expected_attendance_days) as total_expected_days,
+                avg(late_count) as total_late,
+                avg(early_leave_count) as total_early_leave,
+                avg(leave_count) as total_leave,
+                avg(outing_count) as total_outing,
+                avg(overtime_count) as total_overtime,
+                avg(overtime_hours) as total_overtime_hours,
+                avg(overtime_2030_count) as total_overtime_2030_count
+            FROM ods_attendance_summary
+            WHERE emp_code = :emp_code
+            AND normal_attendance_days>0 
+        """)
+        result = db.execute(sql, {'emp_code': emp_code})
+        row = result.fetchone()
+        if row:
+            return {
+                'month_count': row.month_count or 0,
+                'normal_days': float(row.total_normal_days or 0),
+                'expected_days': float(row.total_expected_days or 0),
+                'late_count': row.total_late or 0,
+                'early_leave_count': row.total_early_leave or 0,
+                'leave_count': row.total_leave or 0,
+                'outing_count': row.total_outing or 0,
+                'overtime_count': row.total_overtime or 0,
+                'overtime_hours': float(row.total_overtime_hours or 0),
+                'overtime_2030_count': row.total_overtime_2030_count or 0
+            }
     return None
 
 
-def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> tuple:
+def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db, jd_warning: str = None) -> tuple:
     """
     计算专业能力维度得分（权重30%）
     区分三种员工类型：
@@ -343,7 +420,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
     # 根据员工类型选择计算逻辑
     if is_probation:
         # 试用期员工逻辑
-        return _calculate_professional_ability_probation(emp_info, prof_ability, job_desc)
+        return _calculate_professional_ability_probation(emp_info, prof_ability, job_desc, jd_warning)
     elif is_contract_expiring:
         # 合同到期员工逻辑
         return _calculate_professional_ability_contract_expiring(emp_info, prof_ability, job_desc, db, emp_code)
@@ -352,7 +429,7 @@ def calculate_professional_ability_score(emp_info: dict, job_desc: dict, db) -> 
         return _calculate_professional_ability_regular(emp_info, prof_ability, job_desc, db, emp_code)
 
 
-def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_desc: dict) -> tuple:
+def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_desc: dict, jd_warning: str = None) -> tuple:
     """
     试用期员工（入职≤6个月）专业能力计算
     规则（第二个图片）：
@@ -459,6 +536,8 @@ def _calculate_professional_ability_probation(emp_info: dict, prof_ability, job_
     # 岗位侧要求
     job_requirement = min(75 / 0.9, 100)  # 除以0.9进行调整，最高100分
     job_reason = f"要求：具备岗位所需专业技能，标准分{job_requirement:.1f}分"
+    if jd_warning:
+        job_reason = jd_warning + "；" + job_reason
     
     return score, job_requirement, employee_reason, job_reason
 
@@ -904,7 +983,7 @@ def check_work_experience_relevance_with_llm(work_experiences: list, job_desc: d
         return []
 
 
-def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
+def calculate_experience_score(emp_info: dict, job_desc: dict, db, jd_warning: str = None) -> tuple:
     """
     计算经验维度得分（权重10%）
     基于附件要求：
@@ -1166,7 +1245,7 @@ def calculate_experience_score(emp_info: dict, job_desc: dict, db) -> tuple:
     return total_score, job_requirement, employee_reason, job_reason
 
 
-def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> tuple:
+def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db, jd_warning: str = None) -> tuple:
     """
     计算战略匹配维度得分（权重10%）
     基于：员工战略匹配评分表
@@ -1220,7 +1299,7 @@ def calculate_strategic_alignment_score(emp_info: dict, job_desc: dict, db) -> t
     return score, job_requirement, employee_reason, job_reason
 
 
-def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tuple:
+def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db, jd_warning: str = None) -> tuple:
     """
     计算价值贡献维度得分（权重10%）
     基于：绩效酬金偏离度
@@ -1297,13 +1376,14 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
                 employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（≥100%），不加分不扣分，价值贡献得分{score:.1f}分"
             else:
                 # 偏离度<100%时，每低出1个百分点，扣5分
-                score_change = (abs(diff) ) * 5
+                points_below = int(abs(diff))  # 向下取整
+                score_change = points_below * 5
                 score = base_score - score_change
                 
                 # 限制在0-100范围内
                 score = max(0.0, min(100.0, score))
                 
-                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣5分，价值贡献得分{score:.1f}分"
+                employee_reason = f"试用期员工（入职{months_since_entry}个月），绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣5分，共扣{score_change}分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（试用期）
             job_requirement = min(100.0 / 0.9, 100)  # 除以0.9进行调整，最高100分
@@ -1316,21 +1396,23 @@ def calculate_value_contribution_score(emp_info: dict, job_desc: dict, db) -> tu
             # 计算与100%的偏差
             diff = deviation_rate - 100.0
             
-            # 每1个百分点变化3分
-            score_change = (diff / 1.0) * 3
-            
-            # 计算最终分数
-            score = base_score + score_change
-            
-            # 限制在0-100范围内
-            score = max(0.0, min(100.0, score))
-            
-            # 生成评分理由
+            # 每1个百分点变化3分，向下取整
             if diff > 0:
-                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出1个百分点加3分，价值贡献得分{score:.1f}分"
+                points_above = int(diff)  # 向下取整
+                score_change = points_above * 2
+                score = base_score + score_change
+                # 限制在0-100范围内
+                score = max(0.0, min(100.0, score))
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（高于100% {diff:.1f}个百分点），每高出1个百分点加2分，共加{score_change}分，价值贡献得分{score:.1f}分"
             elif diff < 0:
-                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣3分，价值贡献得分{score:.1f}分"
+                points_below = int(abs(diff))  # 向下取整
+                score_change = points_below * 3
+                score = base_score - score_change
+                # 限制在0-100范围内
+                score = max(0.0, min(100.0, score))
+                employee_reason = f"正式员工，绩效酬金偏离度为{deviation_rate:.1f}%（低于100% {abs(diff):.1f}个百分点），每低出1个百分点扣3分，共扣{score_change}分，价值贡献得分{score:.1f}分"
             else:
+                score = base_score
                 employee_reason = f"正式员工，绩效酬金偏离度正好为100%，不加分不扣分，价值贡献得分{score:.1f}分"
             
             # 岗位价值贡献要求（非试用期）
@@ -1519,7 +1601,13 @@ async def _evaluate_employee_innovation(
     transcription_text: str,
     questions_content: str
 ) -> tuple:
-    """评估员工创新能力，返回(分数, 精简理由)"""
+    """评估员工创新能力，返回(分数, 精简理由)
+    
+    新增功能：
+    1. 判断员工创新能力是否与岗位匹配
+    2. 融入集团AI+降本增效理念
+    3. 参考外部同行业岗位要求
+    """
     import aiohttp
     
     default_score = 70.0
@@ -1533,46 +1621,89 @@ async def _evaluate_employee_innovation(
 岗位说明书：
 {job_description[:1500]}
 
-{f'面试录音转录：{transcription_text[:2000]}' if transcription_text and not transcription_text.startswith('[') else ''}
+{f'面试录音转录：{transcription_text[:20000]}' if transcription_text and not transcription_text.startswith('[') else ''}
 
 {f'提问回答：{questions_content[:1500]}' if questions_content else ''}
 
+【集团AI+理念要求】
+我们集团提出了AI+的观念，强调深度应用AI进行降本增效。评估时需要重点考察：
+1. 员工是否具备AI思维：能否将AI工具应用到日常工作中提升效率
+2. 是否有降本增效意识：能否通过创新手段降低成本、提升工作效率
+3. AI工具应用能力：是否熟练使用AI辅助工具进行工作优化
+4. 流程优化能力：能否识别工作流程痛点并提出AI化改进方案
+
+
 评估要求：
-1. 满分100分，重点关注：创新思维、问题解决能力、提出改进建议的能力
-2. 理由必须精简，控制在50字以内，只说核心评价点
+1. 满分100分，重点关注：
+   - 创新思维、问题解决能力、提出改进建议的能力（传统维度）
+   - AI思维与工具应用能力（新增维度，占40%权重）
+   - 降本增效意识与实践能力（新增维度，占30%权重）
+   - 与岗位创新能力要求的匹配度（新增维度，占30%权重）
+
+2. 【关键评分熔断机制 - 必须严格执行】：
+   在给出分数前，请先判断员工的回答质量：
+   
+   a) **检查是否只是简单复述题目**：
+      - 如果员工回答只是重复了面试官的问题，没有提供实质性的个人经验、案例或见解
+      - 如果回答内容空洞，缺乏具体细节和实际做法
+      → **这种情况属于"简单复述"，总分不得超过30分**
+   
+   b) **检查是否真正应用了AI工具**：
+      - 如果员工只是口头上提到"AI"、"人工智能"等词汇，但没有说明**具体使用了什么AI工具**（如ChatGPT、文心一言、Kimi等）
+      - 如果没有描述**具体在什么场景下使用**AI工具
+      - 如果没有说明**使用AI工具后产生了什么实际效果**（如效率提升、成本降低等）
+      - 如果回答仅停留在表面，没有展示真正的AI应用能力
+      → **这种情况属于"未真正应用AI"，总分不得超过40分**
+   
+   c) **真正的AI应用应该包含**：
+      - 具体工具名称（如：使用ChatGPT辅助文档编写）
+      - 具体应用场景（如：用于生成代码注释、撰写报告等）
+      - 实际效果数据（如：节省50%时间、提高30%准确率等）
+
+3. 必须判断该员工创新能力是否与岗位（职位）相匹配，需要观察回答问题的深度。
+4. 理由必须精简，控制在50字以内，包含匹配度判断。
 
 请按以下JSON格式返回：
 {{
     "score": 0-100的整数,
-    "reason": "精简理由（50字以内）"
+    "match_position": true或false（创新能力是否与岗位匹配）,
+    "reason": "精简理由（50字以内，必须包含是否匹配岗位及AI应用能力评价）"
 }}
 """
     
+    # 从配置获取大模型设置
+    from app.config import get_settings
+    settings = get_settings()
+    
     async with aiohttp.ClientSession() as session:
         payload = {
-            "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+            "model": settings.remote_llm_model,
             "messages": [
-                {"role": "system", "content": "你是人力资源专家，评估员工创新能力。理由必须精简，控制在50字以内。"},
+                {"role": "system", "content": "你是人力资源专家，评估员工创新能力。重点评估AI+降本增效能力及与岗位匹配度。理由必须精简，控制在50字以内。"},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.3,
             "max_tokens": 500
         }
-
+        
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+            "Authorization": f"Bearer {settings.remote_llm_api_key}"
         }
 
         async with session.post(
-            "http://180.97.200.118:30071/v1/chat/completions",
+            settings.remote_llm_url,
             json=payload,
             headers=headers,
             timeout=aiohttp.ClientTimeout(total=60)
         ) as response:
             if response.status == 200:
-                result = await response.json()
-                content = result['choices'][0]['message']['content']
+                try:
+                    result = await response.json()
+                    content = result['choices'][0]['message']['content']
+                except (KeyError, IndexError, TypeError) as e:
+                    logger.error(f"[Innovation] 解析LLM响应失败: {e}, result={result}")
+                    return default_score, "评估解析失败，使用默认得分"
 
                 try:
                     import json
@@ -1587,6 +1718,21 @@ async def _evaluate_employee_innovation(
                         score = default_score
                         reason = content[:50] if content else '评估完成'
 
+                    # 【代码层面兜底熔断】主要依赖大模型的语义理解，代码仅做极端情况兜底
+                    combined_text = (transcription_text or '') + ' ' + (questions_content or '')
+                    content_length = len(combined_text.strip())
+                    
+                    # 仅对极端情况进行兜底限制
+                    original_score = score
+                    if content_length < 50 and score > 30:
+                        # 内容极少，强制限制在30分以内
+                        score = min(score, 30)
+                        reason = f"回答内容过少，按熔断机制限制得分"
+                        logger.warning(f"[Innovation兜底熔断] 员工{emp_name}回答过少({content_length}字符)，原分数{original_score}，熔断后{score}")
+                    elif score > 90:
+                        # 如果大模型给出超过90分的高分，记录日志便于排查
+                        logger.info(f"[Innovation高分记录] 员工{emp_name}获得高分{score}，请检查是否符合熔断标准")
+                    
                     score = max(0, min(100, score))
                     # 确保理由精简
                     if len(reason) > 60:
@@ -1606,7 +1752,13 @@ async def _calculate_job_innovation_requirement(
     position_name: str,
     job_description: str
 ) -> tuple:
-    """根据岗位说明书计算岗位创新能力要求，返回(要求分数, 理由)"""
+    """根据岗位说明书计算岗位创新能力要求，返回(要求分数, 理由)
+    
+    新增功能：
+    1. 融入集团AI+降本增效理念
+    2. 引入外部同行业岗位要求作为参考
+    3. 提供合适的AI应用prompt建议
+    """
     import aiohttp
     
     default_requirement = 70.0
@@ -1624,43 +1776,70 @@ async def _calculate_job_innovation_requirement(
 岗位说明书：
 {job_description[:2000]}
 
+【集团AI+理念要求】
+我们集团提出了AI+的观念，深度应用AI进行降本增效是当前重要战略。岗位创新能力评估需要包含：
+1. AI工具应用能力：该岗位是否需要使用AI工具提升工作效率
+2. 降本增效意识：该岗位是否要求员工通过创新手段降低成本、提高效率
+3. 流程优化能力：该岗位是否要求持续优化工作流程
+4. 数字化思维：该岗位是否要求具备数字化、智能化思维
+
+【外部同行业岗位要求参考】
+请同时参考当前市场上同行业同岗位的创新能力要求趋势：
+- AI+时代下，各行业岗位对创新能力的要求普遍提升
+- 传统岗位的创新能力要求从60-75分提升至75-85分
+- 技术类、产品类岗位的创新能力要求达到85-95分
+- 管理岗位要求具备AI思维推动团队数字化转型
+
 分析要求：
 1. 根据岗位职责的复杂程度、是否需要持续改进、是否要求创新思维等因素，确定创新能力要求分数
-2. 满分100分，一般岗位60-75分，需要较强创新能力的岗位75-90分
-3. 理由控制在50字以内，说明为什么这个岗位需要这个分数
+2. 结合集团AI+理念，评估该岗位对AI应用和降本增效能力的需求程度
+3. 参考外部同行业岗位要求，给出合理的创新能力标准分数
+4. 满分100分，一般岗位75-85分，需要较强创新能力的岗位85-95分
+5. 为该岗位提供一个合适的prompt建议，用于指导员工如何在日常工作中应用AI提升创新能力
+6. 理由控制在80字以内，说明为什么这个岗位需要这个分数，包含AI+要求
 
 请按以下JSON格式返回：
 {{
-    "requirement_score": 60-100的整数,
-    "reason": "精简理由（50字以内）"
+    "requirement_score": 75-100的整数,
+    "match_external_standard": true或false（是否符合外部同行业岗位要求）,
+    "ai_prompt_suggestion": "为该岗位提供的AI应用prompt建议（50字以内）",
+    "reason": "精简理由（80字以内，包含AI+要求和外部标准参考）"
 }}
 """
         
+        # 从配置获取大模型设置
+        from app.config import get_settings
+        settings = get_settings()
+        
         async with aiohttp.ClientSession() as session:
             payload = {
-                "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                "model": settings.remote_llm_model,
                 "messages": [
-                    {"role": "system", "content": "你是人力资源专家，分析岗位对创新能力的要求。理由必须精简，控制在50字以内。"},
+                    {"role": "system", "content": "你是人力资源专家，分析岗位对创新能力的要求。重点考虑集团AI+降本增效理念和外部同行业标准。理由必须精简，控制在80字以内。"},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 500
+                "max_tokens": 600
             }
-
+            
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+                "Authorization": f"Bearer {settings.remote_llm_api_key}"
             }
 
             async with session.post(
-                "http://180.97.200.118:30071/v1/chat/completions",
+                settings.remote_llm_url,
                 json=payload,
                 headers=headers,
                 timeout=aiohttp.ClientTimeout(total=60)
             ) as response:
                 if response.status == 200:
-                    result = await response.json()
-                    content = result['choices'][0]['message']['content']
+                    try:
+                        result = await response.json()
+                        content = result['choices'][0]['message']['content']
+                    except (KeyError, IndexError, TypeError) as e:
+                        logger.error(f"[Innovation] 解析LLM响应失败: {e}, result={result}")
+                        return default_requirement, default_reason
                     
                     try:
                         import json
@@ -1678,8 +1857,8 @@ async def _calculate_job_innovation_requirement(
                         # 除以0.9进行调整，最高100分
                         requirement_score = min(requirement_score / 0.9, 100)
                         # 确保理由精简
-                        if len(reason) > 60:
-                            reason = reason[:57] + "..."
+                        if len(reason) > 90:
+                            reason = reason[:87] + "..."
 
                         job_reason = f"{reason}，标准分{requirement_score:.1f}分"
                         return requirement_score, job_reason
@@ -1687,7 +1866,8 @@ async def _calculate_job_innovation_requirement(
                             logger.error(f"解析岗位创新能力要求结果失败: {e}")
                             return default_requirement, default_reason
                 else:
-                    logger.error(f"调用大模型分析岗位要求失败，状态码: {response.status}")
+                    error_text = await response.text()
+                    logger.error(f"调用大模型分析岗位要求失败，状态码: {response.status}, 错误: {error_text[:200]}")
                     return default_requirement, default_reason
                     
     except Exception as e:
@@ -1695,7 +1875,199 @@ async def _calculate_job_innovation_requirement(
         return default_requirement, default_reason
 
 
-async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audio_file_path: str = None, questions_file_path: str = None) -> tuple:
+async def generate_qa_summary_from_interview(
+    audio_file_path: Optional[str] = None,
+    questions_file_path: Optional[str] = None
+) -> List[Dict]:
+    """
+    从面试录音和提问文件中提取问答概要
+    
+    Args:
+        audio_file_path: 录音文件路径
+        questions_file_path: 提问问题文件路径
+    
+    Returns:
+        问答概要列表，每项包含问题和答案概要
+    """
+    qa_summary = []
+    
+    # 如果没有提供文件，返回空列表
+    if not audio_file_path and not questions_file_path:
+        return qa_summary
+    
+    try:
+        # 转录音频文件（如果有）
+        transcription_text = ""
+        logger.info(f"[QASummary] 检查音频文件: audio_file_path={audio_file_path}, exists={os.path.exists(audio_file_path) if audio_file_path else False}")
+        if audio_file_path and os.path.exists(audio_file_path):
+            logger.info(f"[QASummary] 开始处理音频文件: {audio_file_path}")
+            transcription_text = transcribe_audio_file(audio_file_path)
+            logger.info(f"[QASummary] 音频转录完成，文本长度: {len(transcription_text)} 字符, 内容前100字: {transcription_text[:100]}")
+        elif audio_file_path:
+            logger.warning(f"[QASummary] 音频文件不存在: {audio_file_path}")
+        
+        # 读取提问问题文件（如果有）
+        questions_content = ""
+        logger.info(f"[QASummary] 检查问题文件: questions_file_path={questions_file_path}, exists={os.path.exists(questions_file_path) if questions_file_path else False}")
+        if questions_file_path and os.path.exists(questions_file_path):
+            logger.info(f"[QASummary] 开始读取问题文件: {questions_file_path}")
+            if questions_file_path.endswith('.xlsx') or questions_file_path.endswith('.xls'):
+                import pandas as pd
+                df = pd.read_excel(questions_file_path)
+                questions_content = df.to_string()
+            elif questions_file_path.endswith('.csv'):
+                import pandas as pd
+                df = pd.read_csv(questions_file_path)
+                questions_content = df.to_string()
+            else:
+                with open(questions_file_path, 'r', encoding='utf-8') as f:
+                    questions_content = f.read()
+            logger.info(f"[QASummary] 问题文件读取完成，内容长度: {len(questions_content)} 字符")
+        
+        # 如果没有转录文本和问题内容，返回空列表
+        if not transcription_text and not questions_content:
+            return qa_summary
+        
+        # 调用大模型提取问答概要
+        qa_summary = await _extract_qa_summary_with_llm(
+            transcription_text, questions_content
+        )
+        
+        return qa_summary
+        
+    except Exception as e:
+        logger.error(f"[QASummary] 生成问答概要时出错: {e}")
+        return qa_summary
+
+
+async def _extract_qa_summary_with_llm(
+    transcription_text: str,
+    questions_content: str
+) -> List[Dict]:
+    """
+    使用大模型从转录文本中提取问答概要
+    
+    Args:
+        transcription_text: 录音转录文本
+        questions_content: 提问问题内容
+    
+    Returns:
+        问答概要列表
+    """
+    import aiohttp
+    
+    default_summary = []
+    
+    # 构建提示词
+    prompt = f"""请从以下面试录音转录文本中提取问答概要。
+
+{f'面试录音转录内容：{transcription_text[:3000]}' if transcription_text and not transcription_text.startswith('[') else '暂无录音转录内容'}
+
+{f'提问问题列表：{questions_content[:1500]}' if questions_content else '暂无提问问题列表'}
+
+提取要求：
+1. 识别面试中的关键问题和对应的回答
+2. 每个问题提取核心要点，答案概要控制在50字以内
+3. 重点关注与岗位能力相关的问题
+4. 如果没有明确的问答对，根据转录内容提炼2-3个关键话题和要点
+
+请按以下JSON格式返回：
+{{
+    "qa_summary": [
+        {{
+            "question": "问题内容",
+            "answer_summary": "答案概要（50字以内）"
+        }}
+    ]
+}}
+
+如果没有提取到有效内容，返回空数组：{{"qa_summary": []}}"""
+    
+    # 从配置获取大模型设置
+    from app.config import get_settings
+    settings = get_settings()
+    
+    try:
+        logger.info(f"[QASummary] 开始调用大模型提取问答概要，URL: {settings.remote_llm_url}, Model: {settings.remote_llm_model}")
+        logger.info(f"[QASummary] 提示词长度: {len(prompt)} 字符")
+        
+        async with aiohttp.ClientSession() as session:
+            payload = {
+                "model": settings.remote_llm_model,
+                "messages": [
+                    {"role": "system", "content": "你是一个专业的人力资源助手，擅长从面试录音中提取关键问答信息。请严格按照JSON格式输出。"},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1000
+            }
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.remote_llm_api_key}"
+            }
+            
+            logger.info(f"[QASummary] 发送请求到LLM...")
+            async with session.post(
+                settings.remote_llm_url,
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=60)
+            ) as response:
+                logger.info(f"[QASummary] LLM响应状态码: {response.status}")
+                if response.status == 200:
+                    try:
+                        result = await response.json()
+                        content = result['choices'][0]['message']['content']
+                        logger.info(f"[QASummary] LLM返回内容长度: {len(content)} 字符, 前200字: {content[:200]}")
+                    except (KeyError, IndexError, TypeError) as e:
+                        logger.error(f"[QASummary] 解析LLM响应失败: {e}, result={result}")
+                        return default_summary
+                    
+                    # 解析JSON结果
+                    try:
+                        import json
+                        json_start = content.find('{')
+                        json_end = content.rfind('}') + 1
+                        if json_start >= 0 and json_end > json_start:
+                            json_str = content[json_start:json_end]
+                            evaluation = json.loads(json_str)
+                            qa_summary = evaluation.get('qa_summary', [])
+                            
+                            # 验证并清理数据
+                            cleaned_summary = []
+                            for item in qa_summary:
+                                question = item.get('question', '').strip()
+                                answer_summary = item.get('answer_summary', '').strip()
+                                
+                                if question and answer_summary:
+                                    # 限制答案概要长度
+                                    if len(answer_summary) > 100:
+                                        answer_summary = answer_summary[:97] + "..."
+                                    cleaned_summary.append({
+                                        "question": question,
+                                        "answer_summary": answer_summary
+                                    })
+                            
+                            logger.info(f"[QASummary] 成功提取 {len(cleaned_summary)} 条问答概要")
+                            return cleaned_summary
+                        else:
+                            logger.warning("[QASummary] 无法从响应中提取JSON")
+                            return default_summary
+                    except Exception as e:
+                        logger.error(f"[QASummary] 解析JSON失败: {e}")
+                        return default_summary
+                else:
+                    error_text = await response.text()
+                    logger.error(f"[QASummary] 调用大模型失败，状态码: {response.status}, 错误: {error_text[:200]}")
+                    return default_summary
+                    
+    except Exception as e:
+        logger.error(f"[QASummary] 提取问答概要时出错: {e}")
+        return default_summary
+
+
+async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audio_file_path: str = None, questions_file_path: str = None, jd_warning: str = None) -> tuple:
     """
     计算学习能力维度得分（权重20%）
     基于附件要求：
@@ -1727,34 +2099,43 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
         if is_985:
             base_score = 80
             reasons.append(f"本科学历+985/QS前50院校，基础分80分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         elif is_211:
             base_score = 70
             reasons.append(f"本科学历+211/QS50-100院校，基础分70分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         else:
             base_score = 60
             reasons.append(f"本科学历+普通院校，基础分60分")
+            reasons.append(f"毕业院校：{school}（{school_type if school_type else '普通院校'}）")
     # 硕士阶段
     elif "硕士" in highest_degree or "研究生" in highest_degree:
         if is_985:
             base_score = 90
             reasons.append(f"硕士学历+985/QS前50院校，基础分90分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         elif is_211:
             base_score = 80
             reasons.append(f"硕士学历+211/QS50-100院校，基础分80分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         else:
             base_score = 70
             reasons.append(f"硕士学历+普通院校，基础分70分")
+            reasons.append(f"毕业院校：{school}（{school_type if school_type else '普通院校'}）")
     # 博士阶段
     elif "博士" in highest_degree:
         if is_985:
             base_score = 100
             reasons.append(f"博士学历+985/QS前50院校，基础分100分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         elif is_211:
             base_score = 90
             reasons.append(f"博士学历+211/QS50-100院校，基础分90分")
+            reasons.append(f"毕业院校：{school}（{school_type}）")
         else:
             base_score = 80
             reasons.append(f"博士学历+普通院校，基础分80分")
+            reasons.append(f"毕业院校：{school}（{school_type if school_type else '普通院校'}）")
     # 专科阶段（扣分）
     elif "专科" in education or "大专" in education:
         base_score = 55  # 60 - 5 = 55
@@ -1799,13 +2180,13 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
                     
                     try:
                         response = requests.post(
-                            settings.LLM_URL,
+                            settings.remote_llm_url,
                             headers={
                                 "Content-Type": "application/json",
-                                "Authorization": f"Bearer {settings.LLM_API_KEY}"
+                                "Authorization": f"Bearer {settings.remote_llm_api_key}"
                             },
                             json={
-                                "model": settings.LLM_MODEL,
+                                "model": settings.remote_llm_model,
                                 "messages": [
                                     {"role": "system", "content": "你是一个专业的HR分析师，擅长判断员工专业与岗位要求的匹配度。"},
                                     {"role": "user", "content": prompt}
@@ -1934,6 +2315,7 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
    - 知识更新和能力提升的意识
    - 对新知识、新技能的接受能力
    - 自我学习和持续成长的表现
+   - 学习的深度
 3. 给出分数和简要评价理由（控制在50字以内）
 
 {f'面试录音转录内容：{transcription_text[:2000]}' if transcription_text and not transcription_text.startswith('[') else ''}
@@ -1950,8 +2332,12 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
             # 调用远程大模型（温度系数0.3）
             import aiohttp
             async with aiohttp.ClientSession() as session:
+                # 从配置获取大模型设置
+                from app.config import get_settings
+                settings = get_settings()
+                
                 payload = {
-                    "model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    "model": settings.remote_llm_model,
                     "messages": [
                         {"role": "system", "content": "你是一个专业的人力资源评估专家，擅长评估员工的学习能力。请根据提供的面试录音转录文字和提问回答，客观、公正地评估员工的学习能力。"},
                         {"role": "user", "content": prompt}
@@ -1962,39 +2348,44 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
                 
                 headers = {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
+                    "Authorization": f"Bearer {settings.remote_llm_api_key}"
                 }
                 
                 async with session.post(
-                    "http://180.97.200.118:30071/v1/chat/completions",
+                    settings.remote_llm_url,
                     json=payload,
                     headers=headers,
                     timeout=aiohttp.ClientTimeout(total=60)
                 ) as response:
                     if response.status == 200:
-                        result = await response.json()
-                        content = result['choices'][0]['message']['content']
-                        
-                        # 解析JSON结果
                         try:
-                            json_start = content.find('{')
-                            json_end = content.rfind('}') + 1
-                            if json_start >= 0 and json_end > json_start:
-                                json_str = content[json_start:json_end]
-                                evaluation = json.loads(json_str)
-                                comprehensive_score = float(evaluation.get('score', 70))
-                                eval_reason = evaluation.get('reason', '评估完成')
-                                # 确保理由精简
-                                if len(eval_reason) > 60:
-                                    eval_reason = eval_reason[:57] + "..."
-                                comprehensive_reason = f"{eval_reason}，综合评价得分{comprehensive_score:.0f}分"
-                            else:
-                                comprehensive_reason = "大模型评估完成，综合评价得分70分"
-                        except Exception as e:
-                            logger.error(f"解析学习能力综合评价结果失败: {e}")
+                            result = await response.json()
+                            content = result['choices'][0]['message']['content']
+                        except (KeyError, IndexError, TypeError) as e:
+                            logger.error(f"[Learning] 解析LLM响应失败: {e}, result={result}")
                             comprehensive_reason = "评估解析失败，使用默认得分70分"
+                        else:
+                            # 解析JSON结果
+                            try:
+                                json_start = content.find('{')
+                                json_end = content.rfind('}') + 1
+                                if json_start >= 0 and json_end > json_start:
+                                    json_str = content[json_start:json_end]
+                                    evaluation = json.loads(json_str)
+                                    comprehensive_score = float(evaluation.get('score', 70))
+                                    eval_reason = evaluation.get('reason', '评估完成')
+                                    # 确保理由精简
+                                    if len(eval_reason) > 60:
+                                        eval_reason = eval_reason[:57] + "..."
+                                    comprehensive_reason = f"{eval_reason}，综合评价得分{comprehensive_score:.0f}分"
+                                else:
+                                    comprehensive_reason = "大模型评估完成，综合评价得分70分"
+                            except Exception as e:
+                                logger.error(f"解析学习能力综合评价结果失败: {e}")
+                                comprehensive_reason = "评估解析失败，使用默认得分70分"
                     else:
-                        logger.error(f"调用大模型评估学习能力失败，状态码: {response.status}")
+                        error_text = await response.text()
+                        logger.error(f"调用大模型评估学习能力失败，状态码: {response.status}, 错误: {error_text[:200]}")
                         comprehensive_reason = "大模型调用失败，使用默认得分70分"
                         
         except Exception as e:
@@ -2063,28 +2454,26 @@ async def calculate_learning_score(emp_info: dict, job_desc: dict, db=None, audi
     return final_score, job_requirement, employee_reason, job_reason
 
 
-def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = None) -> tuple:
+def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = None, jd_warning: str = None) -> tuple:
     """
     计算工作态度维度得分（权重20%）
     基于：考勤数据（迟到、早退、加班）
     
-    计分规则：
-    【非试用期员工】
-    - 基础分70分，上限100分
-    - 迟到/早退：每月大于3次，3次以上每次扣1分，最多扣10分
-    - 加班加分：月度加班时间达到36小时及以上，加20分
+    计分规则（用户指定）：
+    基础分为70分，上限100分
     
-    【试用期员工（入职≤6个月）】
-    - 基础分70分，上限100分
-    - 扣分项（自然年）：
-      - 迟到/早退：豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分
-      - 旷工：每旷工1次，扣10分，年度旷工超过3次以上，本大项目直接0分
-    - 加分项（累计得分）：
-      - 工作日按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加3分，20点30分及以后的，加6分，最多加30分
-      - 月度加班时间达到36小时及以上的，加30分
-      - 以上条件二选一
-    - 政治面貌：中共党员加5分
-    - 党工团兼职：党10、团7、工4，最高10分
+    1. 扣分项（按月计算）
+       迟到/早退：豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分。
+       旷工：每旷工1次，扣10分。年度旷工超过3次以上，本大项目直接0分
+    
+    2. 加分项（按月计算，二选一取高分）
+       工作日：按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加1分，
+               20点30分及以后的，加3分，最多加20分。
+       月度加班时间达到36小时及以上的，加20分。
+       以上条件二选一。
+    
+    3. 政治面貌：中共党员加5分
+    4. 党工团兼职：党10、团7、工4，最高10分
     """
     from datetime import datetime, date
     
@@ -2106,7 +2495,6 @@ def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = 
             if isinstance(entry_date, date):
                 today = date.today()
                 months_since_entry = (today.year - entry_date.year) * 12 + (today.month - entry_date.month)
-                # 如果入职日期还没到，减去1个月
                 if today.day < entry_date.day:
                     months_since_entry -= 1
                 is_probation = months_since_entry <= 6
@@ -2115,145 +2503,130 @@ def calculate_attitude_score(attendance: dict, job_desc: dict, emp_info: dict = 
         if is_probation:
             score = 70
             employee_reason = f"试用期员工（入职{months_since_entry}个月），基础分70分，暂无考勤数据"
-            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
-            job_reason = f"试用期员工（入职{months_since_entry}个月）要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
+            job_requirement = min(70 / 0.9, 100)
+            job_reason = f"试用期员工（入职{months_since_entry}个月）要求：遵守考勤纪律，标准分{job_requirement:.1f}分"
         else:
             score = 70
             employee_reason = "正式员工，基础分70分，暂无考勤数据"
-            job_requirement = min(70 / 0.9, 100)  # 除以0.9进行调整，最高100分
-            job_reason = f"正式员工要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
+            job_requirement = min(70 / 0.9, 100)
+            job_reason = f"正式员工要求：遵守考勤纪律，标准分{job_requirement:.1f}分"
         return score, job_requirement, employee_reason, job_reason
     
-    if is_probation:
-        # 【试用期员工计分规则】
-        score = 70  # 基础分70分
-        reasons = [f"试用期员工（入职{months_since_entry}个月），基础分70分"]
-        
-        # 扣分项（自然年）
-        late_count = attendance.get('late_count', 0)
-        early_leave_count = attendance.get('early_leave_count', 0)
-        absenteeism_count = attendance.get('absenteeism_count', 0)  # 旷工次数
-        
-        # 迟到/早退：豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分
-        if late_count > 0:
-            if late_count > 3:
-                late_deduction = min(int((late_count - 3)), 10)
-                score -= late_deduction
-                reasons.append(f"月平均迟到{late_count}次（豁免3次），扣{late_deduction}分")
-            else:
-                reasons.append(f"月平均迟到{late_count}次（3次以内不扣分）")
-        
-        if early_leave_count > 0:
-            if early_leave_count > 3:
-                early_deduction = min(int((early_leave_count - 3)), 10)
-                score -= early_deduction
-                reasons.append(f"月平均早退{early_leave_count}次（豁免3次），扣{early_deduction}分")
-            else:
-                reasons.append(f"月平均早退{early_leave_count}次（3次以内不扣分）")
-        
-        # 旷工：每旷工1次，扣10分，年度旷工超过3次以上，本大项目直接0分
-        if absenteeism_count > 0:
-            if absenteeism_count > 3:
-                score = 0
-                reasons.append(f"年度旷工{absenteeism_count}次（超过3次），工作态度直接0分")
-            else:
-                absenteeism_deduction = int(absenteeism_count) * 10
-                score -= absenteeism_deduction
-                reasons.append(f"旷工{absenteeism_count}次，扣{absenteeism_deduction}分")
-        
-        # 加分项（累计得分）- 二选一
-        overtime_hours = attendance.get('overtime_hours', 0)
-        
-        # 条件1：月度加班时间达到36小时及以上的，加30分
-        if overtime_hours >= 36:
-            score += 30
-            reasons.append(f"月平均加班{overtime_hours:.1f}小时（≥36小时），+30分")
-        else:
-            # 条件2：工作日按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加3分，20点30分及以后的，加6分，最多加30分
-            overtime_count = attendance.get('overtime_count', 0)  # 18:30后打卡次数
-            very_late_checkout_count = attendance.get('very_late_checkout_count', 0)  # 20:30后打卡次数
-            
-            if very_late_checkout_count > 0:
-                bonus = min(int(very_late_checkout_count) * 6, 30)
-                score += bonus
-                reasons.append(f"20:30后打卡{very_late_checkout_count}次，+{bonus}分")
-            elif overtime_count > 0:
-                bonus = min(int(overtime_count) * 3, 30)
-                score += bonus
-                reasons.append(f"18:30后打卡{overtime_count}次，+{bonus}分")
-        
-        # 政治面貌：中共党员加5分
-        political_status = emp_info.get('political_status', '') if emp_info else ''
-        if political_status and '党员' in political_status:
-            score += 5
-            reasons.append("中共党员，+5分")
-        
-        # 党工团兼职：党10、团7、工4，最高10分
-        party_union_role = emp_info.get('party_union_role', '') if emp_info else ''
-        if party_union_role:
-            if '党' in party_union_role:
-                score += 10
-                reasons.append("党工团兼职（党），+10分")
-            elif '团' in party_union_role:
-                score += 7
-                reasons.append("党工团兼职（团），+7分")
-            elif '工' in party_union_role:
-                score += 4
-                reasons.append("党工团兼职（工），+4分")
-        
-        score = max(0, min(score, 100))
-        employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
-        
-        # 试用期员工岗位要求
-        job_requirement = 70 / 0.9  # 除以0.9进行调整
-        job_reason = f"试用期员工（入职{months_since_entry}个月）要求：标准分{job_requirement:.1f}分，迟到/早退豁免3次/月，旷工每次扣10分（超过3次直接0分），加班或晚打卡可加分，中共党员+5分，党工团兼职最高+10分"
-    else:
-        # 【非试用期员工计分规则】
-        score = 70  # 基础分70分
-        reasons = ["正式员工，基础分70分"]
-        
-        # 扣分项
-        late_count = attendance.get('late_count', 0)
-        early_leave_count = attendance.get('early_leave_count', 0)
-        
-        # 迟到/早退扣分：每月大于3次，3次以上每次扣1分，最多扣10分
-        if late_count > 0:
-            if late_count > 3:
-                late_deduction = min(int((late_count - 3)), 10)
-                score -= late_deduction
-                reasons.append(f"月平均迟到{late_count}次，扣{late_deduction}分")
-            else:
-                reasons.append(f"月平均迟到{late_count}次（3次以内不扣分）")
-        
-        if early_leave_count > 0:
-            early_deduction = min(int(early_leave_count), 10)
-            score -= early_deduction
-            reasons.append(f"月平均早退{early_leave_count}次，扣{early_deduction}分")
-        
-        # 加分项
-        overtime_hours = attendance.get('overtime_hours', 0)
-        overtime_count = attendance.get('overtime_count', 0)
-        
-        # 月度加班时间达到36小时及以上，加20分
-        if overtime_hours >= 36:
-            score += 20
-            reasons.append(f"月平均加班{overtime_hours:.1f}小时，+20分")
-        elif overtime_count > 0:
-            bonus = min(int(overtime_count), 20)
-            score += bonus
-            reasons.append(f"月平均加班{overtime_hours:.1f}小时，+{bonus:.1f}分")
-        
-        if overtime_count > 0:
-            reasons.append(f"月平均加班天数{overtime_count}天")   
-        
-        score = max(0, min(score, 100))
-        employee_reason = "；".join(reasons) + f"，最终得分{score:.1f}分"
-        
-        # 非试用期员工岗位要求
-        job_requirement = 70 / 0.9  # 除以0.9进行调整
-        job_reason = f"正式员工要求：遵守考勤纪律，积极主动，标准分{job_requirement:.1f}分"
+    # ========== 统一计分规则（试用期和非试用期都适用用户指定规则） ==========
+    base_score = 70
+    max_score = 100
+    reasons = []
     
-    return score, job_requirement, employee_reason, job_reason
+    if is_probation:
+        reasons.append(f"试用期员工（入职{months_since_entry}个月），基础分{base_score}分")
+    else:
+        reasons.append(f"正式员工，基础分{base_score}分")
+    
+    # ============ 0. 统计范围说明 ============
+    month_count = attendance.get('month_count', 0) or 0
+    normal_days = attendance.get('normal_days', 0) or 0
+    expected_days = attendance.get('expected_days', 0) or 0
+    late_count = attendance.get('late_count', 0) or 0
+    early_leave_count = attendance.get('early_leave_count', 0) or 0
+    leave_count = attendance.get('leave_count', 0) or 0
+    outing_count = attendance.get('outing_count', 0) or 0
+    overtime_count = attendance.get('overtime_count', 0) or 0
+    overtime_hours = attendance.get('overtime_hours', 0) or 0
+    overtime_2030_count = attendance.get('overtime_2030_count', 0) or 0
+    
+    reasons.append(f"统计范围：近{month_count}个月考勤数据（以下均为月均值）")
+    reasons.append(f"出勤数据：月均正常出勤{normal_days:.1f}天/理应出勤{expected_days:.1f}天，月均迟到{late_count:.1f}次、早退{early_leave_count:.1f}次、请假{leave_count:.1f}次、外出{outing_count:.1f}次")
+    
+    # ============ 1. 迟到/早退扣分（按月均计算） ============
+    total_late_monthly = late_count + early_leave_count
+    # 豁免3次/月，超出部分每次扣1分，最多扣10分
+    excess_late = max(0, total_late_monthly - 3)
+    late_deduction = min(excess_late, 10)
+    
+    if late_deduction > 0:
+        reasons.append(f"【迟到/早退扣分】月均迟到/早退{total_late_monthly:.1f}次（豁免3次），超出{excess_late:.1f}次，扣{late_deduction}分")
+    else:
+        reasons.append(f"【迟到/早退】月均迟到/早退{total_late_monthly:.1f}次，在豁免范围内（3次以内），不扣分")
+    
+    # ============ 2. 旷工扣分 ============
+    absenteeism_count = attendance.get('absenteeism_count', 0) or 0
+    
+    if absenteeism_count > 3:
+        return 0, min(70 / 0.9, 100), f"基础分{base_score}分，年度旷工{absenteeism_count}次，超过3次上限，本大项目直接0分", "旷工超过3次，直接0分"
+    elif absenteeism_count > 0:
+        absent_deduction = absenteeism_count * 10
+        reasons.append(f"【旷工扣分】旷工{absenteeism_count}次，每次扣10分，共扣{absent_deduction}分")
+    else:
+        absent_deduction = 0
+        reasons.append("【旷工】无旷工记录，不扣分")
+    
+    # ============ 3. 加班加分（二选一，取高分） ============
+    overtime_bonus = 0
+    
+    # 方式A：基于打卡时间的加班加分（按月均，向下取整）
+    bonus_1830 = int(overtime_count) * 1  # 18:30后每次1分，向下取整
+    bonus_2030 = int(overtime_2030_count) * 3  # 20:30后每次3分，向下取整
+    bonus_by_time = min(bonus_1830 + bonus_2030, 20)  # 最多加20分
+    
+    # 方式B：基于月度加班时长的加分
+    bonus_by_hours = 20 if overtime_hours >= 36 else 0
+    
+    # 二选一，取高分
+    overtime_bonus = max(bonus_by_time, bonus_by_hours)
+    
+    if bonus_by_time > 0:
+        reasons.append(f"【加班加分-按打卡时间】月均18:30后加班{overtime_count:.1f}次（每次1分，共{bonus_1830}分），月均20:30后加班{overtime_2030_count:.1f}次（每次3分，共{bonus_2030}分），合计{bonus_1830 + bonus_2030}分（上限20分）")
+    
+    if bonus_by_hours > 0:
+        reasons.append(f"【加班加分-按时长】月均加班{overtime_hours:.1f}小时，达到36小时标准，加20分")
+    
+    if overtime_bonus > 0:
+        method = "打卡时间" if bonus_by_time >= bonus_by_hours else "加班时长"
+        reasons.append(f"【加班加分结果】二选一取高分（{method}方式）：加{overtime_bonus}分")
+    else:
+        reasons.append(f"【加班加分】月均加班{overtime_count:.1f}次、20:30后{overtime_2030_count:.1f}次、加班时长{overtime_hours:.1f}小时，未达加分标准，加0分")
+    
+    # ============ 4. 政治面貌加分 ============
+    political_status = emp_info.get('political_status', '') if emp_info else ''
+    party_bonus = 5 if political_status and '党员' in political_status else 0
+    if party_bonus > 0:
+        reasons.append(f"【政治面貌】中共党员，加{party_bonus}分")
+    else:
+        reasons.append(f"【政治面貌】{political_status or '非党员'}，不加分")
+    
+    # ============ 5. 党工团兼职加分 ============
+    party_union_role = emp_info.get('party_union_role', '') if emp_info else ''
+    position_bonus = 0
+    if party_union_role:
+        if '党' in party_union_role:
+            position_bonus = max(position_bonus, 10)
+        elif '团' in party_union_role:
+            position_bonus = max(position_bonus, 7)
+        elif '工' in party_union_role:
+            position_bonus = max(position_bonus, 4)
+    position_bonus = min(position_bonus, 10)
+    
+    if position_bonus > 0:
+        reasons.append(f"【党工团兼职】{party_union_role}，加{position_bonus}分")
+    else:
+        reasons.append("【党工团兼职】无兼职，不加分")
+    
+    # ============ 计算总分 ============
+    total_score = base_score - late_deduction - absent_deduction + overtime_bonus + party_bonus + position_bonus
+    total_score = min(total_score, max_score)
+    total_score = max(total_score, 0)
+    
+    reasons.append(f"【总分计算】{base_score}（基础分）-{late_deduction:.1f}（迟到早退扣分）-{absent_deduction}（旷工扣分）+{overtime_bonus}（加班加分）+{party_bonus}（政治面貌）+{position_bonus}（党工团兼职）={total_score:.1f}分（上限{max_score}分）")
+    
+    employee_reason = "；".join(reasons)
+    
+    # 岗位要求
+    job_requirement = 70 / 0.9
+    job_reason = f"要求：遵守考勤纪律，标准分{job_requirement:.1f}分"
+    if jd_warning:
+        job_reason = jd_warning + "；" + job_reason
+    
+    return total_score, job_requirement, employee_reason, job_reason
 
 
 def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, job_requirement_score: float, emp_info: dict = None, job_desc: dict = None) -> tuple:
@@ -2290,12 +2663,18 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
     #     conclusion = f"该员工与岗位匹配度较低，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。多项能力指标未达到岗位要求，建议调整岗位或加强培训。"
     #     evaluation = "待提升"
     # 生成结论
-    if match_rate >= 90:
-        conclusion = f"该员工与岗位高度匹配，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
+    if match_rate > 95:
+        conclusion = f"该员工与岗位匹配度高度匹配，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
         evaluation = "优秀"
-    elif match_rate >= 60:
-        conclusion = f"该员工与岗位要求存在一定差距，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{highest.name}是优势项，但{lowest.name}需要提升。建议员工不续签"
+    elif match_rate >= 90 and match_rate<=95:
+        conclusion = f"该员工与岗位匹配度较高，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
+        evaluation = "良好"
+    elif match_rate<90 :
+        conclusion = f"该员工与岗位不匹配，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。在{highest.name}方面表现突出（{highest.score:.1f}分），建议重点培养。"
         evaluation = "合格"
+    # elif match_rate >= 60:
+    #     conclusion = f"该员工与岗位要求存在一定差距，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{highest.name}是优势项，但{lowest.name}需要提升。建议员工不续签"
+    #     evaluation = "合格"
     # elif match_rate >= 60:
     #     if biggest_gap and biggest_gap.job_requirement - biggest_gap.score > 15:
     #         conclusion = f"该员工基本符合岗位要求，综合得分{overall_score:.1f}分（岗位要求{job_requirement_score:.1f}分）。{biggest_gap.name}方面存在明显差距（要求{biggest_gap.job_requirement:.0f}分，实际{biggest_gap.score:.0f}分），需要针对性培训。"
@@ -2313,11 +2692,10 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
     # 使用大模型生成智能建议
     if emp_info and job_desc:
         import requests
+        from app.config import get_settings
         
-        # 大模型配置
-        LLM_URL = "http://180.97.200.118:30071/v1/chat/completions"
-        LLM_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-        LLM_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+        # 从配置获取大模型设置
+        settings = get_settings()
         
         # 准备维度信息
         dimension_info = []
@@ -2361,13 +2739,13 @@ def generate_conclusion(dimensions: List[DimensionScore], overall_score: float, 
         
         try:
             response = requests.post(
-                LLM_URL,
+                settings.remote_llm_url,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {LLM_API_KEY}"
+                    "Authorization": f"Bearer {settings.remote_llm_api_key}"
                 },
                 json={
-                    "model": LLM_MODEL,
+                    "model": settings.remote_llm_model,
                     "messages": [
                         {"role": "system", "content": "你是一个专业的HR分析师，擅长根据人岗匹配数据给出具体的发展建议。"},
                         {"role": "user", "content": prompt}
@@ -2560,16 +2938,26 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         
         # 2. 获取岗位描述
         position_name = request.position_name or emp_info.get('position', '')
-        job_desc = get_job_description(db, position_name, emp_info['emp_name']) if position_name else None
+        job_desc = get_job_description(db, request.position_id, position_name, emp_info['emp_code'], emp_info['emp_name']) if (request.position_id or position_name) else None
+        
+        # 如果没有找到岗位描述，使用空字典作为默认值
+        job_desc_not_found = False
+        if not job_desc:
+            job_desc = {}
+            job_desc_not_found = True
+            logger.warning(f"[Alignment] 未找到匹配的岗位描述，position_id={request.position_id}, position_name={position_name}")
         
         # 3. 获取考勤数据
-        attendance = get_attendance_summary(db, emp_info['emp_code'])
+        attendance = get_attendance_summary(db, emp_info['emp_code'], emp_info['emp_name'])
         
         # 4. 计算6维度得分
         dimensions = []
         
+        # 岗位描述未找到提示
+        jd_warning = "【提示】未获取到该员工的岗位说明书，以下岗位要求使用默认值，请尽快上传岗位说明" if job_desc_not_found else None
+        
         # 维度1: 专业能力（权重30%）
-        prof_score, prof_req, prof_emp_reason, prof_job_reason = calculate_professional_ability_score(emp_info, job_desc or {}, db)
+        prof_score, prof_req, prof_emp_reason, prof_job_reason = calculate_professional_ability_score(emp_info, job_desc or {}, db, jd_warning)
         dimensions.append(DimensionScore(
             name="专业能力",
             score=prof_score,
@@ -2581,7 +2969,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 维度2: 经验（权重10%）
-        exp_score, exp_req, exp_emp_reason, exp_job_reason = calculate_experience_score(emp_info, job_desc or {}, db)
+        exp_score, exp_req, exp_emp_reason, exp_job_reason = calculate_experience_score(emp_info, job_desc or {}, db, jd_warning)
         dimensions.append(DimensionScore(
             name="经验",
             score=exp_score,
@@ -2608,8 +2996,10 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         
         # 维度4: 学习能力（权重20%）- 复用创新能力的录音和提问文件进行综合评价
         learn_score, learn_req, learn_emp_reason, learn_job_reason = await calculate_learning_score(
-            emp_info, job_desc or {}, db, request.innovation_audio_file, request.innovation_questions_file
+            emp_info, job_desc or {}, db, request.innovation_audio_file, request.innovation_questions_file, jd_warning
         )
+        if jd_warning and not learn_job_reason.startswith(jd_warning):
+            learn_job_reason = jd_warning + "；" + learn_job_reason
         dimensions.append(DimensionScore(
             name="学习能力",
             score=learn_score,
@@ -2621,7 +3011,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 维度5: 工作态度（权重20%）
-        attitude_score, attitude_req, attitude_emp_reason, attitude_job_reason = calculate_attitude_score(attendance, job_desc or {}, emp_info)
+        attitude_score, attitude_req, attitude_emp_reason, attitude_job_reason = calculate_attitude_score(attendance, job_desc or {}, emp_info, jd_warning)
         dimensions.append(DimensionScore(
             name="工作态度",
             score=attitude_score,
@@ -2633,7 +3023,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         ))
         
         # 维度6: 价值贡献（权重10%）
-        value_score, value_req, value_emp_reason, value_job_reason = calculate_value_contribution_score(emp_info, job_desc or {}, db)
+        value_score, value_req, value_emp_reason, value_job_reason = calculate_value_contribution_score(emp_info, job_desc or {}, db, jd_warning)
         dimensions.append(DimensionScore(
             name="价值贡献",
             score=value_score,
@@ -2661,7 +3051,13 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
         # 9. 生成差距分析
         gap_analysis = generate_gap_analysis(dimensions)
         
-        logger.info(f"[Alignment] 分析完成，员工: {emp_info['emp_name']}, 综合得分: {overall_score:.1f}, 象限: {quadrant_data['quadrant_name']}")
+        # 10. 生成问答概要（从录音和提问文件中提取）
+        qa_summary = await generate_qa_summary_from_interview(
+            request.innovation_audio_file,
+            request.innovation_questions_file
+        )
+        
+        logger.info(f"[Alignment] 分析完成，员工: {emp_info['emp_name']}, 综合得分: {overall_score:.1f}, 象限: {quadrant_data['quadrant_name']}, 问答概要: {len(qa_summary)} 条")
         
         return {
             "success": True,
@@ -2670,6 +3066,7 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
                 "employee_code": emp_info['emp_code'],
                 "department": emp_info['department'],
                 "position": emp_info['position'],
+                "jd_not_found_message": jd_warning,
                 "overall_score": overall_score,
                 "job_requirement_score": job_requirement_score,
                 "dimensions": [d.dict() for d in dimensions],
@@ -2679,7 +3076,8 @@ async def analyze_alignment(request: AlignmentAnalyzeRequest):
                 "recommendations": recommendations,
                 "quadrant": quadrant_data,
                 "radar_data": radar_data,
-                "gap_analysis": gap_analysis
+                "gap_analysis": gap_analysis,
+                "qa_summary": qa_summary
             }
         }
         

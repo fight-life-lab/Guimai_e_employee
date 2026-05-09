@@ -356,8 +356,12 @@ async def get_resumes(project_name: str):
     if not project_dir.exists():
         raise HTTPException(status_code=404, detail=f"项目不存在: {project_name}")
     
-    # 查找所有Excel文件
-    excel_files = list(project_dir.glob("*.xlsx")) + list(project_dir.glob("*.xls"))
+    # 优先从简历子目录查找Excel文件
+    resume_dir = project_dir / "简历"
+    if resume_dir.exists():
+        excel_files = list(resume_dir.glob("*.xlsx")) + list(resume_dir.glob("*.xls"))
+    else:
+        excel_files = list(project_dir.glob("*.xlsx")) + list(project_dir.glob("*.xls"))
     
     resumes = []
     for excel_file in excel_files:
@@ -584,16 +588,29 @@ async def get_candidates(project_name: str):
     # 获取所有候选人姓名（从音频文件和Excel文件）
     candidate_names = set()
     
-    # 从音频文件提取
-    for f in project_dir.iterdir():
-        if f.is_file() and f.suffix.lower() in {'.aac', '.mp3', '.wav', '.m4a'}:
+    # 从音频文件提取（优先扫描录音子目录，再扫描根目录）
+    audio_dir = project_dir / "录音"
+    if audio_dir.exists():
+        for f in audio_dir.iterdir():
+            if f.is_file() and f.suffix.lower() in {'.aac', '.mp3', '.wav', '.m4a'}:
+                name = extract_candidate_name_from_filename(f.name)
+                candidate_names.add(name)
+    else:
+        for f in project_dir.iterdir():
+            if f.is_file() and f.suffix.lower() in {'.aac', '.mp3', '.wav', '.m4a'}:
+                name = extract_candidate_name_from_filename(f.name)
+                candidate_names.add(name)
+    
+    # 从简历子目录提取Excel文件
+    resume_dir = project_dir / "简历"
+    if resume_dir.exists():
+        for f in resume_dir.glob("*.xlsx"):
             name = extract_candidate_name_from_filename(f.name)
             candidate_names.add(name)
-    
-    # 从Excel文件提取
-    for f in project_dir.glob("*.xlsx"):
-        name = extract_candidate_name_from_filename(f.name)
-        candidate_names.add(name)
+    else:
+        for f in project_dir.glob("*.xlsx"):
+            name = extract_candidate_name_from_filename(f.name)
+            candidate_names.add(name)
     
     # 获取简历信息
     resumes_response = await get_resumes(project_name)
@@ -609,13 +626,24 @@ async def get_candidates(project_name: str):
         # 加载AI评估缓存
         evaluation = load_evaluation_cache_for_candidate(project_name, name)
         
+        # 获取转录对象和纯文本
+        trans_obj = transcriptions_map.get(name)
+        transcript_text = ''
+        if trans_obj:
+            # 转录对象可能是直接返回的JSON内容（包含transcription字段）
+            if isinstance(trans_obj, dict):
+                transcript_text = trans_obj.get('transcription', '')
+            elif isinstance(trans_obj, str):
+                transcript_text = trans_obj
+        
         candidate = {
             "name": name,
             "has_resume": name in resumes_map,
             "has_transcription": name in transcriptions_map,
             "has_evaluation": evaluation is not None,
             "resume": resumes_map.get(name),
-            "transcription": transcriptions_map.get(name),
+            "transcription": trans_obj,
+            "transcript": transcript_text,
             "evaluation": evaluation
         }
         candidates.append(candidate)

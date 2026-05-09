@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS ods_attendance_summary (
     outing_count INT DEFAULT 0 COMMENT '外出次数（月度汇总）',
     overtime_count INT DEFAULT 0 COMMENT '加班次数（月度汇总）',
     overtime_hours DECIMAL(5,2) DEFAULT 0 COMMENT '加班时长-小时（20:30以后）',
+    overtime_2030_count INT DEFAULT 0 COMMENT '20:30以后加班次数（月度汇总）',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     

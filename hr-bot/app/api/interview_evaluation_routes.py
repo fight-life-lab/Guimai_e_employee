@@ -17,6 +17,7 @@ import requests
 
 from app.services.file_parser import get_file_parser
 from app.config import get_settings
+from app.services.evaluation_engine import get_evaluation_engine
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +29,8 @@ router = APIRouter(prefix="/api/v1/interview-evaluation", tags=["AI面试评价"
 # Whisper API 配置（本地部署）
 WHISPER_API_URL = "http://localhost:8003/transcribe"
 
-# Qwen3-235B 大模型配置（全尺寸版本）
-QWEN_API_URL = "http://180.97.200.118:30071/v1/chat/completions"
-QWEN_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-QWEN_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+# 大模型配置从config获取
+# QWEN_API_URL, QWEN_API_KEY, QWEN_MODEL 已迁移到 app.config
 
 # 转录文本保存目录
 TRANSCRIPT_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "transcripts")
@@ -280,6 +279,9 @@ async def extract_salary_with_llm(transcript: str) -> dict:
         if not transcript or len(transcript) < 50:
             return {}
         
+        # 从配置获取大模型设置
+        settings = get_settings()
+        
         prompt = f"""请从以下面试录音转录文本中提取候选人的薪酬信息。
 
 ## 提取要求：
@@ -311,18 +313,18 @@ async def extract_salary_with_llm(transcript: str) -> dict:
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {QWEN_API_KEY}"
+            "Authorization": f"Bearer {settings.remote_llm_api_key}"
         }
-        
+
         payload = {
-            "model": QWEN_MODEL,
+            "model": settings.remote_llm_model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.1,
             "stream": False
         }
-        
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(QWEN_API_URL, headers=headers, json=payload, timeout=60) as response:
+            async with session.post(settings.remote_llm_url, headers=headers, json=payload, timeout=60) as response:
                 if response.status == 200:
                     result = await response.json()
                     content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -730,6 +732,9 @@ async def evaluate_interview_with_qwen(
 ) -> Dict[str, Any]:
     """使用 Qwen3-235B 大模型评价面试"""
     try:
+        # 从配置获取大模型设置
+        settings = get_settings()
+
         # 构建面试问题列表
         questions_text = "\n".join([
             f"{i+1}. 【{q.category}】{q.question}\n   考察要点: {q.evaluation_points}"
@@ -1044,11 +1049,11 @@ async def evaluate_interview_with_qwen(
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {QWEN_API_KEY}"
+            "Authorization": f"Bearer {settings.remote_llm_api_key}"
         }
-        
+
         payload = {
-            "model": QWEN_MODEL,
+            "model": settings.remote_llm_model,
             "messages": [
                 {
                     "role": "user",
@@ -1058,11 +1063,11 @@ async def evaluate_interview_with_qwen(
             "temperature": 0.3,
             "stream": False
         }
-        
-        logger.info(f"[面试评价] 调用 Qwen3-235B 大模型进行面试评价...")
-        
+
+        logger.info(f"[面试评价] 调用远程大模型进行面试评价...")
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(QWEN_API_URL, headers=headers, json=payload, timeout=300) as response:
+            async with session.post(settings.remote_llm_url, headers=headers, json=payload, timeout=300) as response:
                 if response.status == 200:
                     result = await response.json()
                     content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -1105,7 +1110,8 @@ async def evaluate_interview(
     questions_file: Optional[UploadFile] = File(None, description="面试问题Excel文件"),
     candidate_name: Optional[str] = Form("", description="候选人姓名"),
     jd_title: Optional[str] = Form("", description="岗位名称"),
-    project: Optional[str] = Form("", description="项目名称，用于查找离线ASR缓存")
+    project: Optional[str] = Form("", description="项目名称，用于查找离线ASR缓存"),
+    evaluation_type: Optional[str] = Form("employee", description="评估类型：employee（员工）/ cadre（干部）")
 ):
     """
     AI面试评价 - 优先使用离线缓存ASR数据 + 大模型评价
@@ -1246,15 +1252,25 @@ async def evaluate_interview(
                 evaluation = cached_evaluation.get("evaluation")
                 logger.info(f"[面试评价] 使用评估结果缓存")
         
-        # 7. 如果没有缓存，进行Qwen3-235B大模型评价
+        # 7. 如果没有缓存，进行AI评价（根据评估类型选择不同引擎）
         if not evaluation:
-            logger.info(f"[面试评价] 开始AI评价...")
-            evaluation = await evaluate_interview_with_qwen(
-                jd_content=jd_text,
-                resume_content=resume_text,
-                transcript=transcript,
-                questions=questions
-            )
+            logger.info(f"[面试评价] 开始AI评价，评估类型: {evaluation_type}...")
+            
+            # 使用统一评估引擎
+            engine = get_evaluation_engine(evaluation_type)
+            evaluation_result = await engine.evaluate(jd_text, resume_text, transcript)
+            
+            if evaluation_result:
+                evaluation = evaluation_result.dict()
+            else:
+                # 如果评估引擎失败，回退到原有的Qwen评价
+                logger.warning(f"[面试评价] 评估引擎调用失败，回退到Qwen评价...")
+                evaluation = await evaluate_interview_with_qwen(
+                    jd_content=jd_text,
+                    resume_content=resume_text,
+                    transcript=transcript,
+                    questions=questions
+                )
             
             if not evaluation:
                 raise HTTPException(status_code=500, detail="面试评价失败")

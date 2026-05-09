@@ -31,8 +31,45 @@
         .header {
             text-align: center;
             margin-bottom: 30px;
-            padding-bottom: 20px;
+            padding-bottom: 25px;
             border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .filter-section {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .filter-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .filter-select {
+            padding: 10px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 150px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
         }
         
         .header h1 {
@@ -57,8 +94,8 @@
         }
 
         .type-switcher {
-            margin-top: 15px;
-            display: inline-flex;
+            margin-top: 15px !important;
+            display: inline-flex !important;
             gap: 12px;
             background: linear-gradient(135deg, #f0f4ff 0%, #e8efff 100%);
             padding: 6px;
@@ -95,43 +132,6 @@
             background: #f9fafb;
             border-color: #d1d5db;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .filter-section {
-            margin-top: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .filter-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: #555;
-        }
-
-        .filter-select {
-            padding: 10px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            min-width: 150px;
-            background: white;
-            cursor: pointer;
-            transition: border-color 0.3s;
-        }
-
-        .filter-select:focus {
-            outline: none;
-            border-color: #667eea;
         }
         
         /* ASR上传区域 */
@@ -1190,31 +1190,9 @@
         // 全局状态
         let uploadQueue = [];
         let candidates = [];
-        let projectDir = '20260401战略招聘'; // 默认项目，可以通过URL参数或选择器修改
-        let sharedResources = {};
-        let evaluationType = 'employee'; // 默认员工招聘
+        let evaluationType = 'employee';
         let selectedPosition = '';
         
-        // 项目配置列表（可根据需要扩展）
-        const PROJECT_CONFIGS = {
-            '20260401战略招聘': {
-                name: '战略与创新部副总经理招聘',
-                jdTitle: '战略与创新部副总经理',
-                jdFile: '20260401 国脉文化公司战略与创新部副总经理总经理助理岗位招聘公告 V1.0- OA发布.docx'
-            }
-            // 可以添加更多项目配置
-        };
-        
-        // 获取当前项目配置
-        function getCurrentProjectConfig() {
-            return PROJECT_CONFIGS[projectDir] || {
-                name: projectDir,
-                jdTitle: '岗位招聘',
-                jdFile: ''
-            };
-        }
-
-        // 切换评估类型
         function switchEvaluationType(type) {
             evaluationType = type;
             document.getElementById('employeeBtn').classList.remove('active');
@@ -1228,11 +1206,10 @@
                 subtitle.textContent = '基于大模型的面试录音智能分析与评估 - 干部选拔';
             }
             
-            showToast(`已切换到${type === 'employee' ? '员工招聘' : '干部选拔'}模式`, 'success');
+            // 刷新候选人列表
             loadCandidates();
         }
-
-        // 处理岗位筛选
+        
         function handlePositionChange() {
             selectedPosition = document.getElementById('positionSelect').value;
             if (selectedPosition) {
@@ -1240,8 +1217,7 @@
             }
             filterCandidatesByPosition();
         }
-
-        // 根据岗位筛选候选人
+        
         function filterCandidatesByPosition() {
             if (!selectedPosition || selectedPosition === 'all') {
                 renderCandidates();
@@ -1256,6 +1232,42 @@
             });
             
             renderCandidates(filtered);
+        }
+        let projectDir = '20260401战略招聘'; // 默认项目，可以通过URL参数或选择器修改
+        let sharedResources = {};
+        let allProjects = []; // 存储所有项目列表
+        
+        // 初始化时加载项目列表
+        async function loadProjects() {
+            try {
+                const response = await fetch(`/api/v1/interview/projects?evaluation_type=${evaluationType}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.projects && data.projects.length > 0) {
+                        allProjects = data.projects;
+                        updateProjectBadge();
+                    }
+                }
+            } catch (error) {
+                console.log('加载项目列表失败，使用默认项目');
+            }
+        }
+        
+        // 更新项目徽章显示
+        function updateProjectBadge() {
+            const badge = document.getElementById('projectBadge');
+            if (badge) {
+                badge.textContent = `📋 项目：${projectDir}`;
+            }
+        }
+        
+        // 获取当前项目配置
+        function getCurrentProjectConfig() {
+            return PROJECT_CONFIGS[projectDir] || {
+                name: projectDir,
+                jdTitle: '岗位招聘',
+                jdFile: ''
+            };
         }
         
         // 切换项目
@@ -3781,6 +3793,10 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('=== 开始初始化 ===');
             try {
+                // 加载项目列表
+                console.log('0. 加载项目列表...');
+                await loadProjects();
+                
                 // 更新项目显示
                 updateProjectDisplay();
                 

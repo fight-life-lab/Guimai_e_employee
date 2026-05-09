@@ -335,39 +335,136 @@ class AIScorerV2:
         return score, reason
     
     def _calculate_political_score(self, data: Dict) -> tuple:
-        """计算品质态度分数"""
-        base_score = 50
+        """计算品质态度分数（工作态度）
         
-        attendance = data.get("attendance", {})
-        # 直接从attendance获取数据（路由代码传递的是扁平结构）
-        late_days = attendance.get("late_days", 0)
+        规则（用户提供）：
+        基础分为70分，上限100分
         
-        # 根据迟到扣分
-        if late_days == 0:
-            deduction = 0
-            reason = "基础分50分，上月无迟到无违纪"
-        elif late_days <= 2:
-            deduction = 10
-            reason = f"基础分50分，上月迟到{late_days}次，轻微违纪，扣10分"
-        elif late_days <= 5:
-            deduction = 25
-            reason = f"基础分50分，上月迟到{late_days}次，明显违纪，扣25分"
-        elif late_days <= 10:
-            deduction = 35
-            reason = f"基础分50分，上月迟到{late_days}次，严重违纪，扣35分"
+        1. 扣分项（自然年）
+           迟到/早退：迟到豁免3次/月，在豁免的基础上每多一次每次扣1分，最多扣10分。
+           旷工：每旷工1次，扣10分。年度旷工超过3次以上，本大项目直接0分
+        
+        2. 加分项（累计得分，二选一取高分）
+           工作日：按照17点30分为下班时间，最晚打卡时间为18点30分及以后的，加1分，
+                   20点30分及以后的，加3分，最多加20分。
+           月度加班时间达到36小时及以上的，加20分。
+           以上条件二选一。
+        
+        3. 政治面貌：中共党员加5分
+        4. 党工团兼职：党10、团7、工4，最高10分
+        """
+        base_score = 70
+        max_score = 100
+        reasons = []
+        
+        # ============ 1. 迟到/早退扣分 ============
+        # 获取近12个月的月度考勤汇总
+        monthly_summary = data.get("attendance", {}).get("monthly_summary", [])
+        
+        # 计算年度迟到总次数
+        total_late_count = sum(m.get("late_count", 0) or 0 for m in monthly_summary)
+        
+        # 计算超出豁免的次数（每月豁免3次）
+        months_with_late = len(monthly_summary)
+        total_exemption = months_with_late * 3  # 总豁免次数
+        excess_late = max(0, total_late_count - total_exemption)
+        late_deduction = min(excess_late, 10)  # 最多扣10分
+        
+        if late_deduction > 0:
+            reasons.append(f"迟到{total_late_count}次（年度豁免{total_exemption}次），超出{excess_late}次，扣{late_deduction}分")
         else:
-            deduction = 50
-            reason = f"基础分50分，上月迟到{late_days}次，极其严重违纪，扣50分"
+            reasons.append(f"迟到{total_late_count}次，在年度豁免范围内（{total_exemption}次），不扣分")
         
-        score = max(0, base_score - deduction)
+        # ============ 2. 旷工扣分 ============
+        total_absent_count = sum(m.get("absent_count", 0) or m.get("absent_days", 0) for m in monthly_summary)
         
-        # 党员加10分
+        if total_absent_count > 3:
+            # 年度旷工超过3次，本大项目直接0分
+            return 0, f"基础分{base_score}分，年度旷工{total_absent_count}次，超过3次上限，本大项目直接0分"
+        elif total_absent_count > 0:
+            absent_deduction = total_absent_count * 10
+            reasons.append(f"旷工{total_absent_count}次，扣{absent_deduction}分")
+        else:
+            absent_deduction = 0
+            reasons.append("无旷工记录")
+        
+        # ============ 3. 加班加分（二选一，取高分） ============
+        overtime_bonus = 0
+        
+        # 方式A：基于打卡时间的加班加分
+        # overtime_1830_count: 18:30及以后打卡次数（每次1分）
+        # overtime_2030_count: 20:30及以后打卡次数（每次3分）
+        overtime_1830_count = 0
+        overtime_2030_count = 0
+        
+        for m in monthly_summary:
+            overtime_1830_count += m.get("overtime_1830_count", 0) or 0
+            overtime_2030_count += m.get("overtime_2030_count", 0) or 0
+        
+        bonus_1830 = overtime_1830_count * 1  # 18:30后每次1分
+        bonus_2030 = overtime_2030_count * 3  # 20:30后每次3分
+        bonus_by_time = min(bonus_1830 + bonus_2030, 20)  # 最多加20分
+        
+        # 方式B：基于月度加班时长的加分
+        bonus_by_hours = 0
+        for m in monthly_summary:
+            if m.get("overtime_hours", 0) >= 36:
+                bonus_by_hours = 20  # 有一个月达到36小时就加20分
+                break
+        
+        # 二选一，取高分
+        overtime_bonus = max(bonus_by_time, bonus_by_hours)
+        
+        if bonus_by_time > 0:
+            reasons.append(
+                f"加班加分（按打卡时间）：18:30后{overtime_1830_count}次（每次1分，共{bonus_1830}分），"
+                f"20:30后{overtime_2030_count}次（每次3分，共{bonus_2030}分），"
+                f"合计{bonus_1830 + bonus_2030}分（ capped 20分）"
+            )
+        
+        if bonus_by_hours > 0:
+            # 找到加班时长>=36小时的月份
+            months_with_36h = [m.get("month", "") for m in monthly_summary if m.get("overtime_hours", 0) >= 36]
+            reasons.append(
+                f"加班加分（按时长）：{', '.join(months_with_36h)}月度加班时长>=36小时，加20分"
+            )
+        
+        if overtime_bonus > 0:
+            method = "打卡时间" if bonus_by_time >= bonus_by_hours else "加班时长"
+            reasons.append(f"加班加分二选一取高分（{method}方式）：{overtime_bonus}分")
+        
+        # ============ 4. 政治面貌加分 ============
         political_status = data.get("political_status", "")
-        if political_status and "党员" in political_status:
-            score = min(100, score + 10)
-            reason += "，党员额外加10分"
+        party_bonus = 5 if political_status and "党员" in political_status else 0
+        if party_bonus > 0:
+            reasons.append(f"中共党员，加{party_bonus}分")
         
-        return score, reason
+        # ============ 5. 党工团兼职加分 ============
+        party_position = data.get("party_position", "") or ""
+        position_bonus = 0
+        if "党" in party_position:
+            position_bonus = max(position_bonus, 10)
+        elif "团" in party_position:
+            position_bonus = max(position_bonus, 7)
+        elif "工" in party_position:
+            position_bonus = max(position_bonus, 4)
+        position_bonus = min(position_bonus, 10)  # 最高10分
+        
+        if position_bonus > 0:
+            reasons.append(f"党工团兼职（{party_position}），加{position_bonus}分")
+        
+        # ============ 计算总分 ============
+        total_score = base_score - late_deduction - absent_deduction + overtime_bonus + party_bonus + position_bonus
+        total_score = min(total_score, max_score)  # 不超过上限
+        total_score = max(total_score, 0)  # 不低于0分
+        
+        reason_text = (
+            f"基础分{base_score}分；"
+            + "；".join(reasons)
+            + f"；最终得分{total_score}分（上限{max_score}分）"
+        )
+        
+        return total_score, reason_text
     
     async def calculate_scores(self, employee_data: Dict, pre_calculated_scores: Dict = None) -> Dict:
         """计算所有维度分数"""

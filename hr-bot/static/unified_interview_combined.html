@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI面试评估系统 - 统一管理平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .project-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .filter-section {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+            min-width: 80px;
+        }
+
+        .type-switcher {
+            display: inline-flex;
+            gap: 12px;
+            background: white;
+            padding: 6px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+            border: 2px solid #e0e7ff;
+        }
+
+        .type-btn {
+            padding: 12px 28px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .type-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .type-btn:not(.active) {
+            background: white;
+            color: #64748b;
+            border-color: #e2e8f0;
+        }
+
+        .type-btn:not(.active):hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .filter-select {
+            padding: 12px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            min-width: 200px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #334155;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            background: white;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8fafc;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #64748b;
+            border: 2px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .candidate-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .candidate-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .candidate-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .candidate-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border-color: #e0e7ff;
+            transform: translateY(-2px);
+        }
+
+        .candidate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .candidate-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .candidate-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .candidate-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .status-transcribed {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .status-evaluated {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .candidate-meta-list {
+            margin-bottom: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .meta-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-icon {
+            font-size: 14px;
+        }
+
+        .meta-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ai-score {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #f59e0b;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            background: #fffbeb;
+            border-radius: 8px;
+        }
+
+        .candidate-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-btn-text {
+            background: #f0f9ff;
+            color: #0284c7;
+        }
+
+        .action-btn-text:hover:not(:disabled) {
+            background: #e0f2fe;
+        }
+
+        .action-btn-qa {
+            background: #f5f3ff;
+            color: #7c3aed;
+        }
+
+        .action-btn-qa:hover {
+            background: #ede9fe;
+        }
+
+        .action-btn-eval {
+            background: #667eea;
+            color: white;
+        }
+
+        .action-btn-eval:hover:not(:disabled) {
+            background: #5a6fd6;
+        }
+
+        .action-btn-detail {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .action-btn-detail:hover:not(:disabled) {
+            background: #e2e8f0;
+        }
+
+        .action-btn-delete {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        .action-btn-delete:hover {
+            background: #fee2e2;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: #f1f5f9;
+            cursor: pointer;
+            font-size: 18px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: #e2e8f0;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .evaluation-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .radar-chart-container {
+            height: 300px;
+            margin-bottom: 25px;
+        }
+
+        .dimensions-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .dimension-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .dimension-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .dimension-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .dimension-score {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .dimension-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .dimension-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .qa-section {
+            margin-bottom: 25px;
+        }
+
+        .qa-item {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .qa-question {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .qa-answer {
+            font-size: 14px;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .salary-info {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #22c55e;
+        }
+
+        .salary-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #166534;
+            margin-bottom: 10px;
+        }
+
+        .salary-content {
+            font-size: 14px;
+            color: #15803d;
+            line-height: 1.6;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .toast.active {
+            display: flex;
+        }
+
+        .toast-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        .toast-error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .toast-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-text {
+            font-size: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .evaluation-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .dimensions-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .candidate-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .candidate-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 AI面试评估系统</h1>
+            <p class="subtitle" id="subtitle">基于大模型的面试录音智能分析与评估 - 员工招聘</p>
+            <div class="project-badge" id="positionBadge">📋 岗位：选择岗位</div>
+            
+            <div class="filter-section">
+                <div class="filter-group">
+                    <span class="filter-label">评估类型：</span>
+                    <div class="type-switcher">
+                        <button class="type-btn active" id="employeeBtn" onclick="switchEvaluationType('employee')">
+                            <span>👤</span>
+                            <span>员工招聘</span>
+                        </button>
+                        <button class="type-btn" id="cadreBtn" onclick="switchEvaluationType('cadre')">
+                            <span>🎖️</span>
+                            <span>干部选拔</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <span class="filter-label">岗位：</span>
+                    <select class="filter-select" id="positionSelect">
+                        <option value="">-- 请选择岗位 --</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="confirmLoadPosition()" style="padding: 10px 20px; font-size: 14px;">确认加载</button>
+                </div>
+                
+                <div class="filter-group">
+                    <span class="filter-label">新建岗位：</span>
+                    <input type="text" id="newPositionInput" placeholder="输入新岗位名称" class="filter-select" style="min-width: 200px;">
+                    <button class="btn btn-secondary" onclick="createNewPosition()" style="padding: 10px 16px; font-size: 14px;">创建</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCandidates">0</div>
+                <div class="stat-label">候选人总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="transcribedCount">0</div>
+                <div class="stat-label">已转录</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="evaluatedCount">0</div>
+                <div class="stat-label">已AI评估</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-label">待处理</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📁 批量操作</h2>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="batchTranscribe()">
+                    <span>🔊</span>
+                    <span>批量转录所有录音</span>
+                </button>
+                <button class="btn btn-primary" onclick="batchEvaluate()">
+                    <span>🤖</span>
+                    <span>批量AI评估</span>
+                </button>
+                <button class="btn btn-warning" onclick="batchResetEvaluation()" title="删除所有评估结果，可重新评估">
+                    <span>🔄</span>
+                    <span>重置所有评估</span>
+                </button>
+                <button class="btn btn-secondary" onclick="exportReports()">
+                    <span>📥</span>
+                    <span>导出报告</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📤 上传面试录音</h2>
+            <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" onclick="triggerFileInput()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">点击或拖拽上传面试录音文件</div>
+                <div class="upload-hint">支持格式：AAC, MP3, WAV, M4A, MP4 | 单个文件最大 50MB</div>
+            </div>
+            <input type="file" id="fileInput" multiple accept=".aac,.mp3,.wav,.m4a,.mp4" style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">👥 候选人列表</h2>
+            <div class="candidate-list" id="candidateList">
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <div class="empty-text">暂无候选人数据，请先上传录音文件或选择项目</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="evaluationModal" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">AI评估报告</div>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="empty-state">
+                    <div class="empty-icon">🔄</div>
+                    <div class="empty-text">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let evaluationType = 'employee';
+        let selectedPosition = '';
+        let candidates = [];
+
+        async function init() {
+            await loadPositions();
+            showToast('系统初始化完成', 'success');
+        }
+
+        async function loadPositions() {
+            try {
+                const response = await fetch(`/api/v1/interview/positions?evaluation_type=${evaluationType}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const select = document.getElementById('positionSelect');
+                    select.innerHTML = '<option value="">-- 请选择岗位 --</option>';
+                    data.positions.forEach(position => {
+                        const option = document.createElement('option');
+                        option.value = position;
+                        option.textContent = position;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('加载岗位列表失败:', error);
+            }
+        }
+
+        function switchEvaluationType(type) {
+            evaluationType = type;
+            document.getElementById('employeeBtn').classList.remove('active');
+            document.getElementById('cadreBtn').classList.remove('active');
+            document.getElementById(type + 'Btn').classList.add('active');
+            
+            const subtitle = document.getElementById('subtitle');
+            subtitle.textContent = type === 'employee' 
+                ? '基于大模型的面试录音智能分析与评估 - 员工招聘'
+                : '基于大模型的面试录音智能分析与评估 - 干部选拔';
+            
+            selectedPosition = '';
+            document.getElementById('positionSelect').value = '';
+            document.getElementById('positionBadge').textContent = '📋 岗位：选择岗位';
+            loadPositions();
+            candidates = [];
+            renderCandidates();
+            updateStats();
+            showToast(`已切换到${type === 'employee' ? '员工招聘' : '干部选拔'}模式`, 'success');
+        }
+
+        function confirmLoadPosition() {
+            selectedPosition = document.getElementById('positionSelect').value;
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            document.getElementById('positionBadge').textContent = `📋 岗位：${selectedPosition}`;
+            loadCandidates();
+            showToast(`正在加载岗位 "${selectedPosition}" 的数据...`, 'info');
+        }
+
+        async function createNewPosition() {
+            const newPosition = document.getElementById('newPositionInput').value.trim();
+            if (!newPosition) {
+                showToast('请输入岗位名称', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/interview/position', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        position_name: newPosition,
+                        evaluation_type: evaluationType
+                    })
+                });
+
+                if (response.ok) {
+                    showToast(`成功创建岗位: ${newPosition}`, 'success');
+                    document.getElementById('newPositionInput').value = '';
+                    loadPositions();
+                } else {
+                    throw new Error('创建失败');
+                }
+            } catch (error) {
+                showToast(`创建失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadCandidates() {
+            if (!selectedPosition) return;
+            
+            try {
+                const response = await fetch(`/api/v1/interview/candidates?project=${encodeURIComponent(selectedPosition)}&evaluation_type=${evaluationType}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    candidates = data.candidates || [];
+                    renderCandidates();
+                    updateStats();
+                    showToast(`成功加载 ${candidates.length} 位候选人数据`, 'success');
+                } else {
+                    const errorData = await response.json();
+                    showToast(`加载失败: ${errorData.detail || '未知错误'}`, 'error');
+                }
+            } catch (error) {
+                console.error('加载候选人列表失败:', error);
+                showToast(`加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        function renderCandidates(filteredCandidates = candidates) {
+            const container = document.getElementById('candidateList');
+            
+            if (filteredCandidates.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div class="empty-text">暂无候选人数据</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `<div class="candidate-grid">` + filteredCandidates.map(candidate => {
+                // 适配后端返回的下划线命名
+                const hasTranscript = candidate.has_transcript || candidate.hasTranscript;
+                const hasEvaluation = candidate.has_evaluation || candidate.hasEvaluation;
+                const hasResume = candidate.has_resume || candidate.hasResume;
+                
+                const status = hasEvaluation ? 'evaluated' : hasTranscript ? 'transcribed' : 'pending';
+                const statusText = hasEvaluation ? '已评估' : hasTranscript ? '已转录' : '待处理';
+                const aiScore = candidate.evaluation?.overall_score || '';
+                
+                // 获取文件名（去掉路径）
+                const filename = candidate.filename ? candidate.filename.split('/').pop() : '';
+                
+                return `
+                    <div class="candidate-card">
+                        <div class="candidate-header">
+                            <div class="candidate-info">
+                                <div class="candidate-avatar">${candidate.name.charAt(0)}</div>
+                                <div class="candidate-name">${candidate.name}</div>
+                            </div>
+                            <span class="status-badge status-${status}">${statusText}</span>
+                        </div>
+                        
+                        <div class="candidate-meta-list">
+                            ${filename ? `
+                            <div class="meta-item">
+                                <span class="meta-icon">🎵</span>
+                                <span class="meta-text">${filename}</span>
+                            </div>
+                            ` : ''}
+                            <div class="meta-item">
+                                <span class="meta-icon">📝</span>
+                                <span class="meta-text">${hasTranscript ? '转录完成' : '待转录'}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-icon">📄</span>
+                                <span class="meta-text">${hasResume ? '已加载简历' : '未加载简历'}</span>
+                            </div>
+                        </div>
+                        
+                        ${aiScore ? `
+                        <div class="ai-score">
+                            <span>⭐</span>
+                            <span>AI初面评分: ${aiScore}</span>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="candidate-actions">
+                            <button class="action-btn action-btn-text" onclick="viewTranscript('${candidate.name}')" ${!hasTranscript ? 'disabled' : ''}>查看文本</button>
+                            <button class="action-btn action-btn-qa" onclick="viewQA('${candidate.name}')">问答</button>
+                            <button class="action-btn action-btn-detail" onclick="viewEvaluation('${candidate.name}')" ${!hasEvaluation ? 'disabled' : ''}>查看评估</button>
+                            <button class="action-btn action-btn-eval" onclick="evaluateCandidate('${candidate.name}')" ${hasEvaluation ? 'disabled' : ''}>
+                                ${hasEvaluation ? '已评估' : 'AI评估'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('') + `</div>`;
+        }
+
+        async function viewTranscript(candidateName) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            try {
+                showToast(`正在加载 ${candidateName} 的转录文本...`, 'info');
+                const response = await fetch(`/api/v1/interview/transcript/${selectedPosition}/${candidateName}?evaluation_type=${evaluationType}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showTranscriptModal(candidateName, data.transcript || '暂无转录文本');
+                } else {
+                    showToast('未找到转录文本', 'error');
+                }
+            } catch (error) {
+                showToast(`加载转录文本失败: ${error.message}`, 'error');
+            }
+        }
+
+        function showTranscriptModal(candidateName, transcript) {
+            document.getElementById('modalTitle').textContent = `转录文本 - ${candidateName}`;
+            
+            document.getElementById('modalBody').innerHTML = `
+                <div style="background: #f8fafc; border-radius: 12px; padding: 20px; max-height: 60vh; overflow-y: auto;">
+                    <div style="white-space: pre-wrap; line-height: 1.8; color: #334155; font-size: 14px;">
+                        ${transcript}
+                    </div>
+                </div>
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn btn-secondary" onclick="copyTranscript('${transcript.replace(/'/g, "\\'")}')">
+                        <span>📋</span>
+                        <span>复制文本</span>
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('evaluationModal').classList.add('active');
+        }
+
+        async function copyTranscript(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast('文本已复制到剪贴板', 'success');
+            } catch (err) {
+                showToast('复制失败', 'error');
+            }
+        }
+
+        async function viewQA(candidateName) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            try {
+                showToast(`正在加载 ${candidateName} 的问答...`, 'info');
+                const response = await fetch(`/api/v1/interview/qa/${selectedPosition}/${candidateName}?evaluation_type=${evaluationType}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showQAModal(candidateName, data.qa_pairs || [], data.summary, data.structured_questions);
+                } else {
+                    showToast('未找到问答数据', 'error');
+                }
+            } catch (error) {
+                showToast(`加载问答数据失败: ${error.message}`, 'error');
+            }
+        }
+
+        function showQAModal(candidateName, qaPairs, summary, structuredQuestions) {
+            document.getElementById('modalTitle').textContent = `问答分析 - ${candidateName}`;
+            
+            let html = '';
+            
+            // 显示总结
+            if (summary) {
+                html += `
+                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #22c55e;">
+                        <div style="font-size: 16px; font-weight: 600; color: #15803d; margin-bottom: 10px;">📊 问答覆盖分析</div>
+                        <div style="font-size: 14px; color: #334155; line-height: 1.8;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                                <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">${summary.total_questions || 0}</div>
+                                    <div style="font-size: 12px; color: #64748b;">结构化问题总数</div>
+                                </div>
+                                <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #22c55e;">${summary.answered_questions || 0}</div>
+                                    <div style="font-size: 12px; color: #64748b;">已回答问题数</div>
+                                </div>
+                                <div style="text-align: center; background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${summary.coverage_rate || 0}%</div>
+                                    <div style="font-size: 12px; color: #64748b;">覆盖率</div>
+                                </div>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px; font-size: 13px;">
+                                ${summary.summary_text || ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 显示维度统计
+            if (summary && summary.dimension_stats) {
+                html += `
+                    <div style="margin-bottom: 25px;">
+                        <div style="font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 15px;">📋 维度覆盖情况</div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            ${Object.entries(summary.dimension_stats).map(([dim, stats]) => `
+                                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-size: 13px; color: #475569;">${dim}</span>
+                                    <span style="font-size: 13px; font-weight: 600; color: ${stats.answered >= stats.count ? '#22c55e' : '#f59e0b'};">${stats.answered}/${stats.count}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 显示结构化问题列表
+            if (structuredQuestions && structuredQuestions.length > 0) {
+                html += `
+                    <div style="margin-bottom: 25px;">
+                        <div style="font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 15px;">🎯 结构化面试问题</div>
+                        <div class="qa-section">
+                            ${structuredQuestions.map((q, idx) => `
+                                <div class="qa-item" style="border-left-color: ${q.category === '结构化面试' ? '#667eea' : '#94a3b8'};">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                        <div class="qa-question" style="flex: 1;">Q${idx + 1}: ${q.question || '未定义问题'}</div>
+                                        <span style="font-size: 11px; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 10px; margin-left: 10px;">${q.dimension || '通用'}</span>
+                                    </div>
+                                    ${q.evaluation_points ? `<div style="font-size: 12px; color: #64748b; margin-top: 5px;">💡 评分要点: ${q.evaluation_points}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 显示实际问答对（如果有）
+            if (qaPairs && qaPairs.length > 0 && qaPairs[0].answer && !qaPairs[0].answer.includes('[根据转录文本分析')) {
+                html += `
+                    <div>
+                        <div style="font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 15px;">💬 实际问答内容</div>
+                        <div class="qa-section">
+                            ${qaPairs.map((qa, idx) => `
+                                <div class="qa-item">
+                                    <div class="qa-question">Q${idx + 1}: ${qa.question || '未识别问题'}</div>
+                                    <div class="qa-answer">${qa.answer || '未识别回答'}</div>
+                                    ${qa.evaluation_points ? `<div style="font-size: 12px; color: #64748b; margin-top: 8px;">💡 评估要点: ${qa.evaluation_points}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (!html) {
+                html = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div class="empty-text">暂无问答数据</div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('evaluationModal').classList.add('active');
+        }
+
+        function updateStats() {
+            const total = candidates.length;
+            // 适配后端返回的下划线命名和驼峰命名
+            const transcribed = candidates.filter(c => c.has_transcript || c.hasTranscript).length;
+            const evaluated = candidates.filter(c => c.has_evaluation || c.hasEvaluation).length;
+            const pending = candidates.filter(c => !(c.has_transcript || c.hasTranscript) && !(c.has_evaluation || c.hasEvaluation)).length;
+            
+            document.getElementById('totalCandidates').textContent = total;
+            document.getElementById('transcribedCount').textContent = transcribed;
+            document.getElementById('evaluatedCount').textContent = evaluated;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        async function evaluateCandidate(candidateName) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+
+            showToast(`正在评估 ${candidateName}...`, 'info');
+            
+            try {
+                const response = await fetch('/api/v1/interview/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        candidate_name: candidateName,
+                        project: selectedPosition,
+                        evaluation_type: evaluationType
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const candidate = candidates.find(c => c.name === candidateName);
+                    if (candidate) {
+                        candidate.hasEvaluation = true;
+                        candidate.evaluation = result.evaluation || result;
+                    }
+                    renderCandidates();
+                    updateStats();
+                    showToast(`${candidateName} 评估完成`, 'success');
+                } else {
+                    throw new Error('评估失败');
+                }
+            } catch (error) {
+                showToast(`评估失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function viewEvaluation(candidateName) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/v1/interview/evaluation/${selectedPosition}/${candidateName}?evaluation_type=${evaluationType}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    showEvaluationModal(candidateName, result.evaluation || result);
+                } else {
+                    showToast('未找到评估数据', 'error');
+                }
+            } catch (error) {
+                showToast(`加载评估数据失败: ${error.message}`, 'error');
+            }
+        }
+
+        function showEvaluationModal(candidateName, evaluation) {
+            document.getElementById('modalTitle').textContent = `AI评估报告 - ${candidateName}`;
+            
+            // 适配实际数据结构 - 后端返回的是dimensions数组
+            let dimensions = [];
+            
+            // 优先使用dimensions数组（新的数据结构）
+            if (evaluation.dimensions && Array.isArray(evaluation.dimensions)) {
+                dimensions = evaluation.dimensions.map(d => ({
+                    name: d.name,
+                    score: d.score,
+                    reason: d.analysis || ''  // 使用analysis字段作为reason
+                }));
+            } 
+            // 兼容旧的scores对象结构
+            else if (evaluation.scores) {
+                const scores = evaluation.scores;
+                const reasons = evaluation.reasons || {};
+                for (const [name, score] of Object.entries(scores)) {
+                    if (typeof score === 'number') {
+                        dimensions.push({
+                            name: name,
+                            score: score,
+                            reason: reasons[name] || ''
+                        });
+                    }
+                }
+            }
+            
+            const overallScore = evaluation.overall_score || 0;
+            const recommendation = evaluation.evaluation_level || evaluation.recommendation || '-';
+            const summary = evaluation.summary || '';
+            const suggestions = evaluation.recommendations || evaluation.suggestions || [];
+            const salaryMatch = evaluation.salary_match || {};
+            
+            // 判断薪酬是否已获取 - 检查match_percentage或score字段
+            const hasSalaryData = salaryMatch.match_percentage !== undefined && 
+                                  salaryMatch.match_percentage !== null &&
+                                  salaryMatch.match_percentage > 0;
+            
+            // 修复雷达图配置 - 添加完整的雷达图配置
+            const radarOption = dimensions.length > 0 ? {
+                tooltip: {
+                    trigger: 'item'
+                },
+                radar: {
+                    indicator: dimensions.map(d => ({ 
+                        name: d.name.length > 6 ? d.name.substring(0, 6) + '...' : d.name, 
+                        max: 100 
+                    })),
+                    shape: 'polygon',
+                    splitNumber: 4,
+                    axisName: {
+                        color: '#64748b',
+                        fontSize: 12
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(102, 126, 234, 0.2)'
+                        }
+                    },
+                    splitArea: {
+                        show: true,
+                        areaStyle: {
+                            color: ['rgba(102, 126, 234, 0.05)', 'rgba(102, 126, 234, 0.1)']
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(102, 126, 234, 0.3)'
+                        }
+                    }
+                },
+                series: [{
+                    type: 'radar',
+                    data: [{
+                        value: dimensions.map(d => d.score || 0),
+                        name: '评分',
+                        areaStyle: {
+                            color: 'rgba(102, 126, 234, 0.3)'
+                        },
+                        lineStyle: {
+                            color: '#667eea',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#667eea'
+                        }
+                    }]
+                }]
+            } : null;
+
+            document.getElementById('modalBody').innerHTML = `
+                <div class="evaluation-summary">
+                    <div class="summary-card">
+                        <div class="summary-value">${overallScore}</div>
+                        <div class="summary-label">综合得分</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">${recommendation}</div>
+                        <div class="summary-label">推荐等级</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-value">${hasSalaryData ? (salaryMatch.match_percentage || salaryMatch.score || '-') + '%' : 'unknown'}</div>
+                        <div class="summary-label">薪酬匹配度</div>
+                    </div>
+                </div>
+
+                ${summary ? `
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #0ea5e9;">
+                    <div style="font-size: 16px; font-weight: 600; color: #0369a1; margin-bottom: 10px;">📝 综合评价</div>
+                    <div style="font-size: 14px; color: #334155; line-height: 1.8;">${summary}</div>
+                </div>
+                ` : ''}
+
+                ${dimensions.length > 0 ? `
+                <h3 style="margin-bottom: 15px; color: #333;">📊 维度评分</h3>
+                <div class="radar-chart-container" id="radarChart" style="width: 100%; height: 300px; margin-bottom: 20px;"></div>
+                
+                <div class="dimensions-list">
+                    ${dimensions.map(d => `
+                        <div class="dimension-item">
+                            <div class="dimension-header">
+                                <span class="dimension-name">${d.name}</span>
+                                <span class="dimension-score">${d.score}</span>
+                            </div>
+                            <div class="dimension-bar">
+                                <div class="dimension-bar-fill" style="width: ${d.score}%"></div>
+                            </div>
+                            ${d.reason ? `<div style="font-size: 12px; color: #64748b; margin-top: 8px; line-height: 1.5;">${d.reason}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ` : '<div class="empty-state"><div class="empty-text">暂无维度评分数据</div></div>'}
+
+                ${hasSalaryData ? `
+                <div class="salary-info">
+                    <div class="salary-title">💰 薪酬匹配分析</div>
+                    <div class="salary-content">
+                        <div><strong>薪酬匹配度:</strong> ${salaryMatch.match_percentage || salaryMatch.score}%</div>
+                        <div><strong>岗位预算:</strong> ${salaryMatch.jd_salary_range || '40万-60万/年'}</div>
+                        <div><strong>当前薪资:</strong> ${salaryMatch.current_salary || '未明确'}</div>
+                        <div><strong>期望薪资:</strong> ${salaryMatch.expected_salary || '未明确'}</div>
+                        ${salaryMatch.analysis ? `<div style="margin-top: 8px;">${salaryMatch.analysis}</div>` : ''}
+                    </div>
+                </div>
+                ` : `
+                <div class="salary-info" style="background: #f1f5f9;">
+                    <div class="salary-title">💰 薪酬匹配分析</div>
+                    <div class="salary-content" style="color: #64748b;">
+                        <div>薪酬信息未获取</div>
+                        <div style="margin-top: 8px; font-size: 13px;">无法从面试记录中提取候选人的薪酬信息</div>
+                    </div>
+                </div>
+                `}
+
+                ${suggestions.length > 0 ? `
+                <div style="background: #fefce8; border-radius: 12px; padding: 20px; margin-top: 25px; border-left: 4px solid #eab308;">
+                    <div style="font-size: 16px; font-weight: 600; color: #854d0e; margin-bottom: 10px;">💡 后续建议</div>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #334155; line-height: 1.8;">
+                        ${suggestions.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                <div style="margin-top: 30px; text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                    <button class="btn btn-primary" onclick="downloadEvaluationPDF('${candidateName}')">
+                        <span>📄</span>
+                        <span>下载评估报告 PDF</span>
+                    </button>
+                </div>
+            `;
+
+            if (radarOption && dimensions.length > 0) {
+                setTimeout(() => {
+                    const chartDom = document.getElementById('radarChart');
+                    if (chartDom) {
+                        const chart = echarts.init(chartDom);
+                        chart.setOption(radarOption);
+                        // 添加resize监听
+                        window.addEventListener('resize', () => chart.resize());
+                    }
+                }, 200);
+            }
+
+            document.getElementById('evaluationModal').classList.add('active');
+        }
+        
+        async function downloadEvaluationPDF(candidateName) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            try {
+                showToast('正在生成PDF报告...', 'info');
+                
+                // 获取评估数据
+                const response = await fetch(`/api/v1/interview/evaluation/${selectedPosition}/${candidateName}?evaluation_type=${evaluationType}`);
+                if (!response.ok) {
+                    throw new Error('获取评估数据失败');
+                }
+                
+                const result = await response.json();
+                const evaluation = result.evaluation || result;
+                
+                // 生成PDF内容
+                generatePDF(candidateName, selectedPosition, evaluation);
+                
+                showToast('PDF报告已生成', 'success');
+            } catch (error) {
+                showToast(`生成PDF失败: ${error.message}`, 'error');
+            }
+        }
+        
+        async function generatePDF(candidateName, positionId, evaluation) {
+            // 创建PDF内容容器
+            const pdfContainer = document.createElement('div');
+            pdfContainer.id = 'pdfContainer';
+            pdfContainer.style.cssText = `
+                position: fixed;
+                left: -9999px;
+                top: 0;
+                width: 800px;
+                background: white;
+                padding: 40px;
+                font-family: 'Microsoft YaHei', Arial, sans-serif;
+                z-index: -1;
+            `;
+            
+            // 适配数据结构 - 优先使用dimensions数组
+            let dimensions = [];
+            if (evaluation.dimensions && Array.isArray(evaluation.dimensions)) {
+                dimensions = evaluation.dimensions.map(d => ({
+                    name: d.name,
+                    score: d.score,
+                    reason: d.analysis || ''
+                }));
+            } else if (evaluation.scores) {
+                // 兼容旧的scores对象结构
+                const scores = evaluation.scores;
+                const reasons = evaluation.reasons || {};
+                for (const [name, score] of Object.entries(scores)) {
+                    if (typeof score === 'number') {
+                        dimensions.push({
+                            name: name,
+                            score: score,
+                            reason: reasons[name] || ''
+                        });
+                    }
+                }
+            }
+            
+            const salaryMatch = evaluation.salary_match || {};
+            
+            // 构建PDF HTML内容
+            pdfContainer.innerHTML = `
+                <div style="max-width: 720px; margin: 0 auto;">
+                    <div style="text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 3px solid #667eea;">
+                        <h1 style="color: #1e293b; font-size: 24px; margin-bottom: 8px;">AI面试评估报告</h1>
+                        <p style="color: #64748b; font-size: 12px;">生成时间: ${new Date().toLocaleString('zh-CN')}</p>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h2 style="color: #334155; font-size: 14px; margin-bottom: 10px;">📝 基本信息</h2>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                            <tr>
+                                <td style="padding: 6px; color: #64748b; width: 100px;">候选人姓名:</td>
+                                <td style="padding: 6px; color: #1e293b; font-weight: 600;">${candidateName}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; color: #64748b;">岗位ID:</td>
+                                <td style="padding: 6px; color: #1e293b;">${positionId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; color: #64748b;">评估类型:</td>
+                                <td style="padding: 6px; color: #1e293b;">${evaluationType === 'employee' ? '员工招聘' : '干部选拔'}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; color: #64748b;">综合得分:</td>
+                                <td style="padding: 6px; color: #667eea; font-weight: 700; font-size: 16px;">${evaluation.overall_score || 0}分</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; color: #64748b;">推荐等级:</td>
+                                <td style="padding: 6px; color: #1e293b; font-weight: 600;">${evaluation.evaluation_level || evaluation.recommendation || '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    ${evaluation.summary ? `
+                    <div style="margin-bottom: 20px;">
+                        <h2 style="color: #334155; font-size: 14px; margin-bottom: 10px;">📋 综合评价</h2>
+                        <div style="background: #f0f9ff; padding: 12px; border-radius: 6px; border-left: 3px solid #0ea5e9; line-height: 1.6; color: #334155; font-size: 11px;">
+                            ${evaluation.summary}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h2 style="color: #334155; font-size: 14px; margin-bottom: 10px;">📊 维度评分</h2>
+                        ${dimensions.length > 0 ? `
+                        <!-- 雷达图 - HTML版本 -->
+                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 15px;">
+                                ${dimensions.map(d => `
+                                    <div style="text-align: center; padding: 8px 12px; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        <div style="font-size: 10px; color: #64748b; margin-bottom: 4px;">${d.name}</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: ${d.score >= 80 ? '#22c55e' : d.score >= 60 ? '#667eea' : '#f59e0b'};">${d.score}分</div>
+                                        <div style="width: 60px; height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px;">
+                                            <div style="width: ${d.score}%; height: 100%; background: ${d.score >= 80 ? '#22c55e' : d.score >= 60 ? '#667eea' : '#f59e0b'}; border-radius: 2px;"></div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <!-- 雷达图可视化 -->
+                            <div style="display: flex; justify-content: center; margin: 15px 0;">
+                                <div style="position: relative; width: 200px; height: 200px;">
+                                    <!-- 背景圆环 -->
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 180px; height: 180px; border: 2px solid #e2e8f0; border-radius: 50%;"></div>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 135px; height: 135px; border: 2px solid #e2e8f0; border-radius: 50%;"></div>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90px; height: 90px; border: 2px solid #e2e8f0; border-radius: 50%;"></div>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 45px; height: 45px; border: 2px solid #e2e8f0; border-radius: 50%;"></div>
+                                    <!-- 数据多边形 -->
+                                    <svg width="200" height="200" style="position: absolute; top: 0; left: 0;">
+                                        <polygon points="${dimensions.map((d, i) => {
+                                            const angle = (i * 2 * Math.PI / dimensions.length) - Math.PI / 2;
+                                            const radius = (d.score / 100) * 90;
+                                            const x = 100 + radius * Math.cos(angle);
+                                            const y = 100 + radius * Math.sin(angle);
+                                            return `${x},${y}`;
+                                        }).join(' ')}" 
+                                            fill="rgba(102, 126, 234, 0.3)" 
+                                            stroke="#667eea" 
+                                            stroke-width="2"/>
+                                        ${dimensions.map((d, i) => {
+                                            const angle = (i * 2 * Math.PI / dimensions.length) - Math.PI / 2;
+                                            const radius = (d.score / 100) * 90;
+                                            const x = 100 + radius * Math.cos(angle);
+                                            const y = 100 + radius * Math.sin(angle);
+                                            return `<circle cx="${x}" cy="${y}" r="4" fill="#667eea"/>`;
+                                        }).join('')}
+                                    </svg>
+                                    <!-- 维度标签 -->
+                                    ${dimensions.map((d, i) => {
+                                        const angle = (i * 2 * Math.PI / dimensions.length) - Math.PI / 2;
+                                        const labelRadius = 105;
+                                        const x = 100 + labelRadius * Math.cos(angle);
+                                        const y = 100 + labelRadius * Math.sin(angle);
+                                        return `<div style="position: absolute; left: ${x}px; top: ${y}px; transform: translate(-50%, -50%); font-size: 9px; color: #475569; white-space: nowrap;">${d.name}</div>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 维度评分表格 -->
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed;">
+                            <thead>
+                                <tr style="background: #f1f5f9;">
+                                    <th style="padding: 8px; text-align: left; color: #475569; border-bottom: 1px solid #e2e8f0; width: 20%;">维度</th>
+                                    <th style="padding: 8px; text-align: center; color: #475569; border-bottom: 1px solid #e2e8f0; width: 15%;">得分</th>
+                                    <th style="padding: 8px; text-align: left; color: #475569; border-bottom: 1px solid #e2e8f0; width: 65%;">评价</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dimensions.map(d => `
+                                    <tr style="border-bottom: 1px solid #e2e8f0; page-break-inside: avoid;">
+                                        <td style="padding: 8px; color: #1e293b; font-weight: 500; vertical-align: top;">${d.name}</td>
+                                        <td style="padding: 8px; text-align: center; color: #667eea; font-weight: 700; vertical-align: top;">${d.score}分</td>
+                                        <td style="padding: 8px; color: #64748b; font-size: 10px; line-height: 1.5; vertical-align: top; word-wrap: break-word;">${d.reason || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ` : '<p style="color: #64748b; font-size: 11px;">暂无维度评分数据</p>'}
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <h2 style="color: #334155; font-size: 14px; margin-bottom: 10px;">💰 薪酬匹配分析</h2>
+                        ${(salaryMatch.match_percentage || salaryMatch.score) ? `
+                        <div style="background: #f0fdf4; padding: 12px; border-radius: 6px; border-left: 3px solid #22c55e;">
+                            <p style="margin: 0 0 5px 0; color: #334155; font-size: 11px;"><strong>薪酬匹配度:</strong> ${salaryMatch.match_percentage || salaryMatch.score}%</p>
+                            <p style="margin: 0 0 5px 0; color: #334155; font-size: 11px;"><strong>岗位预算:</strong> ${salaryMatch.jd_salary_range || '40万-60万/年'}</p>
+                            <p style="margin: 0 0 5px 0; color: #334155; font-size: 11px;"><strong>当前薪资:</strong> ${salaryMatch.current_salary || '未明确'}</p>
+                            <p style="margin: 0 0 5px 0; color: #334155; font-size: 11px;"><strong>期望薪资:</strong> ${salaryMatch.expected_salary || '未明确'}</p>
+                            <p style="margin: 0; color: #64748b; font-size: 10px;">${salaryMatch.analysis || ''}</p>
+                        </div>
+                        ` : `
+                        <div style="background: #f1f5f9; padding: 12px; border-radius: 6px; color: #64748b; font-size: 11px;">
+                            <p style="margin: 0;">薪酬信息未获取，无法从面试记录中提取候选人的薪酬信息</p>
+                        </div>
+                        `}
+                    </div>
+                    
+                    ${evaluation.suggestions && evaluation.suggestions.length > 0 ? `
+                    <div style="margin-bottom: 20px;">
+                        <h2 style="color: #334155; font-size: 14px; margin-bottom: 10px;">💡 后续建议</h2>
+                        <ul style="background: #fefce8; padding: 12px 12px 12px 30px; border-radius: 6px; border-left: 3px solid #eab308; margin: 0; font-size: 11px;">
+                            ${evaluation.suggestions.map(s => `<li style="margin-bottom: 5px; color: #334155; line-height: 1.4;">${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 10px;">
+                        <p>本报告由AI面试评估系统自动生成，仅供参考</p>
+                        <p>报告编号: ${positionId}_${candidateName}_${Date.now()}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(pdfContainer);
+            
+            try {
+                // 使用html2canvas将HTML转换为canvas
+                const canvas = await html2canvas(pdfContainer, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
+                
+                // 计算PDF尺寸
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 210; // A4宽度(mm)
+                const pageHeight = 297; // A4高度(mm)
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                // 创建PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                let heightLeft = imgHeight;
+                let position = 0;
+                
+                // 添加第一页
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                // 如果内容超过一页，添加更多页
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                // 下载PDF
+                pdf.save(`AI评估报告_${candidateName}_${positionId}.pdf`);
+                
+                showToast('PDF报告已下载', 'success');
+            } catch (error) {
+                console.error('PDF生成失败:', error);
+                showToast(`PDF生成失败: ${error.message}`, 'error');
+            } finally {
+                // 清理临时元素
+                document.body.removeChild(pdfContainer);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('evaluationModal').classList.remove('active');
+        }
+
+        async function batchTranscribe() {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            showToast('开始批量转录...', 'info');
+        }
+
+        async function batchEvaluate() {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            const unevaluated = candidates.filter(c => !c.hasEvaluation);
+            if (unevaluated.length === 0) {
+                showToast('所有候选人已完成评估', 'info');
+                return;
+            }
+
+            showToast(`正在批量评估 ${unevaluated.length} 位候选人...`, 'info');
+            
+            for (const candidate of unevaluated) {
+                await evaluateCandidate(candidate.name);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            showToast('批量评估完成', 'success');
+        }
+
+        async function batchResetEvaluation() {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+            
+            // 确认对话框
+            if (!confirm(`确定要重置所有候选人的评估结果吗？\n\n这将删除以下候选人的评估数据：\n${candidates.map(c => c.name).join('、')}\n\n重置后可以重新进行AI评估。`)) {
+                return;
+            }
+            
+            showToast('正在重置评估结果...', 'info');
+            
+            try {
+                const response = await fetch('/api/v1/interview/batch-reset-evaluation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project: selectedPosition,
+                        evaluation_type: evaluationType,
+                        candidate_names: []  // 空数组表示重置所有候选人
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // 更新本地候选人状态
+                    candidates.forEach(c => {
+                        c.has_evaluation = false;
+                        c.hasEvaluation = false;
+                        c.evaluation = null;
+                    });
+                    
+                    renderCandidates();
+                    updateStats();
+                    
+                    showToast(`评估重置完成！已删除 ${result.deleted_count} 位候选人的评估结果`, 'success');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.detail || '重置失败');
+                }
+            } catch (error) {
+                showToast(`重置评估失败: ${error.message}`, 'error');
+            }
+        }
+
+        function exportReports() {
+            showToast('导出功能开发中', 'info');
+        }
+
+        function triggerFileInput() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.remove('dragover');
+            const files = event.dataTransfer.files;
+            handleFiles(files);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('uploadArea').classList.add('dragover');
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+
+        async function handleFiles(files) {
+            if (!selectedPosition) {
+                showToast('请先选择岗位', 'error');
+                return;
+            }
+
+            showToast(`正在上传 ${files.length} 个文件...`, 'info');
+            
+            const formData = new FormData();
+            Array.from(files).forEach(file => {
+                formData.append('audio_files', file);
+            });
+            formData.append('project', selectedPosition);
+            formData.append('evaluation_type', evaluationType);
+
+            try {
+                const response = await fetch('/api/v1/interview/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showToast('文件上传成功', 'success');
+                    loadCandidates();
+                } else {
+                    throw new Error('上传失败');
+                }
+            } catch (error) {
+                showToast(`上传失败: ${error.message}`, 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast active toast-${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

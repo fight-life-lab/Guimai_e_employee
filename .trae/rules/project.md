@@ -19,7 +19,8 @@ alwaysApply: false
 
 ### 服务器与目录
 
-- **运行主机**：121.229.172.161
+- **运行主机**：121.229.172.161  
+- **远程登录方式**:  ssh -p 2222 root@121.229.172.161
 - **工作目录**：/root/shijingjing/e-employee
 - **代码结构提示**：Python 代码建议放在 `hr_bot/app` 目录下，静态文件（前端）建议放在 `hr_bot/static/` 目录下，数据目录建议放在 `hr_bot/data/` 目录下，日志目录建议放在 `hr_bot/logs/` 目录下，导数目录建议放在 `hr_bot/import_data/` 目录下。
 

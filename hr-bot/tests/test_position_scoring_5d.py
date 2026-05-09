@@ -49,7 +49,7 @@ sys.path.insert(0, '/root/shijingjing/e-employee/hr-bot')
 # ============ 配置参数 ============
 
 # 远程LLM配置
-REMOTE_LLM_URL = "http://180.97.200.118:30071/v1/chat/completions"
+REMOTE_LLM_URL = "http://180.97.202.202:30071/v1/chat/completions"
 REMOTE_LLM_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
 REMOTE_LLM_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
 

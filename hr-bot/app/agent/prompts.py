@@ -1,6 +1,6 @@
 """Prompts for HR Agent."""
 
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # System prompt for HR agent
 SYSTEM_PROMPT = """你是"人力数字员工"智能助手，专门帮助HR处理员工相关事务。

@@ -12,11 +12,8 @@ echo ""
 # 1. 传输修改的文件
 echo "[1/4] 正在传输文件到远程服务器..."
 
-# 主要修改文件：价值贡献路由
-scp /Users/shijingjing/Desktop/GuomaiProject/e-employee/hr-bot/app/api/value_contribution_routes.py root@121.229.172.161:/root/shijingjing/e-employee/hr-bot/app/api/
-
-# 价值数据文件
-scp /Users/shijingjing/Desktop/GuomaiProject/e-employee/hr-bot/data/价值数据.xlsx root@121.229.172.161:/root/shijingjing/e-employee/hr-bot/data/
+# 主要修改文件：人岗适配路由
+scp /Users/shijingjing/Desktop/GuomaiProject/e-employee/hr-bot/app/api/alignment_routes.py root@121.229.172.161:/root/shijingjing/e-employee/hr-bot/app/api/
 
 echo "[1/4] 文件传输完成"
 echo ""
@@ -44,7 +41,8 @@ ssh root@121.229.172.161 << 'REMOTE_SCRIPT'
     mkdir -p /root/shijingjing/e-employee/hr-bot/logs
     
     echo "  -> 激活 Conda 环境"
-    source /opt/miniconda3/bin/activate media_env
+    source /root/miniconda3/etc/profile.d/conda.sh
+    conda activate base
     
     echo "  -> 启动服务 (nohup 方式)"
     nohup uvicorn app.main:app --host 0.0.0.0 --port 3111 > /root/shijingjing/e-employee/hr-bot/logs/hr-bot.log 2>&1 &

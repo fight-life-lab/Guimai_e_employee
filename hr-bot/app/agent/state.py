@@ -2,7 +2,7 @@
 
 from typing import Annotated, List, Optional
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from typing_extensions import TypedDict
 
 

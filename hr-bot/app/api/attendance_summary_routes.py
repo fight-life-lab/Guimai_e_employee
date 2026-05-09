@@ -70,12 +70,15 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
             '理应出勤天': 'expected_attendance_days',
             '迟到次数': 'late_count',
             '早退次数': 'early_leave_count',
+            '缺勤次数': 'absent_count',
             '请假次数': 'leave_count',
             '外出次数': 'outing_count',
             '加班次数': 'overtime_count',
             '加班时长（小时）': 'overtime_hours',
             '加班时长（20:30以后加班时长-小时）': 'overtime_hours',
-            '加班时长': 'overtime_hours'
+            '加班时长': 'overtime_hours',
+            '20:30以后加班次数': 'overtime_2030_count',
+            '20:30以后加班时长（小时）': 'overtime_hours'
         }
         
         # 重命名列
@@ -123,12 +126,12 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
                         attendance_month, emp_code, emp_name, department,
                         normal_attendance_days, expected_attendance_days,
                         late_count, early_leave_count, leave_count, outing_count,
-                        overtime_count, overtime_hours
+                        overtime_count, overtime_hours, overtime_2030_count
                     ) VALUES (
                         :attendance_month, :emp_code, :emp_name, :department,
                         :normal_attendance_days, :expected_attendance_days,
                         :late_count, :early_leave_count, :leave_count, :outing_count,
-                        :overtime_count, :overtime_hours
+                        :overtime_count, :overtime_hours, :overtime_2030_count
                     )
                     ON DUPLICATE KEY UPDATE
                         emp_name = VALUES(emp_name),
@@ -141,6 +144,7 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
                         outing_count = VALUES(outing_count),
                         overtime_count = VALUES(overtime_count),
                         overtime_hours = VALUES(overtime_hours),
+                        overtime_2030_count = VALUES(overtime_2030_count),
                         updated_at = CURRENT_TIMESTAMP
                 """)
                 
@@ -171,7 +175,7 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
                         return default
                 
                 # 打印原始数据
-                logger.info(f"[AttendanceSummary] 第{idx + 2}行数据: normal_attendance_days={row.get('normal_attendance_days')}, overtime_hours={row.get('overtime_hours')}")
+                logger.info(f"[AttendanceSummary] 第{idx + 2}行数据: normal_attendance_days={row.get('normal_attendance_days')}, overtime_hours={row.get('overtime_hours')}, overtime_2030_count={row.get('overtime_2030_count')}")
                 
                 params = {
                     'attendance_month': attendance_month,
@@ -185,11 +189,12 @@ async def batch_upload_attendance_summary(file: UploadFile = File(...)):
                     'leave_count': get_integer_value(row.get('leave_count')),
                     'outing_count': get_integer_value(row.get('outing_count')),
                     'overtime_count': get_integer_value(row.get('overtime_count')),
-                    'overtime_hours': get_numeric_value(row.get('overtime_hours'))
+                    'overtime_hours': get_numeric_value(row.get('overtime_hours')),
+                    'overtime_2030_count': get_integer_value(row.get('overtime_2030_count'))
                 }
                 
                 # 打印处理后的数据
-                logger.info(f"[AttendanceSummary] 第{idx + 2}行处理后: normal_attendance_days={params['normal_attendance_days']}, overtime_hours={params['overtime_hours']}")
+                logger.info(f"[AttendanceSummary] 第{idx + 2}行处理后: normal_attendance_days={params['normal_attendance_days']}, overtime_hours={params['overtime_hours']}, overtime_2030_count={params['overtime_2030_count']}")
                 
                 db.execute(sql, params)
                 success_count += 1

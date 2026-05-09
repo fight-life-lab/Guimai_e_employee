@@ -24,10 +24,8 @@ router = APIRouter(prefix="/api/v1/batch-evaluation", tags=["批量AI评估"])
 BASE_DIR = "/root/shijingjing/e-employee/hr-bot"
 PROJECT_BASE_DIR = os.path.join(BASE_DIR, "data", "interview")
 
-# Qwen3-235B 大模型配置
-QWEN_API_URL = "http://180.97.200.118:30071/v1/chat/completions"
-QWEN_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-QWEN_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+# 大模型配置从config获取
+# settings.remote_llm_url, settings.remote_llm_api_key, settings.remote_llm_model 已迁移到 app.config
 
 # 6个评估维度
 EVALUATION_DIMENSIONS = [
@@ -128,7 +126,14 @@ def load_transcription(project_name: str, candidate_name: str) -> Optional[str]:
                 if result.get("candidate_name") == candidate_name:
                     return result.get("transcription", "")
         
-        # 尝试从候选人子目录读取
+        # 尝试格式1: transcriptions/{候选人姓名}.json (batch_evaluate_employee.py保存的格式)
+        direct_file = os.path.join(cache_dir, f"{candidate_name}.json")
+        if os.path.exists(direct_file):
+            with open(direct_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get("transcription", "")
+        
+        # 尝试格式2: 候选人子目录
         candidate_dir = os.path.join(cache_dir, candidate_name)
         if os.path.exists(candidate_dir):
             for filename in os.listdir(candidate_dir):
@@ -146,20 +151,22 @@ def load_transcription(project_name: str, candidate_name: str) -> Optional[str]:
 async def call_qwen_model(prompt: str, temperature: float = 0.3) -> str:
     """调用 Qwen3-235B 大模型"""
     try:
+        settings = get_settings()
+
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {QWEN_API_KEY}"
+            "Authorization": f"Bearer {settings.remote_llm_api_key}"
         }
         
         payload = {
-            "model": QWEN_MODEL,
+            "model": settings.remote_llm_model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "stream": False
         }
         
         async with aiohttp.ClientSession() as session:
-            async with session.post(QWEN_API_URL, headers=headers, json=payload, timeout=300) as response:
+            async with session.post(settings.remote_llm_url, headers=headers, json=payload, timeout=300) as response:
                 if response.status == 200:
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("message", {}).get("content", "")

@@ -4,7 +4,7 @@ import json
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_community.chat_models import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough

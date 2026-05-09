@@ -33,9 +33,9 @@ class Settings(BaseSettings):
     openai_api_key: str = "not-needed"  # 本地模型不需要API key
 
     # Remote LLM Settings - 远程大模型API (用于处理长文本)
-    remote_llm_url: str = "http://180.97.200.118:30071/v1/chat/completions"
-    remote_llm_api_key: str = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-    remote_llm_model: str = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+    remote_llm_url: str = "http://119.96.25.23:3001/v1/chat/completions"
+    remote_llm_api_key: str = "sk-kcIZHryBkI6uMoR55d639b53C2D54eA4BeE3Ee61A21c23B9"
+    remote_llm_model: str = "/Qwen3-VL-235B-A22B-Instruct-INT8"
 
     # Embedding Model
     embedding_model: str = "BAAI/bge-base-zh-v1.5"

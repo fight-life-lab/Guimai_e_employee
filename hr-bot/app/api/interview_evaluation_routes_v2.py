@@ -29,10 +29,8 @@ router = APIRouter(prefix="/api/v1/interview-evaluation", tags=["AI面试评价V
 # Whisper API 配置（本地部署）
 WHISPER_API_URL = "http://localhost:8003/transcribe"
 
-# Qwen3-235B 大模型配置（全尺寸版本）
-QWEN_API_URL = "http://180.97.200.118:30071/v1/chat/completions"
-QWEN_API_KEY = "z3oK7bN9xPqW2mT8rYvL5tF1cJ4hD6gA0eS2uI3nQk"
-QWEN_MODEL = "Qwen/Qwen3-235B-A22B-Instruct-2507"
+# 大模型配置从config获取
+# settings.remote_llm_url, settings.remote_llm_api_key, settings.remote_llm_model 已迁移到 app.config
 
 # 预存 ASR 转录数据目录
 PRESTORED_ASR_DIR = "/root/shijingjing/e-employee/hr-bot/data/transcriptions"
@@ -137,20 +135,22 @@ def find_prestored_asr(candidate_name: str) -> tuple:
 async def call_qwen_model(prompt: str, temperature: float = 0.3) -> str:
     """调用 Qwen3-235B 大模型"""
     try:
+        settings = get_settings()
+
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {QWEN_API_KEY}"
+            "Authorization": f"Bearer {settings.remote_llm_api_key}"
         }
         
         payload = {
-            "model": QWEN_MODEL,
+            "model": settings.remote_llm_model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "stream": False
         }
         
         async with aiohttp.ClientSession() as session:
-            async with session.post(QWEN_API_URL, headers=headers, json=payload, timeout=300) as response:
+            async with session.post(settings.remote_llm_url, headers=headers, json=payload, timeout=300) as response:
                 if response.status == 200:
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("message", {}).get("content", "")

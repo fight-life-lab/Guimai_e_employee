@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>简单测试页面</title>
+    <script>
+        const API_BASE = window.location.origin;
+        let currentEvalType = 'employee';
+        
+        async function loadProjects() {
+            console.log('loadProjects called, type:', currentEvalType);
+            try {
+                const url = `${API_BASE}/api/v1/interview/projects?evaluation_type=${currentEvalType}`;
+                console.log('Fetching:', url);
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                const select = document.getElementById('projectSelect');
+                let options = '<option value="">请选择项目</option>';
+                if (data.projects && data.projects.length > 0) {
+                    for (const project of data.projects) {
+                        options += `<option value="${project}">${project}</option>`;
+                    }
+                }
+                select.innerHTML = options;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('加载失败: ' + error.message);
+            }
+        }
+        
+        function switchEvalType(type) {
+            console.log('switchEvalType called:', type);
+            currentEvalType = type;
+            
+            document.querySelectorAll('.tab').forEach(t => t.style.background = '#ccc');
+            document.querySelector(`[onclick="switchEvalType('${type}')"]`).style.background = '#6366f1';
+            
+            loadProjects();
+        }
+        
+        window.onload = function() {
+            console.log('Window loaded');
+            loadProjects();
+        };
+    </script>
+</head>
+<body>
+    <h1>测试页面</h1>
+    
+    <div>
+        <button class="tab" onclick="switchEvalType('employee')" style="background: #6366f1; color: white; padding: 10px 20px;">员工评估</button>
+        <button class="tab" onclick="switchEvalType('cadre')" style="background: #ccc; padding: 10px 20px;">干部评估</button>
+    </div>
+    
+    <br>
+    
+    <select id="projectSelect">
+        <option value="">请选择项目</option>
+    </select>
+</body>
+</html>

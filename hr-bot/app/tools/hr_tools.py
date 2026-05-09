@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Optional
 
-from langchain.tools import tool
+from langchain_core.tools import tool
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
