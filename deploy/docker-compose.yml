@@ -73,15 +73,15 @@ services:
 #      --max-num-seqs 64
 #      --enforce-eager
 #      --trust-remote-code
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    networks:
-      - hr_network
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [gpu]
+#    networks:
+#      - hr_network
 
 # ==================== 网络和卷 ====================
 
